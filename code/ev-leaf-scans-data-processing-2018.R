@@ -2,7 +2,7 @@
 
 # file: ev-leaf-scans-data-processing
 # author: Amy Kendig
-# date last edited: 3/12/19
+# date last edited: 3/19/19
 # goal: combine raw 2018 Elymus leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: LeafScanAnalysis_ev_ak_021819.ijm
 
@@ -10,21 +10,18 @@
 #### set up ####
 
 # clear all existing data
-rm(list=ls())
+#rm(list=ls())
 
 # load packages
-library(tidyverse)
-
-# set working directory
-setwd("./data")
+#library(tidyverse)
 
 # import all raw data files
-jul <- read_csv("ev-leaf-scans-jul-2018-density-exp.csv")
-jul_ed <- read_csv("edited-ev-leaf-scans-jul-2018-density-exp.csv")
-aug <- read_csv("ev-leaf-scans-aug-2018-density-exp.csv")
-aug_ed <- read_csv("edited-ev-leaf-scans-aug-2018-density-exp.csv")
-sep <- read_csv("ev-leaf-scans-sep-2018-density-exp.csv")
-sep_ed <- read_csv("edited-ev-leaf-scans-sep-2018-density-exp.csv")
+jul <- read_csv("./data/ev-leaf-scans-jul-2018-density-exp.csv")
+jul_ed <- read_csv("./data/edited-ev-leaf-scans-jul-2018-density-exp.csv")
+aug <- read_csv("./data/ev-leaf-scans-aug-2018-density-exp.csv")
+aug_ed <- read_csv("./data/edited-ev-leaf-scans-aug-2018-density-exp.csv")
+sep <- read_csv("./data/ev-leaf-scans-sep-2018-density-exp.csv")
+sep_ed <- read_csv("./data/edited-ev-leaf-scans-sep-2018-density-exp.csv")
 
 
 #### edit data ####
@@ -156,39 +153,9 @@ datw %>%
   filter(lesion_objects > 150)
 
 
-#### export data ####
+#### save data ####
 
-# set working directory
-setwd("./processed-data")
-
-# save file
-write_csv(datw, "ev-leaf-scans-2018-desns-exp.csv")
+eleaf <- datw
 
 
 
-#### modify data ####
-
-datw <- datw %>%
-  mutate(
-    month = factor(month, levels = c("July", "August", "September")),
-    damage = lesion_area.pix / leaf_area.pix
-  )
-
-
-#### figures ####
-
-datw %>%
-  ggplot(aes(x = treatment, y = damage)) +
-  geom_boxplot()
-
-datw %>%
-  filter(treatment == "water") %>%
-  ggplot(aes(x = month, y = damage)) +
-  stat_summary(fun.data = "mean_cl_boot") +
-  facet_grid(site~plot)
-
-datw %>%
-  filter(treatment == "fungicide") %>%
-  ggplot(aes(x = month, y = damage)) +
-  stat_summary(fun.data = "mean_cl_boot") +
-  facet_grid(site~plot)

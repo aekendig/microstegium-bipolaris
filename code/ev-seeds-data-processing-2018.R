@@ -2,27 +2,31 @@
 
 # file: ev-seeds-data-processing
 # author: Amy Kendig, Chris Wojan
-# date last edited: 3/14/19
+# date last edited: 3/18/19
 # goal: edit Ev seed data and check for errors
 # background: spikelet counts for all samples, seed counts for a subset
 
 
 #### set up ####
 
-# clear all existing data
-rm(list=ls())
-
 # load packages
-library(tidyverse)
-
-# set working directory
-setwd("./data")
+#library(tidyverse)
 
 # import all raw data files
-di <- read_csv("ev-spikelets-2018-density-litter-exp.csv")
+di <- read_csv("./data/ev-spikelets-2018-density-litter-exp.csv")
 di
-de <- read_csv("ev-seed-subset-2018-density-exp.csv")
+de <- read_csv("./data/ev-seed-subset-2018-density-exp.csv")
 de
+dj <- read_csv("./data/ev-seeds-survival-jul-2018-density-exp.csv")
+dj
+dea <- read_csv("./data/ev-seeds-early-aug-2018-density-exp.csv")
+dea
+dla <- read_csv("./data/focal-disease-seeds-late-aug-2018-density-exp.csv")
+dla
+ds <- read_csv("./data/ev-disease-seeds-sep-2018-density-exp.csv")
+ds
+dl <- read_csv("./data/ev-seeds-2018-litter-exp.csv")
+dl
 
 
 #### edit data ####
@@ -31,7 +35,7 @@ de
 unique(di$site)
 unique(di$plot)
 unique(di$plant)
-filter(di, is.na(plant))
+filter(di, is.na(plant))$site
 unique(di$collect_date)
 
 unique(de$site)
@@ -39,37 +43,33 @@ unique(de$plot)
 unique(de$treatment)
 unique(de$age)
 unique(de$ID)
-unique(filter(de, is.na(ID))$age)
+filter(de, is.na(ID))
+unique(de$collect_date)
 
 # add and modify columns in di
 di <- di %>%
   mutate(
-    plant = ifelse(is.na(plant), "A", plant),
-    treatment = str_extract(plot, "[aA-zZ]+"),
+    treatment = str_extract(plot, "[aA-zZ]+") %>% recode("W" = "water", "F" = "fungicide"),
     plot = str_extract(plot, "[0-9]+") %>% as.numeric(),
     month = case_when(
       collect_date == 20180711 ~ "July",
-      collect_date > 20180711 & collect_date < 20180827 ~ "August",
+      collect_date > 20180711 & collect_date < 20180827 ~ "early August",
       collect_date > 20180803 & collect_date < 20180924 ~ "late August",
       collect_date > 20180830 & collect_date < 20181022 ~ "September",
-      collect_date == 20181022 ~ "October"
-    )
-  ) %>%
-  mutate(
-    age = ifelse(substr(plant, 1, 3) == "EVA" | plant == "A", "adult", "seedling"),
+      collect_date == 20181022 ~ "October"),
+    plant = ifelse(is.na(plant), "A", plant),
     ID = str_remove(plant, "EV"),
-    treatment = recode(treatment, "W" = "water", "F" = "fungicide"),
-  ) %>%
-  mutate(
-    focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0)
-  ) %>%
-  mutate(
+    focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0),
+    age = case_when(ID == "A" ~ "adult",
+                    focal == 0 & plot > 7 ~ "adult",
+                    TRUE ~ "seedling"),
     ID = ifelse(focal == 0 & age == "adult", str_remove(ID, "A"), ID)
-  ) %>%
-  rename(weigh_date = process_date)
+  )
 
-# check that month worked
+# check that modifications worked
 select(di, collect_date, month) %>% unique()
+select(di, plant, age, ID, focal) %>% unique() %>% data.frame()
+filter(di, focal == 0) %>% select(plot, age) %>% unique()
 
 # add and modify columns in de
 de <- de %>%
@@ -79,66 +79,126 @@ de <- de %>%
     ID = ifelse(is.na(ID), "A", ID),
     month = case_when(
       collect_date == 20180711 ~ "July",
-      collect_date > 20180711 & collect_date < 20180827 ~ "August",
+      collect_date > 20180711 & collect_date < 20180827 ~ "early August",
       collect_date > 20180803 & collect_date < 20180924 ~ "late August",
       collect_date > 20180830 & collect_date < 20181022 ~ "September",
-      collect_date == 20181022 ~ "October"
-    )
-  ) %>%
-  mutate(
+      collect_date == 20181022 ~ "October"),
     focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0)
   ) %>%
-  rename(seed_extraction_date = process_date) %>%
-  mutate(collect_date = ifelse(site == "D3" & plot == 7 & treatment == "water" & month == "late August" & ID == "R2" & age == "seedling", 20180828, collect_date))
+  mutate(collect_date = ifelse(site == "D3" & plot == 7 & treatment == "water" & month == "late August" & ID == "R2" & age == "seedling", 20180828, collect_date)) # correct to match spikelet data
 
 # merge
 d <- full_join(di, de)
 d
 
 # notes
-unique(d$notes)
+unique(d$spikelet_notes)
 
 # check some samples
-d %>% filter(notes == "unknown plant")
-d %>% filter(notes %in% c("1 OF 2", "2 OF 2")) %>% data.frame()
+d %>% filter(spikelet_notes == "unknown plant")
+d %>% filter(spikelet_notes %in% c("1 OF 2", "2 OF 2")) %>% data.frame()
 
-# add a removal column, edit notes, and check for duplicates
+# add a removal column, sp column, edit notes, and check for duplicates
 d <- d %>%
   mutate(
-    remove = case_when(
-      notes == "unknown plant" ~ 1,
-      TRUE ~ 0), 
-    notes = ifelse(notes %in% c("1 OF 2", "2 OF 2"), "2 samples", notes )
+    remove = case_when(spikelet_notes == "unknown plant" ~ 1,
+                       TRUE ~ 0), 
+    spikelet_notes = ifelse(spikelet_notes %in% c("1 OF 2", "2 OF 2"), "2 samples", spikelet_notes),
+    sp = "Ev"
   ) %>%
-  group_by(site, plot, plant, treatment, ID, age, month, focal) %>%
+  group_by(site, plot, treatment, ID, age, month, focal) %>%
   mutate(reps = n())
 
-# check for duplicate rows
-filter(d, reps > 1)
-# check with Chris about the labels on these envelopes
+# assign month to field data
+dj$month <- "July"
+dea$month <- "early August"
+dla$month <- "late August"
+ds$month <- "September"
 
-# check litter samples
-filter(d, substr(site, 1, 1) == "L") %>% data.frame
-filter(d, site == "L1" & month == "late August")
-filter(d, site == "L2" & month == "late August")
-filter(d, site == "L3" & month == "late August")
-filter(d, site == "L4" & month == "late August")
-filter(d, substr(site, 1, 1) == "L" & month == "September") %>% data.frame
+# make litter data long
+dl <- dl %>%
+  gather(key = month, value = seeds_collected, -c(site, plot, field_notes)) %>%
+  mutate(
+    month = case_when(month == "seeds_early_aug" ~ "early August",
+                      month == "seeds_late_aug" ~ "late August",
+                      month == "seeds_sep" ~ "September"),
+    ID = "A",
+    sp = "Ev"
+  )
+
+# combine field data
+df <- full_join(dj, dea) %>%
+  full_join(dla) %>%
+  full_join(ds) %>%
+  full_join(dl)
+
+# edit field data columns
+unique(df$ID)
+
+df <- df %>%
+  mutate(
+    treatment = recode(treatment, "Water" = "water", "Fungicide" = "fungicide"),
+    ID = case_when(ID == "A" ~ "A",
+                   TRUE ~ str_remove(ID, "A")),
+    focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0),
+    age = case_when(ID == "A" ~ "adult",
+                    focal == 0 & plot > 7 ~ "adult",
+                    TRUE ~ "seedling"),
+  )
+
+
+#### check data ####
+
+# collection record
+dc <- full_join(d, df)
+
+# records in which seeds were collected and recorded
+dc %>%
+  filter(!is.na(spikelets) & seeds_collected == 1) %>%
+  dim() 
+# 404
+
+# records in which they weren't recorded
+dcc <- dc %>%
+  filter(!is.na(spikelets) & (is.na(seeds_collected) | seeds_collected == 0))
+# 16
+data.frame(dcc)
+# D2 10W EvAR1 didn't have data collected in the field
+# October plants - didn't write down seed collection
+# others = recording mistakes?
+
+# recorded as collected, but missing
+dcm <- dc %>%
+  filter(is.na(spikelets) & seeds_collected == 1)
+# 14
+data.frame(dcm)
+
+# look for overlaps between missing and duplicates
+dcm %>% select(site, plot, treatment, age, ID, month, spikelet_notes)
+d %>% filter(reps > 1) %>% select(site, plot, treatment, age, ID, month, collect_date, spikelet_notes)
+# 5 of them may be duplicates - don't include duplicates unless noted
 
 # combine separated samples
-group_cols <- d %>% select(site:weigh_date, notes:seed_extraction_date, remove, reps) %>% names
+group_cols <- d %>% select(site:spikelet_date, spikelet_notes:seed_date, remove:sp) %>% names
+
 d2 <- d %>%
-  filter(notes == "2 samples") %>%
+  filter(spikelet_notes == "2 samples") %>%
   group_by(.dots = group_cols) %>%
   summarise(spikelets = sum(spikelets),
             spikelet_weight.mg = sum(spikelet_weight.mg),
             seeds = sum(seeds),
-            seed_weight.mg = sum(seed_weight.mg)
-   )  %>%
-  full_join(filter(d, notes != "2 samples" | is.na(notes)))
+            seed_weight.mg = sum(seed_weight.mg),
+            reps = 1
+  )  %>%
+  full_join(filter(d, spikelet_notes != "2 samples" | is.na(spikelet_notes)))
 
+# remove duplicates
+d2 <- d2 %>%
+  ungroup() %>%
+  mutate(
+    remove = ifelse(reps > 1, 1, remove)
+  )
 
-#### check data ####
 
 # spikelet number
 d2 %>%
@@ -163,12 +223,8 @@ d2 %>%
   geom_point()
 
 # large weight:number
-d2 %>%
-  filter(
-    (spikelets < 20 & spikelet_weight.mg > 500) |
-    (spikelets < 50 & spikelet_weight.mg > 1000) |
-    (spikelet_weight.mg > 4000)
-    )
+d2 %>% filter(spikelet_weight.mg > 4000)
+# Chris will re-weigh these
 
 # seed count
 d2 %>%
@@ -200,6 +256,7 @@ summary(m1) # R2 is 0.87
 
 # seed and spikelet weight
 d2 %>%
+  filter(!is.na(seeds)) %>%
   ggplot(aes(x = spikelet_weight.mg, y = seed_weight.mg))  +
   geom_point(aes(colour = age, shape = treatment)) +
   geom_smooth(method = lm)
@@ -214,6 +271,7 @@ d2  %>%
   ggplot(aes(x = spikelet_weight.mg, y = seeds))  +
   geom_point(aes(colour = age, shape = treatment), size = 2) +
   geom_smooth(method = lm, size = 0.5, colour = "black")
+# Chris is processing a few more in the gap
 
 # regression fit
 m3 <- lm(seeds ~ spikelet_weight.mg, data = d2)
@@ -221,6 +279,7 @@ summary(m3) # R2 is 0.94
 
 # seed count and spikelet weight again with site
 d2 %>%
+  filter(!is.na(seeds)) %>%
   ggplot(aes(x = spikelet_weight.mg, y = seeds))  +
   geom_point(aes(colour = site, shape = treatment)) +
   geom_smooth(method = lm)
@@ -228,7 +287,6 @@ d2 %>%
 # residuals
 d2 %>%
   filter(!is.na(seeds)) %>%
-  ungroup() %>%
   mutate(resid = as.numeric(resid(m3))) %>%
   ggplot(aes(x = spikelet_weight.mg, y = resid)) +
   geom_point(aes(colour = site, shape = age)) + 
@@ -249,11 +307,10 @@ summary(m4)
 m5 <- lm(seeds ~ spikelet_weight.mg + treatment, data = d2)
 summary(m5)
 AIC(m3, m4, m5)
-# m3 is the best fit model and adding treatment hardly changes the slope of the relationship. it does decrease the estimate with water, but this effect seems unnecessary when looking at the figures. also, the simple model underestimates water.
+# m3 is the best fit model and adding treatment hardly changes the slope of the relationship. it does decrease the estimate with water, but this effect seems minimal when looking at the figures. also, the simple model underestimates water.
 
-# add ratio columns, modify date
+# add ratios and seed estimate
 d3 <- d2 %>%
-  ungroup() %>%
   mutate(
     count_ratio = seeds / spikelets,
     weight_ratio = seed_weight.mg / spikelet_weight.mg, 
@@ -278,5 +335,6 @@ d3 %>%
   geom_smooth(method = "lm")
 # hard tell because sample size gets smaller with more spikelets
 
-# save data
+
+## Save data
 eseeds = d3
