@@ -2,7 +2,7 @@
 
 # file: ev-leaf-scans-data-processing
 # author: Amy Kendig
-# date last edited: 3/19/19
+# date last edited: 4/19/19
 # goal: combine raw 2018 Elymus leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: LeafScanAnalysis_ev_ak_021819.ijm
 
@@ -18,8 +18,8 @@
 # import all raw data files
 jul <- read_csv("./data/ev-leaf-scans-jul-2018-density-exp.csv")
 jul_ed <- read_csv("./data/edited-ev-leaf-scans-jul-2018-density-exp.csv")
-aug <- read_csv("./data/ev-leaf-scans-aug-2018-density-exp.csv")
-aug_ed <- read_csv("./data/edited-ev-leaf-scans-aug-2018-density-exp.csv")
+aug <- read_csv("./data/ev-leaf-scans-late-aug-2018-density-exp.csv")
+aug_ed <- read_csv("./data/edited-ev-leaf-scans-late-aug-2018-density-exp.csv")
 sep <- read_csv("./data/ev-leaf-scans-sep-2018-density-exp.csv")
 sep_ed <- read_csv("./data/edited-ev-leaf-scans-sep-2018-density-exp.csv")
 

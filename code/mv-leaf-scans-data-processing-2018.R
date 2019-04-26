@@ -2,7 +2,192 @@
 
 # file: mv-leaf-scans-data-processing
 # author: Amy Kendig
-# date last edited: 3/19/19
+# date last edited: 4/19/19
 # goal: combine raw 2018 Microstegium leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: LeafScanAnalysis_mv_cw_011719.ijm
 
+
+#### set-up ####
+
+# clear all existing data
+rm(list=ls())
+
+# load packages
+library(tidyverse)
+
+# import all raw data files
+jul <- read_csv("./data/mv-leaf-scans-jul-2018-density-exp.csv")
+jul_ed <- read_csv("./data/edited-mv-leaf-scans-jul-2018-density-exp.csv")
+aug <- read_csv("./data/mv-leaf-scans-late-aug-2018-density-exp.csv")
+aug_ed <- read_csv("./data/edited-mv-leaf-scans-late-aug-2018-density-exp.csv")
+sep <- read_csv("./data/mv-leaf-scans-sep-2018-density-exp.csv")
+sep_ed <- read_csv("./data/edited-mv-leaf-scans-sep-2018-density-exp.csv")
+
+
+#### edit data ####
+
+# indicate whether images were edited
+jul$edited <- 0
+jul_ed$edited <- 1
+aug$edited <- 0
+aug_ed$edited <- 1
+sep$edited <- 0
+sep_ed$edited <- 1
+
+# remove edited from name
+jul_ed$slice2 <- gsub("_edit", "", jul_ed$slice)
+aug_ed$slice2 <- gsub("_edit", "", aug_ed$slice)
+sep_ed$slice2 <- gsub("_edited", "", sep_ed$slice)
+
+# remove unedited images and combine with edited
+nrow(jul)
+jul <- jul %>%
+  filter(!(slice %in% jul_ed$slice2)) %>%
+  full_join(select(jul_ed, -c(slice2)))
+nrow(jul)
+
+nrow(aug)
+aug <- aug %>%
+  filter(!(slice %in% aug_ed$slice2)) %>%
+  full_join(select(aug_ed, -c(slice2)))
+nrow(aug)
+
+nrow(sep)
+sep <- sep %>%
+  filter(!(slice %in% sep_ed$slice2)) %>%
+  full_join(select(sep_ed, -c(slice2)))
+nrow(sep)
+
+# assign month
+jul$month <- "July"
+aug$month <- "August"
+sep$month <- "September"
+
+# combine
+dat <- rbind(jul, aug, sep)
+
+# new columns
+dat <- dat %>%
+  mutate(
+    plant = gsub(".*:","",slice) %>% gsub("_edited","",.) %>% gsub("_edit","",.),
+    part = gsub(":.*$", "", slice) %>% recode(lesions = "lesion", greens = "green"),
+    site = substr(plant, 1, 2),
+    treatment = substr(plant, 4, 6) %>% gsub("[^[:alpha:]]", "", .) %>% recode("F" = "fungicide", "W" = "water"),
+    experiment = case_when(treatment == "T" ~ "transect",
+                           TRUE ~ "density"),
+    treatment = na_if(treatment, "T")
+  ) 
+
+# check that the above worked as expected
+unique(dat$plant)
+unique(dat$part)
+unique(dat$site)
+unique(dat$treatment)
+
+# spread by part
+datw <- dat %>%
+  select(-c(slice)) %>%
+  gather(variable, value, -(edited:experiment)) %>%
+  unite(temp, part, variable) %>%
+  spread(temp, value)
+
+# split by experiment and edit
+dat_e <- datw %>%
+  filter(experiment == "density") %>%
+  mutate(
+    plot = substr(plant, 4, 5) %>% gsub("[^[:digit:]]", "", .),
+    ID = substr(plant, 9, 11) %>% gsub("[^[:digit:]]", "", .) %>% na_if(""),
+    focal = ifelse(ID %in% c("1", "2", "3"), 1, 0)
+  )
+
+dat_t <- datw %>%
+  filter(experiment == "transect") %>%
+  mutate(
+    transect = substr(plant, 5, 5),
+    distance.m = substr(plant, 7, 8) %>% gsub("[^[:digit:]]", "", .)
+  )
+
+# check that the above worked as expected
+unique(dat_e$plot)
+unique(dat_e$ID)
+filter(dat_e, is.na(ID)) %>% select(plant, focal) %>% unique() %>% data.frame()
+unique(dat_e$focal)
+
+unique(dat_t$transect)
+unique(dat_t$distance.m)
+
+# combine samples from the same plant
+
+dat_t$plant # not needed for transect data
+
+nrow(dat_e)
+dat_e <- dat_e %>%
+  group_by(edited, month, site, treatment, experiment, plot, ID, focal) %>%
+  summarise(
+    green_area.pix = sum(green_area.pix, na.rm = T),
+    green_objects = sum(green_objects, na.rm = T),
+    leaf_area.pix = sum(leaf_area.pix, na.rm = T),
+    leaf_objects = sum(leaf_objects, na.rm = T),
+    lesion_area.pix = sum(lesion_area.pix, na.rm = T),
+    lesion_objects = sum(lesion_objects, na.rm = T)
+  )
+nrow(dat_e)
+
+
+#### check values ####
+
+# leaf area
+dat_e %>%
+  ggplot(aes(x = leaf_area.pix)) +
+  geom_histogram() +
+  facet_wrap(~focal, scales = "free")
+
+dat_t %>%
+  ggplot(aes(x = leaf_area.pix)) +
+  geom_histogram()
+
+# manually check extremes
+dat_e %>%
+  filter(focal == "0" & leaf_area.pix > 5.8e6) %>% data.frame()
+
+dat_e %>%
+  filter(focal == "1" & leaf_area.pix > 7e5) %>% data.frame()
+
+dat_e %>%
+  filter(focal == "1" & leaf_objects > 1) %>% data.frame()
+
+# lesion area 
+dat_e %>%
+  ggplot(aes(x = lesion_area.pix)) +
+  geom_histogram() +
+  facet_wrap(~focal, scales = "free")
+
+dat_t %>%
+  ggplot(aes(x = lesion_area.pix)) +
+  geom_histogram()
+
+# manually check extremes
+dat_e %>%
+  filter(focal == "0" & lesion_area.pix > 1.5e6) %>% data.frame()
+
+dat_e %>%
+  filter(focal == "1" & lesion_area.pix > 3e5) %>% data.frame()
+
+# lesion objects
+dat_e %>%
+  ggplot(aes(x = lesion_objects)) +
+  geom_histogram() +
+  facet_wrap(~focal, scales = "free")
+
+# manually check extremes
+dat_e %>%
+  filter(focal == "0" & lesion_objects > 600) %>% data.frame()
+
+dat_e %>%
+  filter(focal == "1" & lesion_objects > 90) %>% data.frame()
+
+
+#### save data ####
+
+mleaf <- dat_e
+tleaf <- dat_t
