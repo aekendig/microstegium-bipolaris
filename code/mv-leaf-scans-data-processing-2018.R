@@ -10,10 +10,10 @@
 #### set-up ####
 
 # clear all existing data
-rm(list=ls())
+#rm(list=ls())
 
 # load packages
-library(tidyverse)
+#library(tidyverse)
 
 # import all raw data files
 jul <- read_csv("./data/mv-leaf-scans-jul-2018-density-exp.csv")
