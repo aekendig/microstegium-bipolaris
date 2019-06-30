@@ -20,11 +20,9 @@ library(loo)
 library(cowplot)
 
 # run survival files
-source("./code/ev-survival-data-processing-2018.R")
-rm(list = setdiff(ls(), "esurv"))
-source("./code/mv-survival-data-processing-2018.R")
-rm(list = setdiff(ls(), c("esurv", "msurv")))
 source("./code/bg-densities-data-processing-2018.R")
+rm(list = setdiff(ls(), c("esurv", "bgd")))
+source("./code/mv-survival-data-processing-2018.R")
 rm(list = setdiff(ls(), c("esurv", "msurv", "bgd")))
 
 # run leaf scan files
@@ -299,15 +297,15 @@ d_plot_ea <- d_ea %>%
           mutate(model = "nonlinear"))
   
 d_pred_ea <- d_pred_fun(8, 100, "Ev adult") %>%
-  mutate(pred = fitted(mt_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)[,1],
-         lower = fitted(mt_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)[,3],
-         upper = fitted(mt_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)[,4],
-         model = "linear") %>%
+  cbind(fitted(mt_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)) %>%
+  mutate(model = "linear") %>%
   full_join(d_pred_fun(8, 100, "Ev adult") %>%
-              mutate(pred = fitted(mn_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)[,1],
-                     lower = fitted(mn_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)[,3],
-                     upper = fitted(mn_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)[,4],
-                     model = "nonlinear"))
+              cbind(fitted(mn_ea, newdata = d_pred_fun(8, 100, "Ev adult"), re_formula = NA, nsamples = 100)) %>%
+                     mutate(model = "nonlinear")) %>%
+  rename(pred = Estimate,
+         lower = Q2.5,
+         upper = Q97.5) %>%
+  as_tibble()
 
 pdf("./output/mv-biomass-by-treatment-2018-ev-adult-full-models.pdf", height = 5, width = 7)
 d_pred_ea %>%
@@ -345,15 +343,15 @@ d_plot_es <- d_es %>%
           mutate(model = "nonlinear"))
 
 d_pred_es <- d_pred_fun(16, 100, "Ev seedling") %>%
-  mutate(pred = fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,1],
-         lower = fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,3],
-         upper = fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,4],
-         model = "linear") %>%
+  cbind(fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)) %>%
+         mutate(model = "linear") %>%
   full_join(d_pred_fun(16, 100, "Ev seedling") %>%
-              mutate(pred = fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,1],
-                     lower = fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,3],
-                     upper = fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,4],
-                     model = "nonlinear"))
+              cbind(fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)) %>%
+              mutate(model = "nonlinear")) %>%
+  rename(pred = Estimate,
+         lower = Q2.5,
+         upper = Q97.5) %>%
+  as_tibble()
 
 pdf("./output/mv-biomass-by-treatment-2018-ev-seedling-full-models.pdf", height = 5, width = 7)
 d_pred_es %>%
@@ -391,15 +389,15 @@ d_plot_ms <- d_ms %>%
           mutate(model = "nonlinear"))
 
 d_pred_ms <- d_pred_fun(64, 100, "Mv seedling") %>%
-  mutate(pred = fitted(mt_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)[,1],
-         lower = fitted(mt_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)[,3],
-         upper = fitted(mt_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)[,4],
-         model = "linear") %>%
+  cbind(fitted(mt_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)) %>%
+  mutate(model = "linear") %>%
   full_join(d_pred_fun(64, 100, "Mv seedling") %>%
-              mutate(pred = fitted(mn_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)[,1],
-                     lower = fitted(mn_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)[,3],
-                     upper = fitted(mn_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)[,4],
-                     model = "nonlinear"))
+              cbind(fitted(mn_ms, newdata = d_pred_fun(64, 100, "Mv seedling"), re_formula = NA, nsamples = 100)) %>%
+              mutate(model = "nonlinear")) %>%
+  rename(pred = Estimate,
+         lower = Q2.5,
+         upper = Q97.5) %>%
+  as_tibble()
 
 pdf("./output/mv-biomass-by-treatment-2018-mv-full-models.pdf", height = 5, width = 7)
 d_pred_ms %>%
@@ -507,16 +505,16 @@ d_plot_es_2 <- d_es_2 %>%
           mutate(density = "planted"))
 
 d_pred_es_2 <- d_pred_fun(16, 100, "Ev seedling") %>%
-  mutate(pred = fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,1],
-         lower = fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,3],
-         upper = fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,4],
-         model = "linear") %>%
+  cbind(fitted(mt_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)) %>%
+  mutate(model = "linear") %>%
   full_join(d_pred_fun(16, 100, "Ev seedling") %>%
-              mutate(pred = fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,1],
-                     lower = fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,3],
-                     upper = fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)[,4],
-                     model = "nonlinear")) %>%
+              cbind(fitted(mn_es, newdata = d_pred_fun(16, 100, "Ev seedling"), re_formula = NA, nsamples = 100)) %>%
+              mutate(model = "nonlinear")) %>%
   mutate(density = "counted") %>%
+  rename(pred = Estimate,
+         lower = Q2.5,
+         upper = Q97.5) %>%
+  as_tibble() %>%
   full_join(d_pred_es %>%
               mutate(density = "planted"))
 
@@ -608,7 +606,8 @@ p_m <- d_pred_ms %>%
   ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
   geom_smooth(aes(y = pred), size = 1.5) +
-  geom_point(data = filter(d_plot_ms, model == "linear"), aes(y = bio.g), size = 2, shape = 21, color = "black") +
+  stat_summary(data = filter(d_plot_ms, model == "linear"), aes(y = bio.g), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = filter(d_plot_ms, model == "linear"), aes(y = bio.g), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1)) +
   theme_bw() +
   theme(axis.title = element_text(color = "black", size = lg_txt),
         axis.text = element_text(color = "black", size = sm_txt),
@@ -624,7 +623,8 @@ p_m <- d_pred_ms %>%
   scale_color_manual(values = colpal) + 
   scale_fill_manual(values = colpal) +
   xlab("Microstegium density") +
-  ylab("ln(Microstegium biomass)")
+  ylab("ln(Microstegium biomass)") +
+  ylim(1.25, 4)
 
 # Ev adult
 p_ea <- d_pred_ea %>%
@@ -632,7 +632,34 @@ p_ea <- d_pred_ea %>%
   ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
   geom_smooth(aes(y = pred), size = 1.5) +
-  geom_point(data = filter(d_plot_ea, model == "linear"), aes(y = bio.g), size = 2, shape = 21, color = "black") +
+  stat_summary(data = filter(d_plot_ea, model == "linear"), aes(y = bio.g), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = filter(d_plot_ea, model == "linear"), aes(y = bio.g), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "black", size = lg_txt),
+        axis.title.y = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = c(0.5, 0.2),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  xlab("Adult Elymus density")  +
+  ylim(1.25, 4)
+
+# Ev seedling
+p_es <- d_pred_es_2 %>%
+  filter(model == "linear" & density == "counted") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = filter(d_plot_es_2, model == "linear" & density == "counted"), aes(y = bio.g), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = filter(d_plot_es_2, model == "linear" & density == "counted"), aes(y = bio.g), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
   theme_bw() +
   theme(axis.title.x = element_text(color = "black", size = lg_txt),
         axis.title.y = element_blank(),
@@ -648,35 +675,12 @@ p_ea <- d_pred_ea %>%
         strip.background = element_blank()) +
   scale_color_manual(values = colpal) + 
   scale_fill_manual(values = colpal) +
-  xlab("Adult Elymus density")
-
-# Ev seedling
-p_es <- d_pred_es_2 %>%
-  filter(model == "linear" & density == "counted") %>%
-  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
-  geom_smooth(aes(y = pred), size = 1.5) +
-  geom_point(data = filter(d_plot_es_2, model == "linear" & density == "counted"), aes(y = bio.g), size = 2, shape = 21, color = "black") +
-  theme_bw() +
-  theme(axis.title.x = element_text(color = "black", size = lg_txt),
-        axis.title.y = element_blank(),
-        axis.text = element_text(color = "black", size = sm_txt),
-        strip.text = element_text(color = "black", size = lg_txt),
-        legend.title = element_text(color = "black", size = sm_txt),
-        legend.text = element_text(color = "black", size = sm_txt),
-        legend.position = c(0.8, 0.9),
-        legend.background = element_blank(),
-        legend.key = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        strip.background = element_blank()) +
-  scale_color_manual(values = colpal) + 
-  scale_fill_manual(values = colpal) +
   xlab("Elymus seedling density") +
-  xlim(0, 10)
+  xlim(-0.2, 10) +
+  ylim(1.25, 4)
 
 # combine
-pdf("./output/mv-biomass-by-treatment-2018-full-models.pdf", height = 5, width = 9)
+pdf("./output/mv-biomass-by-treatment-2018-full-models.pdf", height = 3, width = 9)
 plot_grid(p_m, p_es, p_ea, nrow = 1)
 dev.off()
 
@@ -746,21 +750,27 @@ dev.off()
 cor.test(dat_s$severity, dat_s$bio.g) # weak
 
 cor.test(filter(dat_s, treatment == "water")$severity, filter(dat_s, treatment == "water")$bio.g) # weak
+cor.test(filter(dat_s, treatment == "water")$severity, filter(dat_s, treatment == "water")$log_bio.g) # slightly higher
+
+cor.test(filter(dat_s, treatment == "fungicide")$severity, filter(dat_s, treatment == "fungicide")$bio.g) 
+cor.test(filter(dat_s, treatment == "fungicide")$severity, filter(dat_s, treatment == "fungicide")$log_bio.g) 
 
 # figure
-pdf("./output/mv-biomass-by-treatment-2018-severity.pdf", width = 5, height = 5)
+pdf("./output/mv-biomass-by-treatment-2018-severity.pdf", width = 4, height = 4)
 dat_s %>%
-  ggplot(aes(x = severity, y = bio.g, colour = treatment)) + 
-  geom_point() +
+  ggplot(aes(x = severity, y = log_bio.g)) + 
+  geom_smooth(aes(color = treatment), method = "lm", linetype = "dashed", se = F) +
+  geom_point(aes(fill = treatment), shape = 21) +
   scale_color_manual(values = colpal) +
+  scale_fill_manual(values = colpal) +
   xlab("Proportion of leaf area with lesions") +
-  ylab("Microstegium biomass (g)") +
+  ylab("ln(Microstegium biomass (g))") +
   theme_bw() +
   theme(axis.title = element_text(color = "black", size = lg_txt),
         axis.text = element_text(color = "black", size = sm_txt),
         legend.title = element_text(color = "black", size = sm_txt),
         legend.text = element_text(color = "black", size = sm_txt),
-        legend.position = c(0.8, 0.9),
+        legend.position = c(0.75, 0.2),
         legend.background = element_blank(),
         legend.key = element_blank(),
         panel.grid.major = element_blank(),
