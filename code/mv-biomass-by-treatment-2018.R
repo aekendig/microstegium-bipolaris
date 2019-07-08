@@ -16,7 +16,6 @@ library(tidyverse)
 library(brms)
 library(tidybayes)
 library(ggridges)
-library(loo)
 library(cowplot)
 
 # run survival files
@@ -34,10 +33,14 @@ source("./code/covariate-data-processing-2018.R")
 rm(list = setdiff(ls(), c("mleaf", "covar", "esurv", "msurv", "bgd")))
 
 # import data
-mb <- read_csv("./data/mv-biomass-oct-2018-density-exp.csv")
+db <- read_csv("./data/mv-biomass-oct-2018-density-exp.csv")
 trt <- read_csv("./data/plot-treatments-for-figures-2018-density-exp.csv")
 trt_s <- read_csv("./data/plot-treatments-2018-density-exp.csv")
 til <- read_csv("./data/mv-disease-sep-2018-density-exp.csv")
+
+# import models
+load("./output/mv-fungicide-effects-biomass.rda")
+load("./output/mv-fungicide-effects-biomass-transformed.rda")
 
 # non-linear species effects function
 el_fun <- function(y0, x, a) {
@@ -93,10 +96,10 @@ ml_b <- mleaf %>%
             bg_severity_se = sd(ind_severity, na.rm = T) / bg_n)
 
 # check notes
-unique(mb$processing_notes)
+unique(db$processing_notes)
 
 # edit values and merge with other data
-dat <- mb %>%
+dat <- db %>%
   mutate(site = case_when(processing_notes == "duplicate - one is D2, probably this one because the other was sorted with other D1 bags; Quynh guessed on which seeds go with which biomass (see email)" ~ "D2", 
                           TRUE ~ site),
          treatment = case_when(processing_notes == "duplicate - one is 7F, ID = A (not dated), probably this one" ~ "fungicide",
@@ -108,7 +111,7 @@ dat <- mb %>%
          disease = ifelse(treatment == "fungicide", 0, 1))
 
 # edit values and merge with simplified treatment data
-dat_s <- mb %>%
+dat_s <- db %>%
   mutate(site = case_when(processing_notes == "duplicate - one is D2, probably this one because the other was sorted with other D1 bags; Quynh guessed on which seeds go with which biomass (see email)" ~ "D2", 
                           TRUE ~ site),
          treatment = case_when(processing_notes == "duplicate - one is 7F, ID = A (not dated), probably this one" ~ "fungicide",
@@ -598,7 +601,7 @@ loo_compare(lc_ms) # all very similar, full model and models with multiple seem 
 save(lc_ms, file = "./output/mv-biomass-by-treatment-2018-submodel-loo-list-mv.rda")
 
 
-#### final model figure ####
+#### visualize ####
 
 # Mv
 p_m <- d_pred_ms %>%
