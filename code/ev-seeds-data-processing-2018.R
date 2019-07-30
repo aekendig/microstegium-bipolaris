@@ -2,7 +2,7 @@
 
 # file: ev-seeds-data-processing
 # author: Amy Kendig, Chris Wojan
-# date last edited: 4/30/19
+# date last edited: 7/29/19
 # goal: edit Ev seed data and check for errors
 # background: spikelet counts for all samples, seed counts for a subset
 
@@ -10,10 +10,10 @@
 #### set up ####
 
 # clear all existing data
-#rm(list=ls())
+# rm(list=ls())
 
 # load packages
-#library(tidyverse)
+# library(tidyverse)
 
 # import all raw data files
 di <- read_csv("./data/ev-spikelets-2018-density-litter-exp.csv")
@@ -111,7 +111,8 @@ d <- d %>%
     sp = "Ev"
   ) %>%
   group_by(site, plot, treatment, ID, age, month, focal) %>%
-  mutate(reps = n())
+  mutate(reps = n()) %>%
+  ungroup()
 
 # add seed count from notes (Keith processed)
 d2 <- d %>%
@@ -216,6 +217,7 @@ d3 <- d2 %>%
             seed_weight.mg = sum(seed_weight.mg),
             reps = 1
   )  %>%
+  ungroup() %>%
   full_join(filter(d2, spikelet_notes != "2 samples" | is.na(spikelet_notes)))
 
 # remove plants that were probably mislabelled
@@ -233,7 +235,8 @@ d3 <- d3 %>%
                        TRUE ~ ID_unclear)
   )
 
-## visualize
+
+#### visualize ####
 
 # spikelet number
 d3 %>%
@@ -274,7 +277,7 @@ d3 %>%
 # adults in late August/September
 
 # seed weight
-d3%>%
+d3 %>%
   ggplot(aes(x = seed_weight.mg)) +
   geom_histogram()
 
@@ -289,9 +292,9 @@ d3 %>%
   geom_point(aes(colour = age, shape = treatment)) +
   geom_smooth(method = lm)
 
-# regression fit
-m1 <- lm(seeds ~ spikelets, data = d3)
-summary(m1) # R2 is 0.83
+d3 %>%
+  ggplot(aes(x = spikelets, y = seeds)) +
+  geom_smooth(method = lm)
 
 # seed and spikelet weight
 d3 %>%
@@ -300,10 +303,6 @@ d3 %>%
   geom_point(aes(colour = age, shape = treatment)) +
   geom_smooth(method = lm)
 
-# regression fit
-m2 <- lm(seed_weight.mg ~ spikelet_weight.mg, data = d3)
-summary(m2) # R2 is 0.93
-
 # seed count and spikelet weight
 d3  %>%
   filter(!is.na(seeds)) %>%
@@ -311,25 +310,12 @@ d3  %>%
   geom_point(aes(colour = age, shape = treatment), size = 2) +
   geom_smooth(method = lm, size = 0.5, colour = "black")
 
-# regression fit
-m3 <- lm(seeds ~ spikelet_weight.mg, data = d3)
-summary(m3) # R2 is 0.94
-
 # seed count and spikelet weight again with site
 d3 %>%
   filter(!is.na(seeds)) %>%
   ggplot(aes(x = spikelet_weight.mg, y = seeds))  +
   geom_point(aes(colour = site, shape = treatment)) +
   geom_smooth(method = lm)
-
-# residuals
-d3 %>%
-  filter(!is.na(seeds)) %>%
-  mutate(resid = as.numeric(resid(m3))) %>%
-  ggplot(aes(x = spikelet_weight.mg, y = resid)) +
-  geom_point(aes(colour = site, shape = age)) + 
-  facet_wrap(~treatment)
-# may underestimate water more than fungicide
 
 # seed count and spikelet weight by treatment
 d3 %>%
@@ -339,14 +325,6 @@ d3 %>%
   facet_wrap(~treatment) +
   geom_smooth(method = lm)
 # look very similar
-
-# regression fit
-m4 <- lm(seeds ~ spikelet_weight.mg * treatment, data = d2)
-summary(m4)
-m5 <- lm(seeds ~ spikelet_weight.mg + treatment, data = d2)
-summary(m5)
-AIC(m3, m4, m5)
-# m3 is the best fit model and adding treatment hardly changes the slope of the relationship.
 
 # ratio over time
 d3 %>%
@@ -362,10 +340,61 @@ d3 %>%
   geom_smooth(method = "lm")
 # hard tell because sample size gets smaller with more spikelets, but not a strong trend
 
+
+#### stats ####
+
+# regression fit 1: seeds and spikelet counts
+m1 <- lm(seeds ~ spikelets, data = d3)
+summary(m1) # R2 is 0.82
+
+m1b <- lm(seeds ~ 0 + spikelets, data = d3)
+summary(m1b) # R2 is 0.90
+AIC(m1, m1b) # b is slightly lower
+
+# regression fit 2: seed and spikelet weight
+m2 <- lm(seed_weight.mg ~ spikelet_weight.mg, data = d3)
+summary(m2) # R2 is 0.93
+
+m2b <- lm(seed_weight.mg ~ 0 + spikelet_weight.mg, data = d3)
+summary(m2b) # R2 is 0.95
+AIC(m2, m2b)  # b is slightly lower
+
+# regression fit 3: seed count and spikelet weight
+m3 <- lm(seeds ~ spikelet_weight.mg, data = d3)
+summary(m3) # R2 is 0.94
+
+m3b <- lm(seeds ~ 0 + spikelet_weight.mg, data = d3)
+summary(m3b) # R2 is 0.97
+AIC(m3, m3b)  # b is slightly lower
+
+# modify m3 to include more info
+m4 <- lm(seeds ~ spikelet_weight.mg * treatment, data = d2)
+summary(m4)
+m5 <- lm(seeds ~ spikelet_weight.mg + treatment, data = d2)
+summary(m5)
+AIC(m3, m4, m5)
+# m3 is the best fit model and adding treatment hardly changes the slope of the relationship.
+
+# visualize zero intercept model
+d3  %>%
+  filter(!is.na(seeds)) %>%
+  ggplot(aes(x = spikelet_weight.mg, y = seeds))  +
+  geom_point(aes(colour = age, shape = treatment), size = 2) +
+  geom_abline(intercept = 0, slope = coef(m3b)[1])
+
+# residuals
+d3 %>%
+  filter(!is.na(seeds)) %>%
+  mutate(resid = as.numeric(resid(m3b))) %>%
+  ggplot(aes(x = spikelet_weight.mg, y = resid)) +
+  geom_point(aes(colour = site, shape = age)) + 
+  facet_wrap(~treatment)
+# may underestimate water more than fungicide
+
 # add seed estimate
 d4 <- d3 %>%
   mutate(
-    seeds = ifelse(is.na(seeds), coef(m3)[1] + spikelet_weight.mg * coef(m3)[2], seeds)
+    seeds = ifelse(is.na(seeds), spikelet_weight.mg * coef(m3b)[1], seeds)
   )
 
 ## Save data

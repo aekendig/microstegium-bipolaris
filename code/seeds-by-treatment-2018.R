@@ -2,7 +2,7 @@
 
 # file: seeds-by-treatment-2018
 # author: Amy Kendig
-# date last edited: 3/25/19
+# date last edited: 7/29/19
 # goal: see how Mv and Ev seed production is affected by treatments
 
 
@@ -13,420 +13,792 @@ rm(list=ls())
 
 # load packages
 library(tidyverse)
-library(lme4)
+library(brms)
+library(cowplot)
 
-# run seed data files
+# run files
+source("./code/bg-densities-data-processing-2018.R")
+rm(list = setdiff(ls(), c("bgd", "esurv")))
 source("./code/ev-seeds-data-processing-2018.R")
+rm(list = setdiff(ls(), c("bgd", "esurv", "eseeds")))
 source("./code/mv-seeds-data-processing-2018.R")
-
-# clear everything except seed data
-rm(list = setdiff(ls(), c("eseeds", "mseeds")))
+rm(list = setdiff(ls(), c("bgd", "esurv", "eseeds", "mseeds")))
+source("./code/covariate-data-processing-2018.R")
+rm(list = setdiff(ls(), c("bgd", "esurv", "eseeds", "mseeds", "covar")))
 
 # import other data files
-plots <- read_csv("./data/plot-treatments-2018-density-exp.csv")
-till <- read_csv("./data/focal-size-infec-jul-2018-density-exp.csv")
-foc <- read.csv("~/Google Drive/Microstegium Bipolaris/Data/Field Experiment Data/DensExp_FocalData_Processed_012419.csv")
-bgev <- read_csv("~/Google Drive/Microstegium Bipolaris/Data/Field Experiment Data/DensExp_BgTaggedEvData_Processed_012419.csv")
+trt <- read_csv("./data/plot-treatments-for-figures-2018-density-exp.csv")
+trt_s <- read_csv("./data/plot-treatments-2018-density-exp.csv")
+til <- read_csv("./data/focal-size-disease-jul-2018-density-exp.csv")
+mbseeds <- read_csv("./data/mv-biomass-oct-2018-density-exp.csv")
+
+# non-linear species effects function
+el_fun <- function(y0, x, a) {
+  y = y0 * exp(a * log(x + 1))
+  return(y)
+}
+
+# correlation between predicted and observed
+cor_fun <- function(dat, mt, mn, sp){
+  dat2 <- dat %>%
+    mutate(transformed = predict(mt)[, 1],
+           nonlinear = predict(mn)[, 1])
+  if(sp == "ev"){
+    print(cor.test(dat2$transformed, dat2$log_seeds))
+    print(cor.test(dat2$nonlinear, dat2$seeds))
+  }
+  if(sp == "mv"){
+    print(cor.test(dat2$transformed, dat2$log_seeds_pb))
+    print(cor.test(dat2$nonlinear, dat2$seeds_per_bio))
+  }
+  
+}
+
+# function to create datasets for prediction
+d_pred_fun = function(dat, mt, mn, max_val){
+  
+  d_pred <- tibble(
+    background_density = rep(seq(0, max_val, length.out = 100), 2),
+    counted_density = rep(seq(0, max_val, length.out = 100), 2),
+    treatment = rep(c("water", "fungicide"), each = 100),
+    sm_adj = mean(dat$sm_adj),
+    cc_adj = mean(dat$cc_adj),
+    pm_adj = mean(dat$pm_adj))
+  
+  d_pred2 <- d_pred %>%
+    cbind(fitted(mt, newdata = d_pred, re_formula = NA, nsamples = 100)) %>%
+    mutate(model = "linear") %>%
+    full_join(d_pred %>%
+                cbind(fitted(mn, newdata = d_pred, re_formula = NA, nsamples = 100)) %>%
+                mutate(model = "nonlinear")) %>%
+    rename(pred = Estimate,
+           lower = Q2.5,
+           upper = Q97.5) %>%
+    as_tibble()
+  
+  return(d_pred2)
+}
+
+# plot parameters
+colpal = c("#3CBB75FF", "#39568CFF")
+sm_txt = 12
+lg_txt = 14
+an_txt = 3
 
 
 #### edit data ####
 
 # Mv tiller number
-dt <- till %>%
-  mutate(
-    treatment = dplyr::recode(treatment, "Water" = "water", "Fungicide" = "fungicide")
-  ) %>%
-  filter(sp == "Mv") %>%
+til2 <- til %>%
+  filter(sp == "Mv" & !(site == "D4" & plot == 8 & treatment == "fungicide") & !(site == "D4" & plot == 10  & treatment == "fungicide")) %>%
   group_by(site, plot, treatment) %>%
-  summarise(mean_till = mean(tillers, na.rm = T))
+  summarise(mean_till = mean(tillers, na.rm = T)) %>%
+  ungroup()
 
-# Ev to remove
-rem_ev <- eseeds %>%
-  filter(remove == 1) %>%
-  mutate(
-    plant = paste(site, plot, treatment, age, ID, sep = ".")
-  )
-
-# combine Ev across dates
+# combine Ev across dates (remove ones with uncertain ID's)
 eseeds2 <- eseeds %>%
+  filter(ID_unclear == 0) %>%
   group_by(site, plot, treatment, sp, age, ID, focal) %>%
   summarise(
     seeds = sum(seeds, na.rm = T)
   ) %>%
-  mutate(
-    plant = paste(site, plot, treatment, age, ID, sep = ".")
-  ) %>%
-  filter(!(plant %in% rem_ev$plant))
+  ungroup()
 
-# extrac survival data
-foc_surv <- foc %>%
-  filter(Month == "September" & Focal != "Mv") %>%
-  select(Site, PlotID, Treatment, Focal, ID, SurvCor) %>%
-  rename(site = Site, plot = PlotID, treatment = Treatment, age = Focal, surv = SurvCor) %>%
-  mutate(
-    treatment = recode(treatment, Fungicide = "fungicide", Water = "water"),
-    age = recode(age, "Ev adult" = "adult", "Ev seedling" = "seedling"),
-    sp = "Ev",
-    focal = 1
-  )
+# edit soil/biomass labels and seed values 
+mbseeds2 <- mbseeds %>%
+  mutate(site = case_when(processing_notes == "duplicate - one is D2, probably this one because the other was sorted with other D1 bags; Quynh guessed on which seeds go with which biomass (see email)" ~ "D2", 
+                          TRUE ~ site),
+         treatment = case_when(processing_notes == "duplicate - one is 7F, ID = A (not dated), probably this one" ~ "fungicide",
+                               TRUE ~ treatment),
+         seeds = seeds_bio + seeds_soil,
+         seeds_per_bio = seeds / bio.g,
+         log_seeds_pb = log(seeds_per_bio))
 
-bg_surv <- bgev %>%
-  filter(Month == "September") %>%
-  select(Site, PlotID, Treatment, ID, SurvCor) %>%
-  rename(site = Site, plot = PlotID, treatment = Treatment, surv = SurvCor) %>%
-  mutate(
-    treatment = recode(treatment, Fungicide = "fungicide", Water = "water"),
-    age = case_when(plot < 8 ~ "seedling",
-                    plot >7 ~ "adult"),
-    ID = str_remove(ID, "A"), 
-    sp = "Ev",
-    focal = 0
-  )
+# September Ev survival data, leave in litter plots
+esurv2 <- esurv %>%
+  filter(month == "September" & !is.na(survival)) %>%
+  select(-month)
 
-ev_surv <- full_join(foc_surv, bg_surv) %>%
-  mutate(
-    plant = paste(site, plot, treatment, age, ID, sep = ".")
-  ) %>%
-  filter(!(plant %in% rem_ev$plant))
+# remove month
+bgd2 <- bgd %>% select(-month)
 
-# merge plot data with seed data
-eseeds2
-plots
-mseeds
-dt
-de <- filter(eseeds2, site %in% c("D1", "D2", "D3", "D4")) %>% full_join(ev_surv) %>% full_join(plots)
-dm <- full_join(mseeds, plots) %>% left_join(dt)
+# merge seed data with plot and other data
+de <-  full_join(eseeds2, esurv2) %>% 
+  filter(site %in% c("D1", "D2", "D3", "D4")) %>% 
+  full_join(trt) %>% 
+  full_join(bgd2) %>%
+  left_join(covar) %>%
+  mutate(density_level = factor(density_level, levels = c("none", "low", "medium", "high")))
+
+le <- full_join(eseeds2, esurv2) %>% 
+  filter(site %in% c("L1", "L2", "L3", "L4"))
+
+dm <- full_join(mseeds, til2) %>% 
+  full_join(trt)  %>% 
+  full_join(bgd2) %>%
+  left_join(covar) %>%
+  mutate(density_level = factor(density_level, levels = c("none", "low", "medium", "high")))
+
+dmb <- full_join(mbseeds2, trt)  %>% 
+  full_join(bgd2) %>%
+  left_join(covar) %>%
+  mutate(density_level = factor(density_level, levels = c("none", "low", "medium", "high"))) 
 
 # see if all have tiller counts
-sum(is.na(dm$mean_till))
+sum(is.na(dm$mean_till)) # yes
 
-# estimate per capita seeds for Mv
-dm <- dm %>%
+# estimate per capita seeds for Mv, assuming seeds were collected from 3 tillers
+dm2 <- dm %>%
   mutate(
-    seeds_percap = seeds / 3 * mean_till
+    seeds_percap = seeds / 3 * mean_till,
+    log_seeds_percap = log(seeds_percap)
   )
 
 # check for missing survival info
-sum(is.na(de$surv))
-filter(de, is.na(surv)) # no seed numbers anyway
-filter(bgev, Site == "D1" & PlotID == 7 & Treatment == "Fungicide" & ID == "R2") %>% data.frame() # couldn't find plant in September, no green earlier
-filter(bgev, Site == "D4" & PlotID == 7 & Treatment == "Fungicide" & ID == "R1") %>% data.frame() # couldn't find plant in August or September
+sum(is.na(de$survival)) # none missing (those with NA's had no seeds)
+sum(is.na(le$survival))
 
 # give Ev's 0's if no seeds were collected and they're still alive
-filter(de, surv == 1 & is.na(seeds)) # 111 plants
+filter(de, survival == 1 & is.na(seeds)) # 136 plants
+filter(le, survival == 1 & is.na(seeds)) # 1 plant
 
-de <- de %>%
+de2 <- de %>%
   mutate(
-    seeds = case_when(surv == 1 & is.na(seeds) ~ 0,
-                      TRUE ~ seeds)
+    seeds = case_when(survival == 1 & is.na(seeds) ~ 0,
+                      TRUE ~ seeds),
+    log_seeds = log(seeds + 1)
   )
 
-# summarize by density
-ms <- dm %>%
-  group_by(sp, treatment, background, background_density) %>%
-  summarise(mean_seeds = mean(seeds_percap, na.rm = T),
-            se_seeds = sd(seeds_percap, na.rm = T)/sqrt(sum(!is.na(seeds_percap))))
-
-mp <- ms %>%
-  filter(background == "none") %>%
-  ungroup() %>%
-  select(-background) %>%
-  merge(tibble(background = c("Mv seedling", "Ev seedling", "Ev adult")), all = T) %>%
-  full_join(filter(ms, background != "none"))
-
-es <- de %>%
-  group_by(sp, age, treatment, background, background_density) %>%
-  summarise(mean_seeds = mean(seeds, na.rm = T),
-            se_seeds = sd(seeds, na.rm = T)/sqrt(sum(!is.na(seeds))))
-
-ep <- es %>%
-  filter(background == "none") %>%
-  ungroup() %>%
-  select(-background) %>%
-  merge(tibble(background = c("Mv seedling", "Ev seedling", "Ev adult")), all = T) %>%
-  full_join(filter(es, background != "none"))
-
-dat <- full_join(mp, ep)  %>%
+le2 <- le %>%
   mutate(
-    focal = case_when(sp == "Mv" ~ "Mv seedling",
-                      TRUE ~ paste(sp, age, sep = " ")),
-    treatment = factor(treatment, levels = c("water", "fungicide"))
+    seeds = case_when(survival == 1 & is.na(seeds) ~ 0,
+                      TRUE ~ seeds),
+    log_seeds = log(seeds + 1)
   )
 
-d <- dm %>%
-  select("site", "plot", "treatment", "sp", "background", "background_sp", "background_density", "density_level", "seeds_percap") %>%
-  rename(seeds = seeds_percap) %>%
-  full_join(de)%>%
-  mutate(
-    focal = case_when(sp == "Mv" ~ "Mv seedling",
-                      TRUE ~ paste(sp, age, sep = " ")),
-    treatment = factor(treatment, levels = c("water", "fungicide")),
-    background = factor(background, levels = c("none", "Ev seedling", "Ev adult", "Mv seedling"))
-  )
+# double check survival and seed relationships
+filter(de2, survival_seeds == 1 & seeds == 0)
+filter(le2, survival_seeds == 1 & seeds == 0) # looks good
+filter(de2, survival == 0) %>% select(seeds) %>% unique()
+filter(le2, survival == 0) %>% select(seeds) %>% unique() # looks good
 
-d2 <- d %>%
-  filter(background == "none") %>%
-  select(-background) %>%
-  merge(tibble(background = c("Mv seedling", "Ev seedling", "Ev adult")), all = T) %>%
-  full_join(filter(d, background != "none")) %>%
-  mutate(
-    site_plot = paste(site, plot, sep = "_")
-  )
+# make sure all the data are there
+de2 %>%
+  filter(focal == 1) %>%
+  group_by(site, plot, treatment, age) %>%
+  summarise(n = n()) %>%
+  filter((plot == 1 & age == "adult" & n != 3) |
+           (plot == 1 & age == "seedling" & n != 9) |
+           (plot != 1 & age == "adult" & n != 1) |
+           (plot != 1 & age == "seedling" & n != 3))
 
-# summarize by background type
-mb <- dm %>%
-  group_by(sp, treatment, background) %>%
-  summarise(mean_seeds = mean(seeds_percap, na.rm = T),
-            se_seeds = sd(seeds_percap, na.rm = T)/sqrt(sum(!is.na(seeds_percap))))
+de2 %>% select(site, plot, treatment) %>% unique() # 78
 
-eb <- de %>%
-  group_by(sp, age, treatment, background) %>%
-  summarise(mean_seeds = mean(seeds, na.rm = T),
-            se_seeds = sd(seeds, na.rm = T)/sqrt(sum(!is.na(seeds))))
+le2 %>% select(site, plot) %>% unique() # 27
 
-bsum <- full_join(mb,eb) %>%
-  ungroup() %>%
-  mutate(
-    focal = case_when(sp == "Mv" ~ "Mv seedling",
-                      TRUE ~ paste(sp, age, sep = " ")),
-    treatment = factor(treatment, levels = c("water", "fungicide"))
-    ) %>% mutate(
-  focal = dplyr::recode(focal, "Mv seedling" = "invader", "Ev adult" = "adult native", "Ev seedling" = "1st year native"),
-  background = dplyr::recode(background, "Mv seedling" = "invaders", "Ev adult" = "adult natives", "Ev seedling" = "1st year natives") %>% factor(levels = c("none", "1st year natives", "adult natives", "invaders"))
-)
+dm2 %>% select(site, plot, treatment) %>% unique() # 78
+
+dmb %>% select(site, plot, treatment) %>% unique() # 78
 
 
-#### stats ####
+##### visualize #####
 
-# linear regressions for each focal-background combination
-pred_fun <- function(x, ...){
-  pred <- predict(x, type = "response", re.form = NA, ...)
-  as.data.frame(pred)
-}
+##  treatment effects
 
-d3 <- d2 %>%
-  filter(!is.na(seeds)) %>%
-  group_by(focal, background) %>%
-  nest() %>%
-  mutate(m1 = map(.x = data, .f = ~ lmer(seeds ~ treatment * background_density + (1|site), data = .))) %>%
-  mutate(pred = map(.x = m1, ~ pred_fun(.))) %>%
-  select(data, focal, background, pred) %>%
-  unnest
+# Ev adult
+de2 %>%
+  filter(age == "adult" & !is.na(seeds) & survival == 1) %>%
+  ggplot(aes(x = density_level, y = seeds, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) +
+  ylab("Ev adult seeds") # not a big difference between fungicide and water, some benefits of Ev seedling background
 
-# Ev adult regressions
-mod_eaea = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Ev adult" & background == "Ev adult")) # can't converge
-summary(mod_eaea)
-mod_eaea = lmer(seeds ~ treatment * background_density + (1|site_plot), data = filter(d2, focal == "Ev adult" & background == "Ev adult")) 
-drop1(mod_eaea, test = "Chisq")
-mod_eaea_1 = update(mod_eaea, .~. -treatment:background_density)
-drop1(mod_eaea_1, test = "Chisq") # no significant effects
-summary(mod_eaea_1)
+# Ev adult, focal only
+de2 %>%
+  filter(age == "adult" & !is.na(seeds) & survival == 1 & focal == 1) %>%
+  ggplot(aes(x = density_level, y = seeds, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) +
+  ylab("Ev adult seeds") # similar to above
 
-mod_eaes = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Ev adult" & background == "Ev seedling")) # singular fit
-summary(mod_eaes) # no plot variation
-mod_eaes = lmer(seeds ~ treatment * background_density + (1|site), data = filter(d2, focal == "Ev adult" & background == "Ev seedling"))
-drop1(mod_eaes, test = "Chisq")
-mod_eaes_1 = update(mod_eaes, .~. -treatment:background_density)
-drop1(mod_eaes_1, test = "Chisq") # treatment effect
-summary(mod_eaes_1) # fungicide reduces seeds
+# Ev adult, focal only, log-transformed
+de2 %>%
+  filter(age == "adult" & !is.na(seeds) & survival == 1 & focal == 1) %>%
+  ggplot(aes(x = density_level, y = log_seeds, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) +
+  ylab("Ev adult seeds")
 
-mod_eams = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Ev adult" & background == "Mv seedling"))
-drop1(mod_eams, test = "Chisq")
-mod_eams_1 = update(mod_eams, .~. -treatment:background_density)
-drop1(mod_eams_1, test = "Chisq") # no significant effects
+# Ev seedling
+de2 %>%
+  filter(age == "seedling" & !is.na(seeds) & survival == 1) %>%
+  ggplot(aes(x = density_level, y = seeds, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) +
+  ylab("Ev seedling seeds") # negative effect of fungicide with adults, similar to survival results
 
-# Ev adult mean seeds before replicating 0 plots
-mean(filter(de, age == "adult" & treatment == "water")$seeds, na.rm = T) # 72
+# Ev seedling, focal only
+de2 %>%
+  filter(age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1) %>%
+  ggplot(aes(x = density_level, y = seeds, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) +
+  ylab("Ev seedling seeds") # similar to above
 
-# Ev seedling regressions
-mod_esea = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Ev seedling" & background == "Ev adult")) # singular fit
-summary(mod_esea) # no random effects
-mod_esea = lm(seeds ~ treatment * background_density , data = filter(d2, focal == "Ev seedling" & background == "Ev adult")) 
-drop1(mod_esea, test = "Chisq")
-mod_esea_1 = update(mod_esea, .~. -treatment:background_density)
-drop1(mod_esea_1, test = "Chisq") # no significant effects
+# Ev seedling, focal only, log-transformed
+de2 %>%
+  filter(age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1) %>%
+  ggplot(aes(x = density_level, y = log_seeds, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) +
+  ylab("Ev seedling seeds") # similar to above
 
-mod_eses = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Ev seedling" & background == "Ev seedling"))
-drop1(mod_eses, test = "Chisq")
-mod_eses_1 = update(mod_eses, .~. -treatment:background_density)
-drop1(mod_eses_1, test = "Chisq") # no significant effects
+# Mv per capita
+dm2 %>%
+  filter(!is.na(seeds_percap)) %>%
+  ggplot(aes(x = density_level, y = seeds_percap, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) # no clear fungicide pattern, lower with higher Mv under water treatment, different from biomass results
 
-mod_esms = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Ev seedling" & background == "Mv seedling"))
-summary(mod_esms)
-drop1(mod_esms, test = "Chisq") # singular fit, probably from low site variation
-mod_esms = lmer(seeds ~ treatment * background_density + (1|site_plot), data = filter(d2, focal == "Ev seedling" & background == "Mv seedling"))
-drop1(mod_esms, test = "Chisq")
-mod_esms_1 = update(mod_esms, .~. -treatment:background_density)
-drop1(mod_esms_1, test = "Chisq") # no significant effects, singular fits
-mod_esms = lm(seeds ~ treatment * background_density , data = filter(d2, focal == "Ev seedling" & background == "Mv seedling"))
-drop1(mod_esms, test = "Chisq")
-mod_esms_1 = update(mod_esms, .~. -treatment:background_density)
-drop1(mod_esms_1, test = "Chisq") # no significant effects
+# Mv per biomass
+dmb %>%
+  filter(!is.na(seeds_per_bio)) %>%
+  ggplot(aes(x = density_level, y = seeds_per_bio, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) # lower with water, especially with seedling backgrounds, lower with higher Mv density, different from biomass results
 
-# mean Ev seedling before replicating 0 plots
-mean(filter(d2, age == "seedling")$seeds, na.rm = T) # 9
+# Mv per biomass, log-transformed
+dmb %>%
+  filter(!is.na(seeds_per_bio)) %>%
+  ggplot(aes(x = density_level, y = log_seeds_pb, colour = treatment)) + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.1) +
+  facet_wrap(~background) 
 
-# Mv regressions
-mod_msea = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Mv seedling" & background == "Ev adult"))
-drop1(mod_msea, test = "Chisq")
-mod_msea_1 = update(mod_msea, .~. -treatment:background_density)
-drop1(mod_msea_1, test = "Chisq") # no significant effect
-summary(mod_msea)
 
-mod_mses = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Mv seedling" & background == "Ev seedling"))
-drop1(mod_mses, test = "Chisq") # significant interaction, but model convergence error
-summary(mod_mses) # density increases seed production with water, but not fungicide
-mod_mses_1 = update(mod_mses, .~. - treatment:background_density) # this model can't converge
-#library(car) # caution: this messes up recode
-#Anova(mod_mses, type = 3) #interaction is significant
+#### set up models ####
 
-mod_msms = lmer(seeds ~ treatment * background_density + (1|site/plot), data = filter(d2, focal == "Mv seedling" & background == "Mv seedling")) # singular fit
-summary(mod_msms) # site is zero variance
-mod_msms = lmer(seeds ~ treatment * background_density + (1|site_plot), data = filter(d2, focal == "Mv seedling" & background == "Mv seedling"))
-drop1(mod_msms, test = "Chisq") # singificant interaction
-summary(mod_msms) # density decreases seed production with water, but not fungicide
-# with water, 6 seeds lost per Mv seedling added
+## trim datasets by seed and background
+d_sa_ba <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev adult")
+d_sa_bs <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev seedling")
+d_sa_bm <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Mv seedling")
 
-# mean Mv seeds without competitors or disease
-mean(filter(d, focal == "Mv seedling" & treatment == "fungicide" & background_density == 0)$seeds, na.rm = T) # 512
+d_ss_ba <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev adult")
+d_ss_bs <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev seedling")
+d_ss_bm <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Mv seedling")
 
-# background type instead of density
-mod_ms = lmer(seeds ~ treatment * background + (1|site/plot), data = filter(d, focal == "Mv seedling"))
-summary(mod_ms)
-plot(mod_ms) # variance increases with value
-mod_ms_1 = lmer(log(seeds) ~ treatment * background + (1|site/plot), data = filter(d, focal == "Mv seedling"))
-plot(mod_ms_1) # better
-summary(mod_ms_1)
-library(car)
-Anova(lmer(log(seeds) ~ treatment * background + (1|site/plot), data = filter(d, focal == "Mv seedling")), contrasts = list(treatment = contr.sum, background = contr.sum), type = 3) # significant background effect
+d_sm_ba <-  filter(dmb, !is.na(seeds_per_bio) & background == "Ev adult")
+d_sm_bs <- filter(dmb, !is.na(seeds_per_bio) & background == "Ev seedling")
+d_sm_bm <- filter(dmb, !is.na(seeds_per_bio) & background == "Mv seedling")
 
-mod_es = lmer(seeds ~ treatment * background + (1|site/plot), data = filter(d, focal == "Ev seedling")) # singular fit
-summary(mod_es) # no plot variance
-mod_es = lmer(seeds ~ treatment * background + (1|site), data = filter(d, focal == "Ev seedling"))
-plot(mod_es) # variance increases with value
-mod_es_1 = lmer(log(seeds+1) ~ treatment * background + (1|site), data = filter(d, focal == "Ev seedling"))
-plot(mod_es_1) # a little better
-Anova(lmer(log(seeds+1) ~ treatment * background + (1|site), data = filter(d, focal == "Ev seedling")), contrasts = list(treatment = contr.sum, background = contr.sum), type = 3)  # significant interaction
+## full linear log-transformed models
 
-mod_ea = lmer(seeds ~ treatment * background + (1|site/plot), data = filter(d, focal == "Ev adult"))
-summary(mod_ea)
-plot(mod_ea) # variance increases with value
-mod_ea_1 = lmer(log(seeds+1) ~ treatment * background + (1|site/plot), data = filter(d, focal == "Ev adult"))
-plot(mod_ea_1)
-Anova(lmer(log(seeds+1) ~ treatment * background + (1|site/plot), data = filter(d, focal == "Ev adult")), contrasts = list(treatment = contr.sum, background = contr.sum), type = 3) # barely significant background effect
+# Adult seeds, each background
+# mt_sa_ba <- brm(data = d_sa_ba, family = gaussian,
+#             log_seeds ~ background_density * treatment + sm_adj + cc_adj + pm_adj + (1|site),
+#             prior <- c(prior(normal(0, 100), class = Intercept),
+#                        prior(normal(0, 10), class = b),
+#                        prior(cauchy(0, 1), class = sd)),
+#             iter = 6000, warmup = 1000, chains = 3, cores = 2,
+#             control = list(adapt_delta = 0.9999, max_treedepth = 15))
+# summary(mt_sa_ba)
+# save(mt_sa_ba, file = "./output/ev-adult-seeds-by-treatment-2018-log-transformed-ev-adult.rda")
+load("./output/ev-adult-seeds-by-treatment-2018-log-transformed-ev-adult.rda")
+ 
+# mt_sa_bs <- update(mt_sa_ba, 
+#                    formula = log_seeds ~ counted_density * treatment + sm_adj + cc_adj + pm_adj + (1|site),
+#                    newdata = d_sa_bs)
+# summary(mt_sa_bs)
+# save(mt_sa_bs, file = "./output/ev-adult-seeds-by-treatment-2018-log-transformed-ev-seedling.rda")
+load("./output/ev-adult-seeds-by-treatment-2018-log-transformed-ev-seedling.rda")
+
+# mt_sa_bm <- update(mt_sa_ba, newdata = d_sa_bm,
+#                    control = list(adapt_delta = 0.99999))
+# summary(mt_sa_bm)
+# save(mt_sa_bm, file = "./output/ev-adult-seeds-by-treatment-2018-log-transformed-mv-seedling.rda")
+load("./output/ev-adult-seeds-by-treatment-2018-log-transformed-mv-seedling.rda")
+
+# Ev seedling seeds, each background
+# mt_ss_ba <- update(mt_sa_ba, newdata = d_ss_ba)
+# summary(mt_ss_ba)
+# save(mt_ss_ba, file = "./output/ev-seedling-seeds-by-treatment-2018-log-transformed-ev-adult.rda")
+load("./output/ev-seedling-seeds-by-treatment-2018-log-transformed-ev-adult.rda")
+
+# mt_ss_bs <- update(mt_sa_bs, newdata = d_ss_bs)
+# summary(mt_ss_bs)
+# save(mt_ss_bs, file = "./output/ev-seedling-seeds-by-treatment-2018-log-transformed-ev-seedling.rda")
+load("./output/ev-seedling-seeds-by-treatment-2018-log-transformed-ev-seedling.rda")
+
+# mt_ss_bm <- update(mt_sa_ba, newdata = d_ss_bm,
+#                    control = list(adapt_delta = 0.999999999))
+# summary(mt_ss_bm)
+# save(mt_ss_bm, file = "./output/ev-seedling-seeds-by-treatment-2018-log-transformed-mv-seedling.rda")
+load("./output/ev-seedling-seeds-by-treatment-2018-log-transformed-mv-seedling.rda")
+
+# Mv seedling seeds, each background
+# mt_sm_ba <- update(mt_sa_ba, 
+#                    formula = log_seeds_pb ~ background_density * treatment + sm_adj + cc_adj + pm_adj + (1|site),
+#                    newdata = d_sm_ba)
+# summary(mt_sm_ba)
+# save(mt_sm_ba, file = "./output/mv-seedling-seeds-by-treatment-2018-log-transformed-ev-adult.rda")
+load("./output/mv-seedling-seeds-by-treatment-2018-log-transformed-ev-adult.rda")
+
+# mt_sm_bs <- update(mt_sa_bs, 
+#                    formula = log_seeds_pb ~ counted_density * treatment + sm_adj + cc_adj + pm_adj + (1|site),
+#                    newdata = d_sm_bs,
+#                    control = list(adapt_delta = 0.99999))
+# summary(mt_sm_bs)
+# save(mt_sm_bs, file = "./output/mv-seedling-seeds-by-treatment-2018-log-transformed-ev-seedling.rda")
+load("./output/mv-seedling-seeds-by-treatment-2018-log-transformed-ev-seedling.rda")
+
+# mt_sm_bm <- update(mt_sa_bm, 
+#                    formula = log_seeds_pb ~ background_density * treatment + sm_adj + cc_adj + pm_adj + (1|site),
+#                    newdata = d_sm_bm)
+# summary(mt_sm_bm)
+# save(mt_sm_bm, file = "./output/mv-seedling-seeds-by-treatment-2018-log-transformed-mv-seedling.rda")
+load("./output/mv-seedling-seeds-by-treatment-2018-log-transformed-mv-seedling.rda")
+
+## full exponential untransformed model
+
+# y0 is the value of seeds when density is zero
+# just use one background dataset so that none plots aren't counted multiple times
+d_sa_ba %>%
+  filter(background_density == 0) %>%
+  summarise(mean_seeds = mean(seeds), 
+            se_seeds = sd(seeds)/sqrt(length(seeds)),
+            min_seeds = min(seeds), 
+            max_seeds = max(seeds))
+# mean = 44.9, sd = 10.9
+y0a = 44.9
+
+d_ss_ba %>%
+  filter(background_density == 0) %>%
+  summarise(mean_seeds = mean(seeds), 
+            se_seeds = sd(seeds)/sqrt(length(seeds)),
+            min_seeds = min(seeds), 
+            max_seeds = max(seeds))
+# mean = 2.35, sd = 1.26
+y0s = 2.35
+
+d_sm_ba %>%
+  filter(background_density == 0) %>%
+  summarise(mean_seeds = mean(seeds_per_bio), 
+            se_seeds = sd(seeds_per_bio)/sqrt(length(seeds_per_bio)),
+            min_seeds = min(seeds_per_bio), 
+            max_seeds = max(seeds_per_bio))
+# mean = 60, sd = 16.6
+y0m = 60
+
+# a is the rate of increase or decrease - simulate data
+sim_dat = expand.grid(0:64, c(seq(-2, 0, by = 0.5), seq(0.01, 0.5, by = 0.05)))
+colnames(sim_dat) = c("density", "a")
+sim_dat <- sim_dat %>%
+  mutate(seeds = el_fun(y0m, density, a),
+         pos = ifelse(a >= 0, 1, 0))
+
+# figure
+sim_dat %>%
+  ggplot(aes(x = density, y = seeds, colour = as.factor(a))) + 
+  geom_line() +
+  facet_wrap(~pos, scales = "free")
+# mean = 0, sd = 0.5 
+
+# Adult seeds, each background
+# mn_sa_ba <- brm(data = d_sa_ba, family = gaussian,
+#                 bf(seeds ~ y0 * exp(a * log(background_density + 1)), y0 ~ treatment + sm_adj + cc_adj + pm_adj + (1|site), a ~ treatment, nl = T),
+#                 prior <- c(prior(normal(45, 11), nlpar = "y0"),
+#                            prior(normal(0, 0.5), nlpar = "a")),
+#                 iter = 6000, warmup = 1000, chains = 3, cores = 2,
+#                 control = list(adapt_delta = 0.999))
+# summary(mn_sa_ba)
+# save(mn_sa_ba, file = "./output/ev-adult-seeds-by-treatment-2018-nonlinear-ev-adult.rda")
+load("./output/ev-adult-seeds-by-treatment-2018-nonlinear-ev-adult.rda")
+
+# mn_sa_bs <- update(mn_sa_ba, newdata = d_sa_bs,
+#                    bf(seeds ~ y0 * exp(a * log(counted_density + 1)), y0 ~ treatment + sm_adj + cc_adj + pm_adj + (1|site), a ~ treatment, nl = T))
+# summary(mn_sa_bs)
+# save(mn_sa_bs, file = "./output/ev-adult-seeds-by-treatment-2018-nonlinear-ev-seedling.rda")
+load("./output/ev-adult-seeds-by-treatment-2018-nonlinear-ev-seedling.rda")
+
+# mn_sa_bm <- update(mn_sa_ba, newdata = d_sa_bm)
+# summary(mn_sa_bm)
+# save(mn_sa_bm, file = "./output/ev-adult-seeds-by-treatment-2018-nonlinear-mv-seedling.rda")
+load("./output/ev-adult-seeds-by-treatment-2018-nonlinear-mv-seedling.rda")
+
+# Ev seedling seeds, each background
+# mn_ss_ba <- brm(data = d_ss_ba, family = gaussian,
+#                 bf(seeds ~ y0 * exp(a * log(background_density + 1)), y0 ~ treatment + sm_adj + cc_adj + pm_adj + (1|site), a ~ treatment, nl = T),
+#                 prior <- c(prior(normal(2, 1), nlpar = "y0"),
+#                            prior(normal(0, 0.5), nlpar = "a")),
+#                 iter = 6000, warmup = 1000, chains = 3, cores = 2,
+#                 control = list(adapt_delta = 0.999))
+# summary(mn_ss_ba)
+# save(mn_ss_ba, file = "./output/ev-seedling-seeds-by-treatment-2018-nonlinear-ev-adult.rda")
+load("./output/ev-seedling-seeds-by-treatment-2018-nonlinear-ev-adult.rda")
+
+# mn_ss_bs <- update(mn_ss_ba, newdata = d_ss_bs,
+#                    bf(seeds ~ y0 * exp(a * log(counted_density + 1)), y0 ~ treatment + sm_adj + cc_adj + pm_adj + (1|site), a ~ treatment, nl = T))
+# summary(mn_ss_bs)
+# save(mn_ss_bs, file = "./output/ev-seedling-seeds-by-treatment-2018-nonlinear-ev-seedling.rda")
+load("./output/ev-seedling-seeds-by-treatment-2018-nonlinear-ev-seedling.rda")
+
+# mn_ss_bm <- update(mn_ss_ba, newdata = d_ss_bm)
+# summary(mn_ss_bm)
+# save(mn_ss_bm, file = "./output/ev-seedling-seeds-by-treatment-2018-nonlinear-mv-seedling.rda")
+load("./output/ev-seedling-seeds-by-treatment-2018-nonlinear-mv-seedling.rda")
+
+# Mv seedling seeds, each background
+# mn_sm_ba <- brm(data = d_sm_ba, family = gaussian,
+#                 bf(seeds_per_bio ~ y0 * exp(a * log(background_density + 1)), y0 ~ treatment + sm_adj + cc_adj + pm_adj + (1|site), a ~ treatment, nl = T),
+#                 prior <- c(prior(normal(60, 17), nlpar = "y0"),
+#                            prior(normal(0, 0.5), nlpar = "a")),
+#                 iter = 6000, warmup = 1000, chains = 3, cores = 2,
+#                 control = list(adapt_delta = 0.999))
+# summary(mn_sm_ba)
+# save(mn_sm_ba, file = "./output/mv-seedling-seeds-by-treatment-2018-nonlinear-ev-adult.rda")
+load("./output/mv-seedling-seeds-by-treatment-2018-nonlinear-ev-adult.rda")
+
+# mn_sm_bs <- update(mn_sm_ba, newdata = d_sm_bs,
+#                    bf(seeds_per_bio ~ y0 * exp(a * log(counted_density + 1)), y0 ~ treatment + sm_adj + cc_adj + pm_adj + (1|site), a ~ treatment, nl = T))
+# summary(mn_sm_bs)
+# save(mn_sm_bs, file = "./output/mv-seedling-seeds-by-treatment-2018-nonlinear-ev-seedling.rda")
+load("./output/mv-seedling-seeds-by-treatment-2018-nonlinear-ev-seedling.rda")
+
+# mn_sm_bm <- update(mn_sm_ba, newdata = d_sm_bm)
+# summary(mn_sm_bm)
+# save(mn_sm_bm, file = "./output/mv-seedling-seeds-by-treatment-2018-nonlinear-mv-seedling.rda")
+load("./output/mv-seedling-seeds-by-treatment-2018-nonlinear-mv-seedling.rda")
+
+
+#### check models ####
+
+# convergence of chains
+plot(mt_sa_ba)
+plot(mt_sa_bs)
+plot(mt_sa_bm)
+
+plot(mt_ss_ba)
+plot(mt_ss_bs)
+plot(mt_ss_bm)
+
+plot(mt_sm_ba)
+plot(mt_sm_bs)
+plot(mt_sm_bm)
+
+plot(mn_sa_ba)
+plot(mn_sa_bs)
+plot(mn_sa_bm)
+
+plot(mn_ss_ba)
+plot(mn_ss_bs)
+plot(mn_ss_bm)
+
+plot(mn_sm_ba)
+plot(mn_sm_bs)
+plot(mn_sm_bm)
+
+# compare pp_check between model types
+pp_check(mt_sa_ba, nsamples = 50)
+pp_check(mn_sa_ba, nsamples = 50) # t looks slightly better
+pp_check(mt_sa_bs, nsamples = 50)
+pp_check(mn_sa_bs, nsamples = 50) # n looks slightly better
+pp_check(mt_sa_bm, nsamples = 50)
+pp_check(mn_sa_bm, nsamples = 50) # similar
+
+pp_check(mt_ss_ba, nsamples = 50)
+pp_check(mn_ss_ba, nsamples = 50) # n slightly better
+pp_check(mt_ss_bs, nsamples = 50)
+pp_check(mn_ss_bs, nsamples = 50) # t clearly better
+pp_check(mt_ss_bm, nsamples = 50)
+pp_check(mn_ss_bm, nsamples = 50) # t clearly better
+
+pp_check(mt_sm_ba, nsamples = 50)
+pp_check(mn_sm_ba, nsamples = 50) # similar
+pp_check(mt_sm_bs, nsamples = 50)
+pp_check(mn_sm_bs, nsamples = 50) # similar
+pp_check(mt_sm_bm, nsamples = 50)
+pp_check(mn_sm_bm, nsamples = 50) # similar
+
+# correlation between predicted and observed
+cor_fun(d_sa_ba, mt_sa_ba, mn_sa_ba, "ev") # transformed
+cor_fun(d_sa_bs, mt_sa_bs, mn_sa_bs, "ev") # non-linear, by 0.03
+cor_fun(d_sa_bm, mt_sa_bm, mn_sa_bm, "ev") # definitely transformed
+
+cor_fun(d_ss_ba, mt_ss_ba, mn_ss_ba, "ev") # tranformed
+cor_fun(d_ss_bs, mt_ss_bs, mn_ss_bs, "ev") # tranformed
+cor_fun(d_ss_bm, mt_ss_bm, mn_ss_bm, "ev") # tranformed by 0.02
+
+cor_fun(d_sm_ba, mt_sm_ba, mn_sm_ba, "mv") # definitely tranformed
+cor_fun(d_sm_bs, mt_sm_bs, mn_sm_bs, "mv") # tranformed
+cor_fun(d_sm_bm, mt_sm_bm, mn_sm_bm, "mv") # tranformed
+
+
+#### simplify models ####
+
+# come back to this later: in mv-biomass-by-treatment-2018 and ev-survival-by-treatment-2018 all of the models are very similar and it takes a long time to run the analysis
 
 
 #### visualize ####
 
-# subset d3 for significant effects and rename levels
-d3_sub <- d3 %>%
-  filter((focal == "Mv seedling" & background != "Ev adult") | (focal == "Ev adult" & background == "Ev seedling")) %>%
-  mutate(
-    focal = dplyr::recode(focal, "Mv seedling" = "invader", "Ev adult" = "adult native", "Ev seedling" = "1st year natives"),
-    background = dplyr::recode(background, "Mv seedling" = "invaders", "Ev adult" = "adult natives", "Ev seedling" = "1st year natives")
-  )
+# Prediction datasets
+pd_sa_bm <- d_pred_fun(d_sa_bm, mt_sa_bm, mn_sa_bm, 64)
+pd_sa_bs <- d_pred_fun(d_sa_bs, mt_sa_bs, mn_sa_bs, 10)
+pd_sa_ba <- d_pred_fun(d_sa_ba, mt_sa_ba, mn_sa_ba, 8)
 
-# rename for poster
-dat <- dat %>%
-  mutate(
-    focal = dplyr::recode(focal, "Mv seedling" = "invader", "Ev adult" = "adult native", "Ev seedling" = "1st year native"),
-    background = dplyr::recode(background, "Mv seedling" = "invaders", "Ev adult" = "adult natives", "Ev seedling" = "1st year natives")
-  )
-  
+pd_ss_bm <- d_pred_fun(d_ss_bm, mt_ss_bm, mn_ss_bm, 64)
+pd_ss_bs <- d_pred_fun(d_ss_bs, mt_ss_bs, mn_ss_bs, 10)
+pd_ss_ba <- d_pred_fun(d_ss_ba, mt_ss_ba, mn_ss_ba, 8)
 
-pdf("./output/seeds-by-treatment.pdf",width=8.5,height=8.9)
-dat %>%
-  ggplot(aes(x = background_density, y = mean_seeds)) +
-  #geom_line(data = d3_sub, aes(y = pred, colour = treatment), size = 2) +
-  geom_errorbar(aes(ymin = mean_seeds - se_seeds, ymax = mean_seeds + se_seeds, group = treatment), width = 0, position = position_dodge(0.3)) +
-  geom_point(position = position_dodge(0.3), size = 5, shape = 21, aes(fill = treatment)) +
-  facet_grid(focal~background, scales = "free") +
-  scale_colour_manual(values=c("#C7D1AE","#4E3629"), name = "Treatment") +
-  scale_fill_manual(values=c("#C7D1AE","#4E3629"), name = "Treatment") +
-  theme(axis.text=element_text(size=20,colour="black"),
-        axis.title=element_text(size=23,colour="black"),
-        panel.background=element_blank(),
-        panel.grid.major=element_blank(),
-        panel.grid.minor=element_blank(),
-        axis.line=element_line(colour="black"),
-        panel.border=element_rect(linetype="solid",color="black",fill=NA,size=0.9),
-        legend.text=element_text(size=20),
-        legend.title=element_text(size=23),
-        legend.key=element_blank(),
-        plot.title=element_text(size=23,hjust=0.5),
-        strip.background=element_blank(),
-        strip.text=element_text(size=23),
-        legend.position="bottom",
-        legend.direction="horizontal") +
-  xlab("Competitor density") + 
-  ylab("Per capita seed production") + 
-  ggtitle("Competitor")
+pd_sm_bm <- d_pred_fun(d_sm_bm, mt_sm_bm, mn_sm_bm, 64)
+pd_sm_bs <- d_pred_fun(d_sm_bs, mt_sm_bs, mn_sm_bs, 10)
+pd_sm_ba <- d_pred_fun(d_sm_ba, mt_sm_ba, mn_sm_ba, 8)
+
+# non-linear models (just to examine, manually updated datasets)
+pd_ss_bm %>%
+  filter(model == "nonlinear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_ss_bm, aes(y = seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_ss_bm, aes(y = seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1))
+
+pd_sm_bs %>%
+  filter(model == "nonlinear") %>%
+  ggplot(aes(x = counted_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sm_bs, aes(y = seeds_per_bio), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_sm_bs, aes(y = seeds_per_bio), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1))
+
+# Mv seeds, each background
+p_sm_bm <- pd_sm_bm %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sm_bm, aes(y = log_seeds_pb), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_sm_bm, aes(y = log_seeds_pb), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1)) +
+  theme_bw() +
+  theme(axis.title.y = element_text(color = "black", size = lg_txt),
+        axis.title.x = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("ln(Microstegium seeds)") +
+  ylim(1.5, 5.5)
+
+p_sm_bs <- pd_sm_bs %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = counted_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sm_bs, aes(y = log_seeds_pb), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_sm_bs, aes(y = log_seeds_pb), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylim(1.5, 5.5)
+
+p_sm_ba <- pd_sm_ba %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sm_ba, aes(y = log_seeds_pb), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_sm_ba, aes(y = log_seeds_pb), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylim(1.5, 5.5)
+
+# Ev seedling seeds, each background
+p_ss_bm <- pd_ss_bm %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_ss_bm, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_ss_bm, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1)) +
+  theme_bw() +
+  theme(axis.title.y = element_text(color = "black", size = lg_txt),
+        axis.title.x = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("ln(Elymus seedling seeds)") +
+  ylim(-4, 3.7)
+
+p_ss_bs <- pd_ss_bs %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = counted_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_ss_bs, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_ss_bs, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylim(-4, 3.7)
+
+p_ss_ba <- pd_ss_ba %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_ss_ba, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_ss_ba, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylim(-4, 3.7)
+
+# Ev adult seeds, each background
+p_sa_bm <- pd_sa_bm %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sa_bm, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_sa_bm, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1)) +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("ln(Elymus adult seeds)") +
+  xlab("Microstegium density") +
+  ylim(0, 6)
+
+p_sa_bs <- pd_sa_bs %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = counted_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sa_bs, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_sa_bs, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "black", size = lg_txt),
+        axis.title.y = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  xlab("Elymus seedling density") +
+  ylim(0, 6)
+
+p_sa_ba <- pd_sa_ba %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sa_ba, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_sa_ba, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title.x = element_text(color = "black", size = lg_txt),
+        axis.title.y = element_blank(),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.position = "none",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  xlab("Elymus adult density") +
+  ylim(0, 6)
+
+# combine
+pdf("./output/seeds-by-treatment-2018-full-models.pdf", height = 9, width = 9)
+plot_grid(p_sm_bm, p_sm_bs, p_sm_ba, p_ss_bm, p_ss_bs, p_ss_ba, p_sa_bm, p_sa_bs, p_sa_ba, nrow = 3)
 dev.off()
-
-pdf("./output/seeds-by-treatment-2.pdf",width=8.5,height=6.6)
-bsum %>%
-  ggplot(aes(x = background, y = mean_seeds)) +
-  #geom_line(data = d3_sub, aes(y = pred, colour = treatment), size = 2) +
-  geom_errorbar(aes(ymin = mean_seeds - se_seeds, ymax = mean_seeds + se_seeds, group = treatment), width = 0, position = position_dodge(0.3)) +
-  geom_point(position = position_dodge(0.3), size = 5, shape = 21, aes(fill = treatment)) +
-  facet_wrap(~focal, scales = "free") +
-  scale_colour_manual(values=c("#C7D1AE","#4E3629"), name = "Treatment") +
-  scale_fill_manual(values=c("#C7D1AE","#4E3629"), name = "Treatment") +
-  theme(axis.text.y=element_text(size=20,colour="black"),
-        axis.text.x=element_text(size=18,colour="black", angle = 45, hjust = 1),
-        axis.title=element_text(size=23,colour="black"),
-        panel.background=element_blank(),
-        panel.grid.major=element_blank(),
-        panel.grid.minor=element_blank(),
-        axis.line=element_line(colour="black"),
-        panel.border=element_rect(linetype="solid",color="black",fill=NA,size=0.9),
-        legend.text=element_text(size=20),
-        legend.title=element_text(size=23),
-        legend.key=element_blank(),
-        plot.title=element_text(size=23,hjust=0.5),
-        strip.background=element_blank(),
-        strip.text=element_text(size=23),
-        legend.position="bottom",
-        legend.direction="horizontal") +
-  xlab("Competitor type") + 
-  ylab("Per capita seed production") 
-dev.off()
-
-#### estimating competition coefficients ####
-
-# adult Elymus intraspecific competition
-dat %>%
-  filter(background =="adult natives" & background_density %in% c(4, 8) & focal != "invader" & treatment == "water")
-
-# focal adults
-(90.06 - 68.79)/4 # 5 seeds lost per adult added
-
-# focal seedlings
-(10.52 - 5.92)/4 # 1 seed lost per adult added
-
-
-#### simulate density-dependent models ####
-
-a <- -0.7
-init <- 750
-b <- 2
-
-sim <- tibble(
-  density = 0:64
-) %>%
-  mutate(
-    m1 = init / (1 + a * density),
-    m2 = init / 1 + (a * density)^b,
-    m3 = init * exp(-a * density),
-    m4 = init * exp(-a * log(density + 1)),
-    m5 = init / (1 + density^a),
-    m6 = init / (1 + a * density)^b,
-    m7 = 1 + init * (1 - a * density),
-    m8 = init * (density + 1)^-a
-  ) %>%
-  gather(key = "model", value = "seeds", -density)
-
-sim %>% 
-  filter(!(model %in% c("m3", "m6", "m7"))) %>%
-  ggplot(aes(x = density, y = seeds, colour = model)) +
-  geom_line()

@@ -2,7 +2,7 @@
 
 # file: ev-survival-data-processing-2018
 # author: Amy Kendig
-# date last edited: 4/30/19
+# date last edited: 7/29/19
 # goal: calculate Ev survival for summer 2018 and winter 2018/2019
 
 
@@ -158,8 +158,8 @@ esl <- esl %>%
   select(site, plot, sp, age, ID, focal, survival, field_notes) %>%
   mutate(month = "September") 
 
-# combine seeds across dates
-eseeds <- eseeds %>%
+# survival by seed production
+eseeds2 <- eseeds %>%
   filter(ID_unclear == 0) %>%
   mutate(survival_seeds = 1) %>%
   select(site, plot, treatment, sp, age, ID, focal, survival_seeds) %>%
@@ -174,7 +174,7 @@ d <- full_join(fjn, fjl) %>%
   full_join(ejn) %>%
   full_join(ejl) %>%
   full_join(esl) %>%
-  full_join(eseeds)
+  full_join(eseeds2)
 
 # remove compromised data
 d <- d %>%

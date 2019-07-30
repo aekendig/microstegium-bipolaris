@@ -23,13 +23,13 @@ unique(d$site)
 unique(d$treatment)
 unique(d$plot)
 unique(d$bag)
-unique(d$notes)
+unique(d$bag_notes)
 
 # modify columns
 d <- d %>%
   mutate(
     treatment = recode(treatment, "W" = "water", "F" = "fungicide"), 
-    recount = case_when(substr(notes, 1, 9) == "Recounted" ~ 1,
+    recount = case_when(substr(bag_notes, 1, 9) == "Recounted" ~ 1,
                         TRUE ~ 0) %>% as.factor(),
     sp = "Mv"
   ) 
