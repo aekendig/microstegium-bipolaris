@@ -2,7 +2,7 @@
 
 # file: ev-leaf-scans-data-processing
 # author: Amy Kendig
-# date last edited: 4/19/19
+# date last edited: 8/2/19
 # goal: combine raw 2018 Elymus leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: LeafScanAnalysis_ev_ak_021819.ijm
 
@@ -67,7 +67,7 @@ sep$month <- "September"
 dat <- rbind(jul, aug, sep)
 
 # new columns
-dat <- dat %>%
+dat2 <- dat %>%
   mutate(
     plant = gsub(".*:","",slice) %>% gsub("_edited","",.),
     part = gsub(":.*$", "", slice),
@@ -89,23 +89,24 @@ dat <- dat %>%
   )
 
 # check that the above worked as expected
-unique(dat$plant)
-unique(dat$part)
-unique(dat$site)
-unique(dat$plot)
-unique(dat$treatment)
-unique(dat$age)
-unique(dat$ID)
-unique(filter(dat, age == "adult")$ID)
-unique(filter(dat, age == "seedling")$ID)
-unique(dat$focal)
+unique(dat2$plant)
+unique(dat2$part)
+unique(dat2$site)
+unique(dat2$plot)
+unique(dat2$treatment)
+unique(dat2$age)
+unique(dat2$ID)
+unique(filter(dat2, age == "adult")$ID)
+unique(filter(dat2, age == "seedling")$ID)
+unique(dat2$focal)
 
 # spread by part
-datw <- dat %>%
+datw <- dat2 %>%
   select(-c(slice)) %>%
   gather(variable, value, -(edited:focal)) %>%
   unite(temp, part, variable) %>%
-  spread(temp, value)
+  spread(temp, value) %>%
+  filter(!is.na(leaf_area.pix))
 
 
 #### check values ####
