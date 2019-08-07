@@ -2,8 +2,9 @@
 
 # file: seeds-by-treatment-2018
 # author: Amy Kendig
-# date last edited: 7/29/19
+# date last edited: 8/5/19
 # goal: see how Mv and Ev seed production is affected by treatments
+# notes: changed water to control without checking all of the code
 
 
 #### set up ####
@@ -80,7 +81,7 @@ d_pred_fun = function(dat, mt, mn, max_val){
 }
 
 # plot parameters
-colpal = c("#3CBB75FF", "#39568CFF")
+colpal = c("#BF9000", "#3BBC75")
 sm_txt = 12
 lg_txt = 14
 an_txt = 3
@@ -142,7 +143,8 @@ dm <- full_join(mseeds, til2) %>%
 dmb <- full_join(mbseeds2, trt)  %>% 
   full_join(bgd2) %>%
   left_join(covar) %>%
-  mutate(density_level = factor(density_level, levels = c("none", "low", "medium", "high"))) 
+  mutate(density_level = factor(density_level, levels = c("none", "low", "medium", "high")),
+         treatment = recode(treatment, water = "control"))
 
 # see if all have tiller counts
 sum(is.na(dm$mean_till)) # yes
@@ -151,8 +153,8 @@ sum(is.na(dm$mean_till)) # yes
 dm2 <- dm %>%
   mutate(
     seeds_percap = seeds / 3 * mean_till,
-    log_seeds_percap = log(seeds_percap)
-  )
+    log_seeds_percap = log(seeds_percap),
+    treatment = recode(treatment, water = "control"))
 
 # check for missing survival info
 sum(is.na(de$survival)) # none missing (those with NA's had no seeds)
@@ -166,8 +168,8 @@ de2 <- de %>%
   mutate(
     seeds = case_when(survival == 1 & is.na(seeds) ~ 0,
                       TRUE ~ seeds),
-    log_seeds = log(seeds + 1)
-  )
+    log_seeds = log(seeds + 1),
+    treatment = recode(treatment, water = "control"))
 
 le2 <- le %>%
   mutate(
@@ -199,6 +201,19 @@ le2 %>% select(site, plot) %>% unique() # 27
 dm2 %>% select(site, plot, treatment) %>% unique() # 78
 
 dmb %>% select(site, plot, treatment) %>% unique() # 78
+
+## trim datasets by seed and background
+d_sa_ba <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev adult")
+d_sa_bs <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev seedling")
+d_sa_bm <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Mv seedling")
+
+d_ss_ba <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev adult")
+d_ss_bs <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev seedling")
+d_ss_bm <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Mv seedling")
+
+d_sm_ba <-  filter(dmb, !is.na(seeds_per_bio) & background == "Ev adult")
+d_sm_bs <- filter(dmb, !is.na(seeds_per_bio) & background == "Ev seedling")
+d_sm_bm <- filter(dmb, !is.na(seeds_per_bio) & background == "Mv seedling")
 
 
 ##### visualize #####
@@ -285,19 +300,6 @@ dmb %>%
 
 
 #### set up models ####
-
-## trim datasets by seed and background
-d_sa_ba <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev adult")
-d_sa_bs <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev seedling")
-d_sa_bm <- filter(de2, age == "adult" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Mv seedling")
-
-d_ss_ba <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev adult")
-d_ss_bs <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Ev seedling")
-d_ss_bm <- filter(de2, age == "seedling" & !is.na(seeds) & survival == 1 & focal == 1 & background == "Mv seedling")
-
-d_sm_ba <-  filter(dmb, !is.na(seeds_per_bio) & background == "Ev adult")
-d_sm_bs <- filter(dmb, !is.na(seeds_per_bio) & background == "Ev seedling")
-d_sm_bm <- filter(dmb, !is.na(seeds_per_bio) & background == "Mv seedling")
 
 ## full linear log-transformed models
 
@@ -546,20 +548,29 @@ cor_fun(d_sm_bm, mt_sm_bm, mn_sm_bm, "mv") # tranformed
 # come back to this later: in mv-biomass-by-treatment-2018 and ev-survival-by-treatment-2018 all of the models are very similar and it takes a long time to run the analysis
 
 
-#### visualize ####
+#### final figures ####
 
 # Prediction datasets
-pd_sa_bm <- d_pred_fun(d_sa_bm, mt_sa_bm, mn_sa_bm, 64)
-pd_sa_bs <- d_pred_fun(d_sa_bs, mt_sa_bs, mn_sa_bs, 10)
-pd_sa_ba <- d_pred_fun(d_sa_ba, mt_sa_ba, mn_sa_ba, 8)
+pd_sa_bm <- d_pred_fun(d_sa_bm, mt_sa_bm, mn_sa_bm, 64) %>%
+  mutate(treatment = recode(treatment, water = "control"))
+pd_sa_bs <- d_pred_fun(d_sa_bs, mt_sa_bs, mn_sa_bs, 10) %>%
+  mutate(treatment = recode(treatment, water = "control"))
+pd_sa_ba <- d_pred_fun(d_sa_ba, mt_sa_ba, mn_sa_ba, 8) %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
-pd_ss_bm <- d_pred_fun(d_ss_bm, mt_ss_bm, mn_ss_bm, 64)
-pd_ss_bs <- d_pred_fun(d_ss_bs, mt_ss_bs, mn_ss_bs, 10)
-pd_ss_ba <- d_pred_fun(d_ss_ba, mt_ss_ba, mn_ss_ba, 8)
+pd_ss_bm <- d_pred_fun(d_ss_bm, mt_ss_bm, mn_ss_bm, 64) %>%
+  mutate(treatment = recode(treatment, water = "control"))
+pd_ss_bs <- d_pred_fun(d_ss_bs, mt_ss_bs, mn_ss_bs, 10) %>%
+  mutate(treatment = recode(treatment, water = "control"))
+pd_ss_ba <- d_pred_fun(d_ss_ba, mt_ss_ba, mn_ss_ba, 8) %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
-pd_sm_bm <- d_pred_fun(d_sm_bm, mt_sm_bm, mn_sm_bm, 64)
-pd_sm_bs <- d_pred_fun(d_sm_bs, mt_sm_bs, mn_sm_bs, 10)
-pd_sm_ba <- d_pred_fun(d_sm_ba, mt_sm_ba, mn_sm_ba, 8)
+pd_sm_bm <- d_pred_fun(d_sm_bm, mt_sm_bm, mn_sm_bm, 64) %>%
+  mutate(treatment = recode(treatment, water = "control"))
+pd_sm_bs <- d_pred_fun(d_sm_bs, mt_sm_bs, mn_sm_bs, 10) %>%
+  mutate(treatment = recode(treatment, water = "control"))
+pd_sm_ba <- d_pred_fun(d_sm_ba, mt_sm_ba, mn_sm_ba, 8) %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 # non-linear models (just to examine, manually updated datasets)
 pd_ss_bm %>%
@@ -801,4 +812,83 @@ p_sa_ba <- pd_sa_ba %>%
 # combine
 pdf("./output/seeds-by-treatment-2018-full-models.pdf", height = 9, width = 9)
 plot_grid(p_sm_bm, p_sm_bs, p_sm_ba, p_ss_bm, p_ss_bs, p_ss_ba, p_sa_bm, p_sa_bs, p_sa_ba, nrow = 3)
+dev.off()
+
+## presentation figures
+
+# Mv seeds with Mv background
+pdf("./output/mv-seeds-by-treatment-2018-mv.pdf", height = 4, width = 5)
+pd_sm_bm %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sm_bm, aes(y = log_seeds_pb), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_sm_bm, aes(y = log_seeds_pb), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1)) +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("ln(Invader seeds)") +
+  xlab("Invader density")
+dev.off()
+
+pdf("./output/ev-adult-seeds-by-treatment-2018-mv.pdf", height = 4, width = 5)
+pd_sa_bm %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sa_bm, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(1)) +
+  stat_summary(data = d_sa_bm, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(1)) +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("ln(Native adult seeds)") +
+  xlab("Invader density")
+dev.off()
+
+pdf("./output/ev-adult-seeds-by-treatment-2018-ev-seedling.pdf", height = 4, width = 5)
+pd_sa_bs %>%
+  filter(model == "linear") %>%
+  ggplot(aes(x = counted_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = d_sa_bs, aes(y = log_seeds), width = 0.1, geom = "errorbar", fun.data = "mean_se", position = position_dodge(0.2)) +
+  stat_summary(data = d_sa_bs, aes(y = log_seeds), size = 2, shape = 21, color = "black", geom = "point", fun.y = "mean", position = position_dodge(0.2)) +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("ln(Native adult seeds)") +
+  xlab("Native seedling density") +
+  ylim(0, 6)
 dev.off()

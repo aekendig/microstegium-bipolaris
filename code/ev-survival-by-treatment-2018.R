@@ -2,8 +2,9 @@
 
 # file: ev-survival-by-treatment-2018
 # author: Amy Kendig
-# date last edited: 6/24/19
+# date last edited: 8/5/19
 # goal: evaluate treatment effects on Ev survival
+# notes: changed water to control without checking all of the code
 
 
 #### set up ####
@@ -43,7 +44,7 @@ d_pred_fun = function(max_val, length_out, dat){
 }
 
 # plot parameters
-colpal = c("#3CBB75FF", "#39568CFF")
+colpal = c("#BF9000", "#3BBC75")
 sm_txt = 12
 lg_txt = 14
 an_txt = 3
@@ -58,7 +59,8 @@ d <- left_join(esurv, trt) %>%
 
 # select September data (summer survival, remove litter experiment with the treatment column)
 ds <- d %>%
-  filter(month == "September" & !is.na(survival) & !is.na(treatment) & focal == 1)
+  filter(month == "September" & !is.na(survival) & !is.na(treatment) & focal == 1) %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 # check that it makes sense
 ds %>%
@@ -73,7 +75,8 @@ da <- d %>%
   spread(month, survival) %>%
   filter(September == 1 & !is.na(April)) %>%
   select(-September) %>%
-  rename(survival = April)
+  rename(survival = April) %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 # check that it makes sense
 da %>%
@@ -133,50 +136,57 @@ da %>%
 #### statistical models ####
 
 # adult plots, summer
-msa <- brm(data = dsa, family = bernoulli,
-             survival ~ background_density * treatment * age + sm_adj + cc_adj + pm_adj + (1|site),
-             prior = c(prior(normal(0, 10), class = Intercept),
-                       prior(normal(0, 10), class = b),
-                       prior(cauchy(0, 1), class = sd)),
-             iter = 6000, warmup = 1000, chains = 3, cores = 2)
-summary(msa)
-save(msa, file = "./output/ev-survival-by-treatment-2018-ev-adult-summer.rda")
+# msa <- brm(data = dsa, family = bernoulli,
+#              survival ~ background_density * treatment * age + sm_adj + cc_adj + pm_adj + (1|site),
+#              prior = c(prior(normal(0, 10), class = Intercept),
+#                        prior(normal(0, 10), class = b),
+#                        prior(cauchy(0, 1), class = sd)),
+#              iter = 6000, warmup = 1000, chains = 3, cores = 2)
+# summary(msa)
+# save(msa, file = "./output/ev-survival-by-treatment-2018-ev-adult-summer.rda")
+load("./output/ev-survival-by-treatment-2018-ev-adult-summer.rda")
 
 # seedling plots, summer
-mss <- update(msa, newdata = dss, control = list(max_treedepth = 15))
-summary(mss)
-save(mss, file = "./output/ev-survival-by-treatment-2018-ev-seedling-summer.rda")
+# mss <- update(msa, newdata = dss, control = list(max_treedepth = 15))
+# summary(mss)
+# save(mss, file = "./output/ev-survival-by-treatment-2018-ev-seedling-summer.rda")
+load("./output/ev-survival-by-treatment-2018-ev-seedling-summer.rda")
 
 # microstegium plots, summer
-msm <- update(msa, newdata = dsm, control = list(max_treedepth = 15))
-summary(msm)
-save(msm, file = "./output/ev-survival-by-treatment-2018-mv-summer.rda")
+# msm <- update(msa, newdata = dsm, control = list(max_treedepth = 15))
+# summary(msm)
+# save(msm, file = "./output/ev-survival-by-treatment-2018-mv-summer.rda")
+load("./output/ev-survival-by-treatment-2018-mv-summer.rda")
 
 # seedling plots, summer, counted
-mss_d <- update(mss, formula = survival ~ counted_density * treatment * age + sm_adj + cc_adj + pm_adj + (1|site), newdata = dss)
-summary(mss_d)
-save(mss_d, file = "./output/ev-survival-by-treatment-2018-ev-seedling-summer-counted.rda")
+# mss_d <- update(mss, formula = survival ~ counted_density * treatment * age + sm_adj + cc_adj + pm_adj + (1|site), newdata = dss)
+# summary(mss_d)
+# save(mss_d, file = "./output/ev-survival-by-treatment-2018-ev-seedling-summer-counted.rda")
+load("./output/ev-survival-by-treatment-2018-ev-seedling-summer-counted.rda")
 
 # adult plots, winter
-maa <- update(msa, newdata = daa)
-summary(maa)
-save(maa, file = "./output/ev-survival-by-treatment-2018-ev-adult-winter.rda")
+# maa <- update(msa, newdata = daa)
+# summary(maa)
+# save(maa, file = "./output/ev-survival-by-treatment-2018-ev-adult-winter.rda")
+load("./output/ev-survival-by-treatment-2018-ev-adult-winter.rda")
 
 # seedling plots, winter
-mas <- update(maa, newdata = das)
-summary(mas)
-save(mas, file = "./output/ev-survival-by-treatment-2018-ev-seedling-winter.rda")
+# mas <- update(maa, newdata = das)
+# summary(mas)
+# save(mas, file = "./output/ev-survival-by-treatment-2018-ev-seedling-winter.rda")
+load("./output/ev-survival-by-treatment-2018-ev-seedling-winter.rda")
 
 # microstegium plots, winter
-mam <- update(maa, newdata = dam, control = list(adapt_delta = 0.9999999, max_treedepth = 15))
+# mam <- update(maa, newdata = dam, control = list(adapt_delta = 0.9999999, max_treedepth = 15))
 # can't converge (too many 1's?)
 sum(dam$survival)
 nrow(dam) # only 2 0's
 
 # seedling plots, winter, counted
-mas_d <- update(mas, formula = survival ~ counted_density * treatment * age + sm_adj + cc_adj + pm_adj + (1|site), newdata = das)
-summary(mas_d)
-save(mas_d, file = "./output/ev-survival-by-treatment-2018-ev-seedling-winter-counted.rda")
+# mas_d <- update(mas, formula = survival ~ counted_density * treatment * age + sm_adj + cc_adj + pm_adj + (1|site), newdata = das)
+# summary(mas_d)
+# save(mas_d, file = "./output/ev-survival-by-treatment-2018-ev-seedling-winter-counted.rda")
+load("./output/ev-survival-by-treatment-2018-ev-seedling-winter-counted.rda")
 
 
 #### check models ####
@@ -236,7 +246,8 @@ dsa_pred <- d_pred_fun(8, 100, dsa) %>%
   rename(pred = Estimate,
          lower = Q2.5,
          upper = Q97.5) %>%
-  as_tibble()
+  as_tibble() %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 pdf("./output/ev-survival-by-treatment-2018-ev-adult-summer-full-models.pdf", height = 5, width = 7)
 dsa_pred %>%
@@ -279,7 +290,8 @@ dss_pred <- d_pred_fun(16, 100, dss) %>%
   rename(pred = Estimate,
          lower = Q2.5,
          upper = Q97.5) %>%
-  as_tibble()
+  as_tibble() %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 dss_plot <- dss %>%
   select(background_density, treatment, age, survival) %>%
@@ -287,7 +299,8 @@ dss_plot <- dss %>%
   full_join(dss %>%
               select(counted_density, treatment, age, survival) %>%
               rename(background_density = counted_density) %>%
-              mutate(density = "counted"))
+              mutate(density = "counted"),
+            treatment = recode(treatment, water = "control"))
 
 pdf("./output/ev-survival-by-treatment-2018-ev-seedling-summer-full-models.pdf", height = 7, width = 7)
 dss_pred %>%
@@ -321,7 +334,8 @@ dsm_pred <- d_pred_fun(64, 100, dsm) %>%
   rename(pred = Estimate,
          lower = Q2.5,
          upper = Q97.5) %>%
-  as_tibble()
+  as_tibble() %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 pdf("./output/ev-survival-by-treatment-2018-mv-summer-full-models.pdf", height = 5, width = 7)
 dsm_pred %>%
@@ -355,7 +369,8 @@ daa_pred <- d_pred_fun(8, 100, daa) %>%
   rename(pred = Estimate,
          lower = Q2.5,
          upper = Q97.5) %>%
-  as_tibble() 
+  as_tibble()  %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 pdf("./output/ev-survival-by-treatment-2018-ev-adult-winter-full-models.pdf", height = 5, width = 7)
 daa_pred %>%
@@ -398,7 +413,8 @@ das_pred <- d_pred_fun(16, 100, dss) %>%
   rename(pred = Estimate,
          lower = Q2.5,
          upper = Q97.5) %>%
-  as_tibble() 
+  as_tibble()  %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 das_plot <- das %>%
   select(background_density, treatment, age, survival) %>%
@@ -406,7 +422,8 @@ das_plot <- das %>%
   full_join(das %>%
               select(counted_density, treatment, age, survival) %>%
               rename(background_density = counted_density) %>%
-              mutate(density = "counted"))
+              mutate(density = "counted")) %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 pdf("./output/ev-survival-by-treatment-2018-ev-seedling-winter-full-models.pdf", height = 7, width = 7)
 das_pred %>%
@@ -853,3 +870,78 @@ pdf("./output/ev-survival-by-treatment-2018-winter-full-models.pdf", height = 6,
 plot_grid(pass, paas, pasa, paaa, nrow = 2)
 dev.off()
 
+## presentation figures
+
+# Ev seedling summer survival by Mv density
+pdf("./output/ev-survival-by-treatment-2018-summer-mv.pdf", height = 4, width = 5)
+dsm_pred %>%
+  filter(age == "seedling") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = filter(dsm, age == "seedling"), aes(y = survival), fun.data = "mean_cl_boot", geom = "errorbar", width = 0.2, position = position_dodge(1)) +
+  stat_summary(data = filter(dsm, age == "seedling"), aes(y = survival), fun.y = "mean", geom = "point", size = 2, position = position_dodge(1), shape = 21, color = "black") +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  ylab("Native seedling summer survival") +
+  xlab("Invader density") +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.5), limits = c(0, 1))
+dev.off()
+
+# Ev seedling summer survival by Ev adult density
+pdf("./output/ev-survival-by-treatment-2018-summer-ev-adult.pdf", height = 4, width = 5)
+dsa_pred %>%
+  filter(age == "seedling") %>%
+  ggplot(aes(x = background_density, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_smooth(aes(y = pred), size = 1.5) +
+  stat_summary(data = filter(dsa, age == "seedling"), aes(y = survival), fun.data = "mean_cl_boot", geom = "errorbar", width = 0.2, position = position_dodge(0.2)) +
+  stat_summary(data = filter(dsa, age == "seedling"), aes(y = survival), fun.y = "mean", geom = "point", size = 2, position = position_dodge(0.2), shape = 21, color = "black") +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        strip.text = element_text(color = "black", size = lg_txt),
+        legend.title = element_text(color = "black", size = sm_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank()) +
+  scale_color_manual(values = colpal) + 
+  scale_fill_manual(values = colpal) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.5), limits = c(0, 1)) +
+  xlab("Native adult density") +
+  ylab("Native seedling summer survival")
+dev.off()
+
+# Ev seedling and adult winter survival
+pdf("./output/ev-survival-2018-winter.pdf", height = 3, width = 3)
+da %>%
+  filter(!(background == "Ev seedling" & density_level == "none") & !(background == "Mv seedling" & density_level == "none")) %>%
+  ggplot(aes(x = age, y = survival, fill = age)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0.1) +
+  stat_summary(fun.y = "mean", geom = "point", size = 4, shape = 21) +
+  theme_bw() +
+  theme(axis.title.y = element_text(color = "black", size = lg_txt),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(color = "black", size = sm_txt),
+        axis.text.x = element_text(color = "black", size = lg_txt),
+        plot.title = element_text(hjust = 0.5, size = lg_txt),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none") +
+  scale_fill_manual(values = c("#407879", "#A0BBBB")) +
+  ylab("Native survival over winter")
+dev.off()

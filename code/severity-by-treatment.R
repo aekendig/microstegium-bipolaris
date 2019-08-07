@@ -2,8 +2,9 @@
 
 # file: severity-by-treatment
 # author: Amy Kendig
-# date last edited: 8/2/19
+# date last edited: 8/5/19
 # goal: see how Mv and Ev disease severity is affected by treatments
+# notes: changed water to control without checking all of the code
 
 
 #### set up ####
@@ -36,7 +37,7 @@ etils <- read_csv("./data/ev-disease-seeds-sep-2018-density-exp.csv")
 mtils <- read_csv("./data/mv-disease-sep-2018-density-exp.csv")
 
 # plot parameters
-colpal = c("#3CBB75FF", "#39568CFF")
+colpal = c("#BF9000", "#3BBC75")
 sm_txt = 12
 lg_txt = 14
 an_txt = 3
@@ -100,7 +101,8 @@ mfsev <- mleaf %>%
   mutate(plot = as.numeric(plot)) %>%
   full_join(mtil) %>%
   mutate(leaves_infec2 = ifelse(leaves_infec == 0 & !is.na(leaf_area.pix), 1, leaves_infec),
-         ind_severity = (lesion_area.pix - green_area.pix) * leaves_infec2 / (leaf_area.pix * leaves_tot))
+         ind_severity = (lesion_area.pix - green_area.pix) * leaves_infec2 / (leaf_area.pix * leaves_tot),
+         treatment = recode(treatment, water = "control"))
 # leaves with no scan or no leaf counts will have NA for the severity metric
 # severity only includes infected leaves (with 2 exceptions - lesions weren't detected)
 
@@ -108,7 +110,8 @@ mbsev <- mleaf %>%
   filter(focal == 0) %>%
   select(month, site, plot, treatment, ID, lesion_area.pix, green_area.pix, leaf_area.pix) %>%
   mutate(plot = as.numeric(plot)) %>%
-  mutate(bg_severity = (lesion_area.pix - green_area.pix) / leaf_area.pix)
+  mutate(bg_severity = (lesion_area.pix - green_area.pix) / leaf_area.pix,
+         treatment = recode(treatment, water = "control"))
 # also only includes infected leaves
 
 # Ev focal leaves
@@ -119,8 +122,11 @@ efsev <- eleaf %>%
   mutate(plot = as.numeric(plot)) %>%
   full_join(etil) %>%
   mutate(leaves_infec2 = ifelse(leaves_infec == 0 & !is.na(leaf_area.pix), 1, leaves_infec),
-         ind_severity = lesion_area.pix * leaves_infec2 / (leaf_area.pix * leaves_tot))
+         ind_severity = lesion_area.pix * leaves_infec2 / (leaf_area.pix * leaves_tot),
+         treatment = recode(treatment, water = "control"))
 
+etil <- etil %>%
+  mutate(treatment = recode(treatment, water = "control"))
 
 #### visualize ####
 
@@ -219,7 +225,7 @@ mfsev %>%
   scale_color_manual(values = colpal) + 
   scale_fill_manual(values = colpal) +
   ylab("Infection severity") +
-  ggtitle("Invader (Microstegium)")
+  ggtitle("Invader")
 dev.off()
 
 # Ev severity in July
@@ -242,7 +248,7 @@ efsev %>%
   scale_color_manual(values = colpal) + 
   scale_fill_manual(values = colpal) +
   ylab("Infection severity") +
-  ggtitle("Native (Elymus)")
+  ggtitle("Native")
 dev.off()
 
 # Proportion of infected Ev with Bipolaris
@@ -263,5 +269,5 @@ etil %>%
         legend.position = "none") +
   scale_fill_manual(values = colpal) +
   ylab("Proportion infected with Bipolaris") +
-  ggtitle("Native (Elymus)")
+  ggtitle("Native")
 dev.off()
