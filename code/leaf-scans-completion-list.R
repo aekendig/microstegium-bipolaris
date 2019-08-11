@@ -19,7 +19,7 @@ scans_jn <- tibble(
   files = list.files("../Leaf Scans/Leaf Scans June 2019")
 )
 scans_jl <- tibble(
-  files = list.files("~/OneDrive - University of Florida/Flory Lab/Leaf Scans/July 2019/July 2019")
+  files = list.files("~/OneDrive - University of Florida/Flory Lab/Leaf Scans/July 2019")
 )
 
 # data collection sheet
@@ -178,10 +178,13 @@ notes_fun(field_jl)
 dup_fun(scans_jl_d)
 edge_fun(field_jl, scans_jl_d)
 mv_fun(field_jl, scans_jl_d)
+
 ev_fun(field_jl, scans_jl_d)
-# D4 1W  Ev3 - bag empty
+# D1 6F EvA - bag empty
+# D1 7F Ev1 - bag empty
+# D2 6W is unedited, but all leaves are present, double check with Laney about cropping order (she uploaded it)
+# D4 1W Ev3 - bag empty
 # D4 1W EvA - leaf included, marked as not collected, check early Aug datasheet
-# D4 4W  1 - bag empty
+# D4 4W Ev1 - bag empty
 # D4 4W EvA - leaf included, marked as not collected, check early Aug datasheet
-# D2 6W is unedited, but all leaves are present, double check with laney about cropping order (she uploaded it)
-# emailed Lili and Vida about D1 F leaves (guest contributor uploaded other scans from that bag)
+# Change D3 8F Ev3 on field datasheet to scan collected?
