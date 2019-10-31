@@ -21,10 +21,14 @@ scans_jn <- tibble(
 scans_jl <- tibble(
   files = list.files("~/OneDrive - University of Florida/Flory Lab/Leaf Scans/July 2019")
 )
+scans_ea <- tibble(
+  files = list.files("~/OneDrive - University of Florida/Flory Lab/Leaf Scans/Early August 2019")
+)
 
 # data collection sheet
 field_jn <- read_csv("./data/focal-disease-jun-2019-density-exp.csv")
 field_jl <- read_csv("./data/focal-disease-jul-2019-density-exp.csv")
+field_ea <- read_csv("./data/focal-disease-early-aug-2019-density-exp.csv")
 
 
 #### edit data ####
@@ -72,6 +76,8 @@ scans_jn_l <- litt_fun(scans_jn)
 
 scans_jl_d <- dens_fun(scans_jl)
 scans_jl_l <- litt_fun(scans_jl)
+
+scans_ea_d <- dens_fun(scans_ea)
 
 
 #### analyze data ####
@@ -178,7 +184,6 @@ notes_fun(field_jl)
 dup_fun(scans_jl_d)
 edge_fun(field_jl, scans_jl_d)
 mv_fun(field_jl, scans_jl_d)
-
 ev_fun(field_jl, scans_jl_d)
 # D1 6F EvA - bag empty
 # D1 7F Ev1 - bag empty
@@ -188,3 +193,15 @@ ev_fun(field_jl, scans_jl_d)
 # D4 4W Ev1 - bag empty
 # D4 4W EvA - leaf included, marked as not collected, check early Aug datasheet
 # Change D3 8F Ev3 on field datasheet to scan collected?
+
+# Early August data
+notes_fun(field_ea) # a lot with too few leaves to collect (all Ev)
+dup_fun(scans_ea_d)
+edge_fun(field_ea, scans_ea_d) # missing D1 6F - bag is empty
+mv_fun(field_ea, scans_ea_d) # missing D1 5W Mv 3 - bag is empty
+filter(field_ea, site == "D1" & treatment == "water" & plot == 5 & sp == "Mv" & ID == 3) %>% data.frame() # it does have a note that indicates a leaf maybe wasn't collected
+ev_fun(field_ea, scans_ea_d)
+
+# check leaves that were collected, but marked as not in July
+filter(field_ea, site == "D4" & treatment == "water" & plot == 1 & sp == "Ev" & ID == "A") %>% data.frame() # not collected
+filter(field_ea, site == "D4" & treatment == "water" & plot == 4 & sp == "Ev" & ID == "A") %>% data.frame() # dead
