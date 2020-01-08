@@ -1,8 +1,8 @@
 ##### info ####
 
-# file: ev-seeds-data-processing
+# file: ev_seeds_data_processing_2018
 # author: Amy Kendig, Chris Wojan
-# date last edited: 7/29/19
+# date last edited: 2/6/20
 # goal: edit Ev seed data and check for errors
 # background: spikelet counts for all samples, seed counts for a subset
 
@@ -10,23 +10,23 @@
 #### set up ####
 
 # clear all existing data
-# rm(list=ls())
+rm(list=ls())
 
 # load packages
-# library(tidyverse)
+library(tidyverse)
 
 # import all raw data files
-di <- read_csv("./data/ev-spikelets-2018-density-litter-exp.csv")
+di <- read_csv("./data/ev_spikelets_2018_density_litter_exp.csv")
 di
-de <- read_csv("./data/ev-seed-subset-2018-density-exp.csv")
+de <- read_csv("./data/ev_seed_subset_2018_density_exp.csv")
 de
-dea <- read_csv("./data/ev-seeds-early-aug-2018-density-exp.csv")
+dea <- read_csv("./data/ev_seeds_early_aug_2018_density_exp.csv")
 dea
-dla <- read_csv("./data/all-disease-seeds-late-aug-2018-density-exp.csv")
+dla <- read_csv("./data/all_disease_seeds_late_aug_2018_density_exp.csv")
 dla
-ds <- read_csv("./data/ev-disease-seeds-sep-2018-density-exp.csv")
+ds <- read_csv("./data/ev_disease_seeds_sep_2018_density_exp.csv")
 ds
-dl <- read_csv("./data/ev-seeds-2018-litter-exp.csv")
+dl <- read_csv("./data/ev_seeds_2018_litter_exp.csv")
 dl
 
 
@@ -50,6 +50,7 @@ unique(de$collect_date)
 # add and modify columns in di
 di <- di %>%
   mutate(
+    experiment = str_extract(site, "[aA-zZ]+") %>% recode("D" = "density", "L" = "litter"),
     treatment = str_extract(plot, "[aA-zZ]+") %>% recode("W" = "water", "F" = "fungicide"),
     plot = str_extract(plot, "[0-9]+") %>% as.numeric(),
     month = case_when(
@@ -68,6 +69,7 @@ di <- di %>%
   )
 
 # check that modifications worked
+unique(di$experiment)
 select(di, collect_date, month) %>% unique()
 select(di, plant, age, ID, focal) %>% unique() %>% data.frame
 filter(di, plant == "?")
@@ -137,7 +139,7 @@ dl <- dl %>%
                       month == "seeds_sep" ~ "September"),
     ID = "A",
     sp = "Ev"
-  )
+  ) # note that late August data may be unreliable (in metadata)
 
 # combine field data
 df <- full_join(dl, dea) %>%
@@ -149,6 +151,7 @@ unique(df$ID)
 
 df <- df %>%
   mutate(
+    experiment = str_extract(site, "[aA-zZ]+") %>% recode("D" = "density", "L" = "litter"),
     treatment = recode(treatment, "Water" = "water", "Fungicide" = "fungicide"),
     ID = case_when(ID == "A" ~ "A",
                    TRUE ~ str_remove(ID, "A")),
@@ -367,6 +370,12 @@ m3b <- lm(seeds ~ 0 + spikelet_weight.mg, data = d3)
 summary(m3b) # R2 is 0.97
 AIC(m3, m3b)  # b is slightly lower
 
+# refit m3b without the plant that is missing spikelet counts
+m3c <- lm(seeds ~ 0 + spikelet_weight.mg, data = filter(d3, !is.na(spikelets)))
+
+# compare regressions for estimating seeds
+AIC(m1b, m3c)
+
 # modify m3 to include more info
 m4 <- lm(seeds ~ spikelet_weight.mg * treatment, data = d2)
 summary(m4)
@@ -376,11 +385,14 @@ AIC(m3, m4, m5)
 # m3 is the best fit model and adding treatment hardly changes the slope of the relationship.
 
 # visualize zero intercept model
-d3  %>%
+m3b_plot <- d3  %>%
   filter(!is.na(seeds)) %>%
   ggplot(aes(x = spikelet_weight.mg, y = seeds))  +
   geom_point(aes(colour = age, shape = treatment), size = 2) +
-  geom_abline(intercept = 0, slope = coef(m3b)[1])
+  geom_abline(intercept = 0, slope = coef(m3b)[1], linetype = "dashed") +
+  theme_bw() +
+  xlab("spikelet weight (mg)")
+m3b_plot
 
 # residuals
 d3 %>%
@@ -397,5 +409,23 @@ d4 <- d3 %>%
     seeds = ifelse(is.na(seeds), spikelet_weight.mg * coef(m3b)[1], seeds)
   )
 
-## Save data
-eseeds = d4
+# format data for saving
+d4d <- d4 %>%
+  filter(experiment == "density") %>%
+  select(month, collect_date, spikelet_date, seed_date, site, plot, treatment, plant, sp, ID, age, focal, spikelets, spikelet_weight.mg, seeds, seed_weight.mg, reps, ID_unclear, spikelet_notes)
+
+d4l <- d4 %>%
+  filter(experiment == "litter") %>%
+  select(month, collect_date, spikelet_date, seed_date, site, plot, treatment, plant, sp, ID, age, focal, spikelets, spikelet_weight.mg, seeds, seed_weight.mg, reps, ID_unclear, spikelet_notes)
+
+
+#### save output ####
+
+# seeds prediction relationship
+pdf("./output/ev_seeds_data_processing_2018_seeds_spikelet_weight.pdf", width = 5, height = 4)
+m3b_plot
+dev.off()
+
+# density and litter experiment
+write_csv(d4d, "./intermediate-data/ev_processed_seeds_2018_density_exp.csv")
+write_csv(d4l, "./intermediate-data/ev_processed_seeds_2018_litter_exp.csv")
