@@ -16,7 +16,7 @@ rm(list=ls())
 library(tidyverse)
 
 # import raw data file
-fiji <- read_delim("./data/leaf-scans-litter-exp-20180927/text-output/ev_leaf_scan_text_output_sep_2018.tsv", delim = "\t")
+fiji <- read_delim("./data/leaf-scans-litter-exp-20180927/text-output/ev_leaf_scan_text_output_sep_2018_litter_exp.tsv", delim = "\t")
 
 
 #### edit data ####

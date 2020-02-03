@@ -2,7 +2,7 @@
 
 # file: ev_performace_disease_2018_litter_exp
 # author: Amy Kendig
-# date last edited: 1/14/20
+# date last edited: 2/3/20
 # goal: evaluate the effects of litter treatments and environmental covariates on the performance and disease of Elymus adults
 
 
@@ -118,7 +118,12 @@ plots2 <- plots %>%
   mutate(sterilized = case_when(litter == "live" ~ 0,
                                 TRUE ~ 1),
          litter_weight.scaled = (litter_weight.g - mean(litter_weight.g)) / sd(litter_weight.g),
-         litter_microbes = recode(sterilized, "0" = "present", "1" = "absent"))
+         litter_microbes = recode(sterilized, "0" = "present", "1" = "absent"),
+         litter_density = fct_relevel(litter_density, "none", "low", "medium"))
+
+# edit covariates
+cov_plot2 <- cov_plot %>%
+  mutate(litter_density = fct_relevel(litter_density, "none", "low", "medium"))
 
 # combine Ev data
 # remove L2 plot 3: not Elymus virginicus
@@ -142,7 +147,7 @@ elymus <- full_join(dat_may2, dat_jun2) %>%
          prop_infec_sep = leaves_infec_sep / leaves_tot_sep,
          prop_infec_change = prop_infec_sep - prop_infec_jul,
          prop_infec_rel_change = prop_infec_change / dates$days_jul[4]) %>%
-  left_join(cov_plot) %>%
+  left_join(cov_plot2) %>%
   left_join(plots2)
 
 # edit damage data
@@ -154,8 +159,10 @@ damage <- leaf_scans %>%
   full_join(dat_sep) %>%
   filter(!(site == "L2" & plot == 3)) %>%
   mutate(leaves_infec2 = ifelse(leaves_infec == 0 & !is.na(leaf_area.pix), 1, leaves_infec),
-         prop_dam = lesion_area.pix * leaves_infec2 / (leaf_area.pix * leaves_tot)) %>%
-  left_join(cov_plot) %>%
+         prop_dam = lesion_area.pix * leaves_infec2 / (leaf_area.pix * leaves_tot),
+         prop_dam = case_when(is.na(leaf_area.pix) & leaves_infec == 0 ~ 0,
+                              TRUE ~ prop_dam)) %>%
+  left_join(cov_plot2) %>%
   left_join(plots2)
 
 # edit seed data
@@ -179,8 +186,11 @@ seeds <- seed_counts %>%
   mutate(spikelets = replace_na(spikelets, 0),
          spikelet_weight.mg = replace_na(spikelet_weight.mg, 0),
          seeds = replace_na(seeds, 0)) %>%
-  left_join(cov_plot) %>%
+  left_join(cov_plot2) %>%
   left_join(plots2)
+
+# combine seeds and damage
+seed_dam <- inner_join(seeds, damage)
 
 
 #### raw data figures ####
@@ -189,13 +199,14 @@ seeds <- seed_counts %>%
 sm_txt = 6
 lg_txt = 8
 
-# microbes color palette
+# color palettes
 col_pal_mic <- c("white", "black")
+col_pal_lit <- c("white", "yellow", "orange", "red")
 
 # base summary figure
 base_fig <- ggplot(elymus, aes(x = litter_weight.g)) +
-  stat_summary(aes(fill = litter_microbes), geom = "point", fun.y = mean, position = position_dodge(15), shape = 21, size = 3) +
   stat_summary(aes(group = litter_microbes), geom = "errorbar", fun.data = mean_cl_boot, width = 5, position = position_dodge(15)) +
+  stat_summary(aes(fill = litter_microbes), geom = "point", fun.y = mean, position = position_dodge(15), shape = 21, size = 3) +
   scale_fill_manual(values = col_pal_mic, name = "Litter microbes") +
   xlab("Litter weight (g)") +
   theme_bw() +
@@ -207,9 +218,44 @@ base_fig <- ggplot(elymus, aes(x = litter_weight.g)) +
         legend.text = element_text(color = "black", size = sm_txt),
         legend.position = "none")
 
+# site summary figure
+site_fig <- ggplot(elymus, aes(x = site)) +
+  stat_summary(aes(group = litter_density), geom = "errorbar", fun.data = mean_cl_boot, width = 0.2) +
+  stat_summary(aes(fill = litter_density), geom = "point", fun.y = mean, shape = 21, size = 2) +
+  scale_fill_manual(values = col_pal_lit, name = "Litter amount") +
+  xlab("Site") +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_text(color = "black", size = lg_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.key.height = unit(0.3, "cm"),
+        legend.position = "none")
+
+# scatterplots
+scat_fig <- ggplot(seed_dam, aes(x = prop_dam, y = seeds)) +
+  geom_point(aes(fill = site), shape = 21) +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_text(color = "black", size = lg_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.key.height = unit(0.3, "cm"),
+        legend.position = "none") +
+  scale_fill_manual(values = c("black", "blue", "purple", "red"), name = "Site")
+
 # June height raw data
 fig_ht_jn <- base_fig %+%
   aes(y = height_rel_change_jun) +
+  theme(legend.position = c(0.8, 0.3)) +
+  ylab(expression(paste("Height change\nsince May (cm ", day^{-1}, ")", sep = "")))
+
+fig_ht_jn_site <- site_fig %+%
+  aes(y = height_rel_change_jun) %+%
   theme(legend.position = c(0.8, 0.3)) +
   ylab(expression(paste("Height change\nsince May (cm ", day^{-1}, ")", sep = "")))
 
@@ -218,8 +264,16 @@ fig_ht_jl <- base_fig %+%
   aes(y = height_rel_change_jul) +
   ylab(expression(paste("Height change\nsince June (cm ", day^{-1}, ")", sep = "")))
 
+fig_ht_jl_site <- site_fig %+%
+  aes(y = height_rel_change_jul) +
+  ylab(expression(paste("Height change\nsince June (cm ", day^{-1}, ")", sep = "")))
+
 # June basal raw data
 fig_bs_jn <- base_fig %+%
+  aes(y = basal_rel_change_jun) +
+  ylab(expression(paste("Basal circumference\nchange since May (cm ", day^{-1}, ")", sep = "")))
+
+fig_bs_jn_site <- site_fig %+%
   aes(y = basal_rel_change_jun) +
   ylab(expression(paste("Basal circumference\nchange since May (cm ", day^{-1}, ")", sep = "")))
 
@@ -228,8 +282,16 @@ fig_bs_jl <- base_fig %+%
   aes(y = basal_rel_change_jul) +
   ylab(expression(paste("Basal circumference\nchange since June (cm ", day^{-1}, ")", sep = "")))
 
+fig_bs_jl_site <- site_fig %+%
+  aes(y = basal_rel_change_jul) +
+  ylab(expression(paste("Basal circumference\nchange since June (cm ", day^{-1}, ")", sep = "")))
+
 # July tiller raw data
 fig_tl <- base_fig %+%
+  aes(y = tillers_rel_change) +
+  ylab("Change in number of tillers\nper day since June")
+
+fig_tl_site <- site_fig %+%
   aes(y = tillers_rel_change) +
   ylab("Change in number of tillers\nper day since June")
 
@@ -238,8 +300,16 @@ fig_sd <- base_fig %+% seeds %+%
   aes(y = seeds) +
   ylab("Number of seeds\nproduced per year")
 
+fig_sd_site <- site_fig %+% seeds %+%
+  aes(y = seeds) +
+  ylab("Number of seeds\nproduced per year")
+
 # prop infection July
 fig_pj <- base_fig %+%
+  aes(y = prop_infec_jul) +
+  ylab("Proportion leaves with\nlesions in July")
+
+fig_pj_site <- site_fig %+%
   aes(y = prop_infec_jul) +
   ylab("Proportion leaves with\nlesions in July")
 
@@ -248,8 +318,16 @@ fig_ps <- base_fig %+%
   aes(y = prop_infec_sep) +
   ylab("Proportion leaves with\nlesions in September")
 
+fig_ps_site <- site_fig %+%
+  aes(y = prop_infec_sep) +
+  ylab("Proportion leaves with\nlesions in September")
+
 # prop infection raw data
 fig_pi <- base_fig %+%
+  aes(y = prop_infec_rel_change) +
+  ylab("Change in proportion leaves\nwith lesions per day")
+
+fig_pi_site <- site_fig %+%
   aes(y = prop_infec_rel_change) +
   ylab("Change in proportion leaves\nwith lesions per day")
 
@@ -258,6 +336,43 @@ fig_dm <- base_fig %+% damage %+%
   aes(y = prop_dam) +
   theme(legend.position = c(0.8, 0.7)) +
   ylab("Proportion of leaf area\nwith lesions")
+
+fig_dm_site <- site_fig %+% damage %+%
+  aes(y = prop_dam) +
+  theme(legend.position = c(0.2, 0.7)) +
+  ylab("Proportion of leaf area\nwith lesions")
+
+# scatterplots
+
+# damage and soil moisture
+fig_dam_soil <- scat_fig %+%
+  aes(x = soil_moisture.prop, y = prop_dam) %+%
+  xlab("Proportion soil moisture") +
+  ylab("Proportion of leaf area\nwith lesions")
+
+# seeds and soil moisture
+fig_seed_soil <- scat_fig %+%
+  aes(x = soil_moisture.prop, y = seeds) %+%
+  theme(legend.position = c(0.2, 0.7)) +
+  xlab("Proportion soil moisture") +
+  ylab("Number of seeds")
+
+# damage and canopy
+fig_dam_can <- scat_fig %+%
+  aes(x = canopy_cover.prop, y = prop_dam) %+%
+  xlab("Proportion canopy cover") +
+  ylab("Proportion of leaf area\nwith lesions")
+
+# seeds and soil moisture
+fig_seed_can <- scat_fig %+%
+  aes(x = canopy_cover.prop, y = seeds) %+%
+  xlab("Proportion canopy cover") +
+  ylab("Number of seeds")
+
+# seeds and damage
+fig_seed_dam <- scat_fig +
+  xlab("Proportion of leaf area with lesions") +
+  ylab("Number of seeds")
 
 # combine plots and save
 pdf("./output/ev_performance_raw_2018_litter_exp.pdf", width = 6, height = 6)
@@ -274,34 +389,59 @@ plot_grid(fig_pj, fig_ps, fig_pi, fig_dm,
           label_size = lg_txt) 
 dev.off()
 
+pdf("./output/ev_performance_site_raw_2018_litter_exp.pdf", width = 6, height = 6)
+plot_grid(fig_ht_jn_site, fig_ht_jl_site, fig_bs_jn_site, fig_bs_jl_site, fig_tl_site, fig_sd_site,
+          ncol = 2,
+          labels = letters[1:6],
+          label_size = lg_txt)
+dev.off()
+
+pdf("./output/ev_disease_site_raw_2018_litter_exp.pdf", width = 6, height = 4)
+plot_grid(fig_pj_site, fig_ps_site, fig_pi_site, fig_dm_site,
+          ncol = 2,
+          labels = letters[1:4],
+          label_size = lg_txt) 
+dev.off()
+
+pdf("./output/ev_performance_disease_covariates_raw_2018_litter_exp.pdf", width = 6, height = 6)
+plot_grid(fig_seed_soil, fig_dam_soil, fig_seed_can, fig_dam_can, fig_seed_dam,
+          ncol = 2,
+          labels = letters[1:5],
+          label_size = lg_txt)
+dev.off()
+
+
+#### output intermediate data ####
+write_csv(seed_dam, "./intermediate-data/ev_damage_seeds_covariates_2018_litter_exp.csv")
+
 
 #### June height models ####
 
 # full model
-mod_ht_jn_1 <- brm(height_change_jun ~ sterilized * litter_weight.scaled + soil_moisture.centered + canopy_cover.centered + (1 |site),
-                   data = elymus,
-                   family = gaussian,
-                   prior <- c(prior(normal(0, 10), class = Intercept),
-                              prior(normal(0, 1), class = b),
-                              prior(cauchy(0, 1), class = sd)),
-                   iter = 6000, warmup = 1000, chains = 3, cores = 2, 
-                   control = list(adapt_delta = 0.9999))
-
-# evaluate full model
-summary(mod_ht_jn_1)
-pp_check(mod_ht_jn_1, nsamples = 100)
-
-# simplify model
-mod_ht_jn_2 <- update(mod_ht_jn_1, formula. = height_change_jun ~ sterilized * litter_weight.scaled + soil_moisture.centered + (1 |site))
-mod_ht_jn_3 <- update(mod_ht_jn_1, formula. = height_change_jun ~ sterilized * litter_weight.scaled + canopy_cover.centered + (1 |site))
-mod_ht_jn_4 <- update(mod_ht_jn_1, formula. = height_change_jun ~ sterilized * litter_weight.scaled + (1 |site))
-
-# compare models
-loo_ht_jn <- list(loo(mod_ht_jn_1, reloo = T), loo(mod_ht_jn_2, reloo = T), loo(mod_ht_jn_3, reloo = T), loo(mod_ht_jn_4, reloo = T))
-loo::loo_compare(loo_ht_jn)
-# all essentially equal
-
-# evaluate simplest model
-summary(mod_ht_jn_4)
-plot(mod_ht_jn_4)
-pp_check(mod_ht_jn_4, nsamples = 100)
+# mod_ht_jn_1 <- brm(height_change_jun ~ sterilized * litter_weight.scaled + soil_moisture.centered + canopy_cover.centered + (1 |site),
+#                    data = elymus,
+#                    family = gaussian,
+#                    prior <- c(prior(normal(0, 10), class = Intercept),
+#                               prior(normal(0, 1), class = b),
+#                               prior(cauchy(0, 1), class = sd)),
+#                    iter = 6000, warmup = 1000, chains = 3, cores = 2, 
+#                    control = list(adapt_delta = 0.9999))
+# 
+# # evaluate full model
+# summary(mod_ht_jn_1)
+# pp_check(mod_ht_jn_1, nsamples = 100)
+# 
+# # simplify model
+# mod_ht_jn_2 <- update(mod_ht_jn_1, formula. = height_change_jun ~ sterilized * litter_weight.scaled + soil_moisture.centered + (1 |site))
+# mod_ht_jn_3 <- update(mod_ht_jn_1, formula. = height_change_jun ~ sterilized * litter_weight.scaled + canopy_cover.centered + (1 |site))
+# mod_ht_jn_4 <- update(mod_ht_jn_1, formula. = height_change_jun ~ sterilized * litter_weight.scaled + (1 |site))
+# 
+# # compare models
+# loo_ht_jn <- list(loo(mod_ht_jn_1, reloo = T), loo(mod_ht_jn_2, reloo = T), loo(mod_ht_jn_3, reloo = T), loo(mod_ht_jn_4, reloo = T))
+# loo::loo_compare(loo_ht_jn)
+# # all essentially equal
+# 
+# # evaluate simplest model
+# summary(mod_ht_jn_4)
+# plot(mod_ht_jn_4)
+# pp_check(mod_ht_jn_4, nsamples = 100)

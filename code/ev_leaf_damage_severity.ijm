@@ -20,7 +20,7 @@ outputIm=home + "/image-output";
 //enter output text results folder path
 outputRes=home + "/text-output";
 //enter file name for text results
-outputResTxt=outputRes + "/ev_leaf_scan_text_output_sep_2018.tsv";
+outputResTxt=outputRes + "/ev_leaf_scan_text_output_sep_2018_litter_exp.tsv";
 
 suffix1=".tiff"; //Store potential suffixes as variables
 suffix2=".tif";
@@ -172,4 +172,3 @@ function processFile(input, outputIm, outputRes, file) {
 	run("Close All");
 	run("Collect Garbage");
 }
-

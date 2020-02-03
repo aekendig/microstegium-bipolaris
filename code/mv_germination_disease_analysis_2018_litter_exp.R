@@ -1,8 +1,8 @@
 ##### info ####
 
-# file: mv_germination_disease_2018_litter_exp
+# file: mv_germination_disease_analysis_2018_litter_exp
 # author: Amy Kendig
-# date last edited: 1/14/20
+# date last edited: 2/3/20
 # goal: evaluate the effects of litter treatments and environmental covariates on the germination and disease of Microstegium
 
 
@@ -59,21 +59,20 @@ dat_jul2 <- dat_jul %>%
          mv_germ_bg_jul = mv_germ_ev)
 
 # combine data
-micro <- full_join(select(dat_jun_planted, -plot), select(dat_jun_bg, -plot)) %>%
-  full_join(select(dat_jul2, -plot)) %>%
+micro <- full_join(dat_jun_planted, select(dat_jun_bg, -plot)) %>%
+  full_join(dat_jul2) %>%
   mutate(mv_germ_planted_jun = mv_germ_planted_bg_jun - mv_germ_bg_jun,
          mv_germ_planted_jul = mv_germ_planted_bg_jul - mv_germ_bg_jul,
          mv_prop_infec_jun = mv_infec_jun / mv_germ_planted_bg_jun,
-         mv_prop_infec_jul = mv_infec_jul / mv_germ_planted_bg_jul)
-
-# to combine with covariates, each dataset needs to be used separately because of the different plot numbers
-dat_jun_planted2 <- dat_jun_planted %>%
+         mv_prop_infec_jul = mv_infec_jul / mv_germ_planted_bg_jul) %>%
+  mutate(mv_germ_planted_cor_jun = case_when(mv_germ_planted_jun < 0 ~ 0,
+                                         TRUE ~ mv_germ_planted_jun),
+         mv_germ_planted_cor_jul = case_when(mv_germ_planted_jul < 0 ~ 0,
+                                         TRUE ~ mv_germ_planted_jul)) %>%
   left_join(cov_plot)
 
+# to combine background data with covariates, use the original plot number (removed above)
 dat_jun_bg2 <- dat_jun_bg %>%
-  left_join(cov_plot)
-
-dat_jul3 <- dat_jul2 %>%
   left_join(cov_plot)
 
 
@@ -83,13 +82,14 @@ dat_jul3 <- dat_jul2 %>%
 sm_txt = 6
 lg_txt = 8
 
-# microbes color palette
+# color palettes
 col_pal_mic <- c("white", "black")
+col_pal_lit <- c("white", "yellow", "orange", "red")
 
 # base summary figure
 base_fig <- ggplot(micro, aes(x = litter_weight.g)) +
-  stat_summary(aes(fill = litter_microbes), geom = "point", fun.y = mean, position = position_dodge(15), shape = 21, size = 3) +
   stat_summary(aes(group = litter_microbes), geom = "errorbar", fun.data = mean_cl_boot, width = 5, position = position_dodge(15)) +
+  stat_summary(aes(fill = litter_microbes), geom = "point", fun.y = mean, position = position_dodge(15), shape = 21, size = 3) +
   scale_fill_manual(values = col_pal_mic, name = "Litter microbes") +
   xlab("Litter weight (g)") +
   theme_bw() +
@@ -102,8 +102,42 @@ base_fig <- ggplot(micro, aes(x = litter_weight.g)) +
         legend.position = "none") +
   xlim(0, 205)
 
+# site summary figure
+site_fig <- ggplot(micro, aes(x = site)) +
+  stat_summary(aes(group = litter_density), geom = "errorbar", fun.data = mean_cl_boot, width = 0.2) +
+  stat_summary(aes(fill = litter_density), geom = "point", fun.y = mean, shape = 21, size = 2) +
+  scale_fill_manual(values = col_pal_lit, name = "Litter amount") +
+  xlab("Site") +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_text(color = "black", size = lg_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.key.height = unit(0.3, "cm"),
+        legend.position = "none")
+
+# scatterplots
+scat_fig <- ggplot(micro, aes(x = soil_moisture.prop, y = mv_germ_planted_bg_jun)) +
+  geom_point(aes(fill = site), shape = 21) +
+  theme_bw() +
+  theme(axis.title = element_text(color = "black", size = lg_txt),
+        axis.text = element_text(color = "black", size = sm_txt),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_text(color = "black", size = lg_txt),
+        legend.text = element_text(color = "black", size = sm_txt),
+        legend.key.height = unit(0.3, "cm"),
+        legend.position = "none") +
+  scale_fill_manual(values = c("black", "blue", "purple", "red"), name = "Site")
+
 # Background Mv germination June
 fig_bg_jn <- base_fig %+%
+  aes(y = mv_germ_bg_jun) +
+  ylab("Background\ngerminants in June")
+
+fig_bg_jn_site <- site_fig %+%
   aes(y = mv_germ_bg_jun) +
   ylab("Background\ngerminants in June")
 
@@ -113,8 +147,17 @@ fig_bg_jl <- base_fig %+%
   theme(legend.position = c(0.8, 0.7)) +
   ylab("Background\ngerminants in July")
 
+fig_bg_jl_site <- site_fig %+%
+  aes(y = mv_germ_bg_jul) +
+  theme(legend.position = c(0.8, 0.7)) +
+  ylab("Background\ngerminants in July")
+
 # Background + planted Mv germination June
 fig_bp_jn <- base_fig %+%
+  aes(y = mv_germ_planted_bg_jun) +
+  ylab("Background and planted\ngerminants in June")
+
+fig_bp_jn_site <- site_fig %+%
   aes(y = mv_germ_planted_bg_jun) +
   ylab("Background and planted\ngerminants in June")
 
@@ -123,18 +166,35 @@ fig_bp_jl <- base_fig %+%
   aes(y = mv_germ_planted_bg_jul) +
   ylab("Background and planted\ngerminants in July")
 
+fig_bp_jl_site <- site_fig %+%
+  aes(y = mv_germ_planted_bg_jul) +
+  ylab("Background and planted\ngerminants in July")
+
 # Planted Mv germination June
 fig_pl_jn <- base_fig %+%
-  aes(y = mv_germ_planted_jun) +
+  aes(y = mv_germ_planted_cor_jun) +
   ylab("Planted\ngerminants in June")
+
+fig_pl_jn_site <- site_fig %+%
+  aes(y = mv_germ_planted_cor_jun) +
+  ylab("Planted\ngerminants in June") +
+  scale_fill_manual(values = col_pal_lit[2:4])
 
 # Planted Mv germination July
 fig_pl_jl <- base_fig %+%
-  aes(y = mv_germ_planted_jul) +
+  aes(y = mv_germ_planted_cor_jul) +
+  ylab("Planted\ngerminants in July")
+
+fig_pl_jl_site <- site_fig %+%
+  aes(y = mv_germ_planted_cor_jul) +
   ylab("Planted\ngerminants in July")
 
 # Mv infection June
 fig_pi_jn <- base_fig %+%
+  aes(y = mv_prop_infec_jun) +
+  ylab("Proportion germinants\nwith lesions in June")
+
+fig_pi_jn_site <- site_fig %+%
   aes(y = mv_prop_infec_jun) +
   ylab("Proportion germinants\nwith lesions in June")
 
@@ -144,6 +204,36 @@ fig_pi_jl <- base_fig %+%
   theme(legend.position = c(0.8, 0.7)) +
   ylab("Proportion germinants\nwith lesions in July")
 
+fig_pi_jl_site <- site_fig %+%
+  aes(y = mv_prop_infec_jul) +
+  theme(legend.position = c(0.8, 0.7)) +
+  ylab("Proportion germinants\nwith lesions in July")
+
+# scatter plots
+
+# June planted/bg vs. soil moisture
+fig_bp_jn_soil <- scat_fig %+%
+  theme(legend.position = c(0.15, 0.7)) +
+  xlab("Proportion soil moisture") +
+  ylab("Background and planted\ngerminants in June")
+
+# July planted/bg vs. soil moisture
+fig_bp_jl_soil <- scat_fig %+%
+  aes(y = mv_germ_planted_bg_jul) +
+  xlab("Proportion soil moisture") +
+  ylab("Background and planted\ngerminants in July")
+
+# June planted/bg vs. canopy
+fig_bp_jn_can <- scat_fig %+%
+  aes(x = canopy_cover.prop) +
+  xlab("Proportion canopy cover") +
+  ylab("Background and planted\ngerminants in June")
+
+# July planted/bg vs. canopy
+fig_bp_jl_can <- scat_fig %+%
+  aes(x = canopy_cover.prop, y = mv_germ_planted_bg_jul) +
+  xlab("Proportion canopy cover") +
+  ylab("Background and planted\ngerminants in July")
 
 # combine plots and save
 pdf("./output/mv_germination_raw_2018_litter_exp.pdf", width = 6, height = 6)
@@ -159,3 +249,28 @@ plot_grid(fig_pi_jn, fig_pi_jl,
           labels = letters[1:2],
           label_size = lg_txt) 
 dev.off()
+
+pdf("./output/mv_germination_site_raw_2018_litter_exp.pdf", width = 6, height = 6)
+plot_grid(fig_bg_jn_site, fig_bg_jl_site, fig_bp_jn_site, fig_bp_jl_site, fig_pl_jn_site, fig_pl_jl_site,
+          ncol = 2,
+          labels = letters[1:6],
+          label_size = lg_txt)
+dev.off()
+
+pdf("./output/mv_disease_site_raw_2018_litter_exp.pdf", width = 6, height = 2)
+plot_grid(fig_pi_jn_site, fig_pi_jl_site,
+          ncol = 2,
+          labels = letters[1:2],
+          label_size = lg_txt) 
+dev.off()
+
+pdf("./output/mv_germination_covariates_raw_2018_litter_exp.pdf", width = 6, height = 4)
+plot_grid(fig_bp_jn_soil, fig_bp_jl_soil, fig_bp_jn_can, fig_bp_jl_can,
+          ncol = 2,
+          labels = letters[1:4],
+          label_size = lg_txt)
+dev.off()
+
+
+#### output intermdiate data ####
+write_csv(micro, "intermediate-data/mv_germination_covariates_2018_litter_exp.csv")

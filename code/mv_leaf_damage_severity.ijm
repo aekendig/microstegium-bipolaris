@@ -11,9 +11,16 @@ function getTitleStripExtension() {
   return t; 
 } 
 
-input=//enter input folder path;
-outputIm=//enter output image folder path;
-outputRes=//enter output text results folder path;
+//enter home folder (errors in path names will result in the error "No window with the title 'Summary' found"
+home="/Users/AmyKendig/Dropbox (UFL)/big-oaks-field-experiment-2018-2019/microstegium-bipolaris/data/leaf-scans-litter-exp-20190705";
+//enter input folder path
+input=home + "/scans"; 
+//enter output image folder path
+outputIm=home + "/image-output";
+//enter output text results folder path
+outputRes=home + "/text-output";
+//enter file name for text results
+outputResTxt=outputRes + "/mv_leaf_scan_text_output_jul_2019_litter_exp.tsv";
 
 suffix1=".tif"; //Store potential suffixes as variables
 suffix2=".tiff";
@@ -22,9 +29,7 @@ processFolder(input);
 
 // saves results for all images in a single file (moved from function processFolder) 
 selectWindow("Summary"); 
-//saveAs("Results", outputRes + "/All_Results_Mv_tif.tsv"); //change for appropriate suffix 
-//saveAs("Results", outputRes + "/All_Results_Mv_tiff.tsv");
-saveAs("Results", outputRes + "/All_Results_Mv_tiff_edited.tsv");
+saveAs("Results", outputResTxt);
 
 // function to scan folders/subfolders/files to find files with either correct suffix
 function processFolder(input) {
@@ -38,7 +43,6 @@ function processFolder(input) {
 		if(endsWith(list[i], suffix2))
 			processFile(input, outputIm, outputRes, list[i]);	
 	}
- 
 }
 
 // full process function
@@ -103,7 +107,6 @@ function processFile(input, outputIm, outputRes, file) {
 	roiManager("Delete"); // clear ROI Manager for next image
 	run("Duplicate...", "title=lesions:"+RGBpic); // picture to isolate lesions from leaf
 	run("Duplicate...", "title=output:"+RGBpic); // picture to save lesion image
-	run("Duplicate...", "title=greens:"+RGBpic); // picture to isolate green space from lesions
 	selectWindow("lesions:"+RGBpic);
 	// color threshold function (Lab) to select lesions and ignore leaf
 	min=newArray(3);
@@ -159,91 +162,13 @@ function processFile(input, outputIm, outputRes, file) {
 	selectWindow("output:"+RGBpic); // select image of leaf
 	roiManager("Show All"); // overlay the lesion ROIs made above
 	roiManager("Draw"); // draw lesions on it
-	selectWindow("greens:"+RGBpic); // select the image to separate the lesions from the green space
-	roiManager("Show All"); // overlay the lesion ROIs made above
 
-	//Finish the process and save the results if no lesions
-	if(roiManager("count") < 1){
-		selectWindow("output:"+RGBpic); // select image of leaf
-		roiManager("Show All"); // overlay the green ROIs made above
-		roiManager("Draw"); // draw green area on it
-		save(outputIm + "/" + RGBpic + "_lesions" + ".tif"); // save image with lesions and green area
-		if (roiManager("count") > 0) roiManager("Delete"); // clear ROI Manager for next image
-		selectWindow("Results"); 
-		saveAs("Results", outputRes + "/" + RGBpic + "_Results.tsv"); // save info on lesions and green area
-		run("Clear Results");
-		run("Close All");
-		run("Collect Garbage");
-	}
-
-	//Remove green space in lesions before saving results if lesions are present
-	if(roiManager("count") > 0){
-		if (roiManager("count") > 1) roiManager("Combine"); // combine all ROIs into one object if more than one
-		if(roiManager("count") == 1) roiManager("Select", 0); // select one if only one ROI
-		run("Clear Outside"); // clear leaf outside lesions
-		run("Hide Overlay"); // remove ROIs
-		roiManager("Delete"); // clear ROI Manager for next image
-		// color threshold function (HSB) to select the greens and ignore the lesions
-		min=newArray(3);
-		max=newArray(3);
-		filter=newArray(3);
-		a=getTitle();
-		run("HSB Stack");
-		run("Convert Stack to Images");
-		selectWindow("Hue");
-		rename("0");
-		selectWindow("Saturation");
-		rename("1");
-		selectWindow("Brightness");
-		rename("2");
-		min[0]=38;
-		max[0]=120; // hue is 38 to 120
-		filter[0]="pass";
-		min[1]=75;
-		max[1]=255; // saturation is 75 to 255
-		filter[1]="pass";
-		min[2]=0;
-		max[2]=254; // brightness is 0 to 254
-		filter[2]="pass";
-		for (i=0;i<3;i++){
-		  selectWindow(""+i);
-		  setThreshold(min[i], max[i]);
-		  run("Convert to Mask");
-		  if (filter[i]=="stop")  run("Invert");
-		}
-		imageCalculator("AND create", "0","1");
-		imageCalculator("AND create", "Result of 0","2");
-		for (i=0;i<3;i++){
-		  selectWindow(""+i);
-		  close();
-		}
-		selectWindow("Result of 0");
-		close();
-		selectWindow("Result of Result of 0");
-		rename(a);
-		// end of color threshold function
-		run("Despeckle"); // refine image
-		run("Dilate");
-		run("Dilate");
-		run("Close-");
-		run("Erode");
-		run("Erode");
-		run("Remove Outliers...", "radius=5 threshold=50 which=Dark");
-		run("Analyze Particles...", "display include summarize add"); // measure area of greens
-		run("Colors...", "foreground=cyan background=white selection=yellow"); // set new line color to blue
-		selectWindow("output:"+RGBpic); // select image of leaf
-		roiManager("Show All"); // overlay the green ROIs made above
-		roiManager("Draw"); // draw green area on it
-		save(outputIm + "/" + RGBpic + "_lesions" + ".tif"); // save image with lesions and green area
-		if (roiManager("count") > 0) roiManager("Delete"); // clear ROI Manager for next image
-		selectWindow("Results"); 
-		saveAs("Results", outputRes + "/" + RGBpic + "_Results.tsv"); // save info on lesions and green area
-		run("Clear Results");
-		run("Close All");
-		run("Collect Garbage");
-	}
-	
+	//Save the results if no lesions
+	save(outputIm + "/" + RGBpic + "_lesions" + ".tif"); // save image with lesions and green area
+	if (roiManager("count") > 0) roiManager("Delete"); // clear ROI Manager for next image
+	selectWindow("Results"); 
+	saveAs("Results", outputRes + "/" + RGBpic + "_Results.tsv"); // save info on lesions and green area
+	run("Clear Results");
+	run("Close All");
+	run("Collect Garbage");
 }
-
-
-
