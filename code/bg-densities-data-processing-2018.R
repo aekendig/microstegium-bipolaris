@@ -21,10 +21,10 @@ source("./code/ev-survival-data-processing-2018.R")
 rm(list = setdiff(ls(), "esurv"))
 
 # import data
-jn <- read_csv("./data/bg-counts-jun-2018-density-exp.csv")
-jl <- read_csv("./data/bg-counts-jul-2018-density-exp.csv")
-ea <- read_csv("./data/bg-ev-counts-early-aug-2018-density-exp.csv")
-la <- read_csv("./data/bg-ev-counts-late-aug-2018-density-exp.csv")
+jn <- read_csv("./data/bg_counts_jun_2018_density_exp.csv")
+jl <- read_csv("./data/bg_counts_jul_2018_density_exp.csv")
+ea <- read_csv("./data/bg_ev_counts_early_aug_2018_density_exp.csv")
+la <- read_csv("./data/bg_ev_counts_late_aug_2018_density_exp.csv")
 
 
 #### edit data ####

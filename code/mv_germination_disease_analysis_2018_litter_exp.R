@@ -272,5 +272,5 @@ plot_grid(fig_bp_jn_soil, fig_bp_jl_soil, fig_bp_jn_can, fig_bp_jl_can,
 dev.off()
 
 
-#### output intermdiate data ####
+#### output intermediate data ####
 write_csv(micro, "intermediate-data/mv_germination_covariates_2018_litter_exp.csv")

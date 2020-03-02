@@ -9,31 +9,35 @@
 #### set up ####
 
 # clear all existing data
-#rm(list=ls())
+rm(list=ls())
 
 # load packages
-#library(tidyverse)
+library(tidyverse)
 
-# run seed data files
-source("./code/ev-seeds-data-processing-2018.R")
-
-# clear everything except seed data
-rm(list = setdiff(ls(), "eseeds"))
+# import seeds data
+eseeds_dens <- read_csv("./intermediate-data/ev_processed_seeds_2018_density_exp.csv")
+eseeds_lit <- read_csv("./intermediate-data/ev_processed_seeds_2018_litter_exp.csv")
 
 # import survival data
-fjn <- read_csv("./data/focal-size-disease-jun-2018-density-exp.csv") # focal June, height and notes
-fjl <- read_csv("./data/focal-size-disease-jul-2018-density-exp.csv") # focal July, height and notes
-fea <- read_csv("./data/focal-status-early-aug-2018-density-exp.csv") # focal early August, status
-ela <- read_csv("./data/all-disease-seeds-late-aug-2018-density-exp.csv") # all late August, no green and leaves tot
-es <- read_csv("./data/ev-disease-seeds-sep-2018-density-exp.csv") # all Ev Sep, leaves tot
-ew <- read_csv("./data/ev-winter-survival-apr-2019-density-exp.csv") # all Ev over winter
-bw <- read_csv("./data/bg-ev-counts-apr-2019-density-exp.csv") # background counts over winter - not going to use these because I don't think the fall data are that reliable (individuals were difficult to find)
-ejn <- read_csv("./data/ev-size-disease-jun-2018-litter-exp.csv") # litter Ev June, height
-ejl <- read_csv("./data/ev-size-disease-jul-2018-litter-exp.csv") # litter Ev July, height
-esl <- read_csv("./data/ev-disease-sep-2018-litter-exp.csv") # litter Ev Sep, leaves tot
+fjn <- read_csv("./data/focal_size_disease_jun_2018_density_exp.csv") # focal June, height and notes
+fjl <- read_csv("./data/focal_size_disease_jul_2018_density_exp.csv") # focal July, height and notes
+fea <- read_csv("./data/focal_status_early_aug_2018_density_exp.csv") # focal early August, status
+ela <- read_csv("./data/all_disease_seeds_late_aug_2018_density_exp.csv") # all late August, no green and leaves tot
+es <- read_csv("./data/ev_disease_seeds_sep_2018_density_exp.csv") # all Ev Sep, leaves tot
+ew <- read_csv("./data/ev_winter_survival_apr_2019_density_exp.csv") # all Ev over winter
+bw <- read_csv("./data/bg_ev_counts_apr_2019_density_exp.csv") # background counts over winter _ not going to use these because I don't think the fall data are that reliable (individuals were difficult to find)
+ejn <- read_csv("./data/ev_size_disease_jun_2018_litter_exp.csv") # litter Ev June, height
+ejl <- read_csv("./data/ev_size_disease_jul_2018_litter_exp.csv") # litter Ev July, height
+esl <- read_csv("./data/ev_disease_sep_2018_litter_exp.csv") # litter Ev Sep, leaves tot
 
 
 #### edit data ####
+
+# combine seed data
+eseeds <- merge(eseeds_dens %>%
+                  mutate(experiment = "density"), eseeds_lit %>%
+                  mutate(experiment = "litter"), all = T) %>%
+  as_tibble()
 
 # create survival columns
 
@@ -247,3 +251,6 @@ d2 %>%
 
 # save data
 esurv <- d2
+
+#### output intermediate data ####
+write_csv(filter(esurv, !is.na(treatment)), "intermediate-data/ev_survival_2018_density_exp.csv")

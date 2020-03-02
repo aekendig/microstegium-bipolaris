@@ -16,13 +16,13 @@
 #library(GGally)
 
 # import data
-sj <- read_csv("./data/soil-moisture-jun-2018-density-exp.csv") # June soil moisture
-so <- read_csv("./data/soil-moisture-oct-2018-density-exp.csv") # October soil moisture
-cc <- read_csv("./data/canopy-cover-jul-2018-density-exp.csv") # canopy cover
-bj <- read_csv("./data/plot-edge-mv-weight-jul-2018-density-exp.csv") # July biomass and infection
-be <- read_csv("./data/plot-edge-mv-weight-early-aug-2018-density-exp.csv") # early August biomass
-bl <- read_csv("./data/plot-edge-mv-weight-late-aug-2018-density-exp.csv") # late August biomass
-bs <- read_csv("./data/plot-edge-mv-weight-sep-2018-density-exp.csv") # September biomass and infection
+sj <- read_csv("./data/soil_moisture_jun_2018_density_exp.csv") # June soil moisture
+so <- read_csv("./data/soil_moisture_oct_2018_density_exp.csv") # October soil moisture
+cc <- read_csv("./data/canopy_cover_jul_2018_density_exp.csv") # canopy cover
+bj <- read_csv("./data/plot_edge_mv_weight_jul_2018_density_exp.csv") # July biomass and infection
+be <- read_csv("./data/plot_edge_mv_weight_early_aug_2018_density_exp.csv") # early August biomass
+bl <- read_csv("./data/plot_edge_mv_weight_late_aug_2018_density_exp.csv") # late August biomass
+bs <- read_csv("./data/plot_edge_mv_weight_sep_2018_density_exp.csv") # September biomass and infection
 
 
 #### edit data ####
