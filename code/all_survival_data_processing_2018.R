@@ -1,8 +1,8 @@
 ##### info ####
 
-# file: ev-survival-data-processing-2018
+# file: ev_survival_data_processing_2018
 # author: Amy Kendig
-# date last edited: 7/29/19
+# date last edited: 3/3/20
 # goal: calculate Ev survival for summer 2018 and winter 2018/2019
 
 
@@ -14,7 +14,7 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 
-# import seeds data
+# import seeds data (ev_seeds_data_processing_2018.R)
 eseeds_dens <- read_csv("./intermediate-data/ev_processed_seeds_2018_density_exp.csv")
 eseeds_lit <- read_csv("./intermediate-data/ev_processed_seeds_2018_litter_exp.csv")
 
@@ -22,10 +22,11 @@ eseeds_lit <- read_csv("./intermediate-data/ev_processed_seeds_2018_litter_exp.c
 fjn <- read_csv("./data/focal_size_disease_jun_2018_density_exp.csv") # focal June, height and notes
 fjl <- read_csv("./data/focal_size_disease_jul_2018_density_exp.csv") # focal July, height and notes
 fea <- read_csv("./data/focal_status_early_aug_2018_density_exp.csv") # focal early August, status
-ela <- read_csv("./data/all_disease_seeds_late_aug_2018_density_exp.csv") # all late August, no green and leaves tot
+ala <- read_csv("./data/all_disease_seeds_late_aug_2018_density_exp.csv") # all late August, no green and leaves tot
 es <- read_csv("./data/ev_disease_seeds_sep_2018_density_exp.csv") # all Ev Sep, leaves tot
+ms <- read_csv("./data/mv_disease_sep_2018_density_exp.csv") # all Mv Sep, leaves tot
 ew <- read_csv("./data/ev_winter_survival_apr_2019_density_exp.csv") # all Ev over winter
-bw <- read_csv("./data/bg_ev_counts_apr_2019_density_exp.csv") # background counts over winter _ not going to use these because I don't think the fall data are that reliable (individuals were difficult to find)
+bw <- read_csv("./data/bg_ev_counts_apr_2019_density_exp.csv") # background counts over winter - not going to use these because I don't think the fall data are that reliable (individuals were difficult to find)
 ejn <- read_csv("./data/ev_size_disease_jun_2018_litter_exp.csv") # litter Ev June, height
 ejl <- read_csv("./data/ev_size_disease_jul_2018_litter_exp.csv") # litter Ev July, height
 esl <- read_csv("./data/ev_disease_sep_2018_litter_exp.csv") # litter Ev Sep, leaves tot
@@ -33,13 +34,6 @@ esl <- read_csv("./data/ev_disease_sep_2018_litter_exp.csv") # litter Ev Sep, le
 
 #### edit data ####
 
-# combine seed data
-eseeds <- merge(eseeds_dens %>%
-                  mutate(experiment = "density"), eseeds_lit %>%
-                  mutate(experiment = "litter"), all = T) %>%
-  as_tibble()
-
-# create survival columns
 
 # June
 unique(fjn$field_notes)
@@ -70,12 +64,12 @@ fea <- fea %>%
          focal = 1)
 
 # late August
-unique(ela$no_green)
-unique(subset(ela, no_green == 1)$leaves_tot)
-unique(subset(ela, is.na(no_green))$leaves_tot)
-head(subset(ela, is.na(no_green))) %>% data.frame() #one plant is not Ev (remove from all: D2.7.Water.Ev.A), the other lost its tag and is Mv 
-unique(subset(ela, seeds_collected == 1)$no_green) # 1 or 0, will correct with actual seeds
-ela <- ela %>%
+unique(ala$no_green)
+unique(subset(ala, no_green == 1)$leaves_tot)
+unique(subset(ala, is.na(no_green))$leaves_tot)
+head(subset(ala, is.na(no_green))) %>% data.frame() # one plant is not Ev (remove from all: D2 7W Ev A), the other lost its tag and is Mv  (D3 2W Mv 1) 
+unique(subset(ala, seeds_collected == 1)$no_green) # 1 or 0, will correct with actual seeds
+ala <- ala %>%
   mutate(survival = ifelse(no_green == 0, 1, 0),
          focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0),
          age = case_when(ID == "A" ~ "adult",
@@ -83,9 +77,19 @@ ela <- ela %>%
                          TRUE ~ "seedling"),
          ID = ifelse(focal == 0 & age == "adult", str_remove(ID, "A"), ID))
 
-# September
+# Ev September
 unique(subset(es, is.na(leaves_tot))$field_notes) # three are unsure if plant survived
 es <- es %>%
+  mutate(survival = ifelse(!is.na(leaves_tot), 1, 0),
+         focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0),
+         age = case_when(ID == "A" ~ "adult",
+                         focal == 0 & plot > 7 ~ "adult",
+                         TRUE ~ "seedling"),
+         ID = ifelse(focal == 0 & age == "adult", str_remove(ID, "A"), ID))
+
+# Mv September
+unique(subset(ms, is.na(leaves_tot))$field_notes)
+ms <- ms %>%
   mutate(survival = ifelse(!is.na(leaves_tot), 1, 0),
          focal = ifelse(ID %in% c("1", "2", "3", "A"), 1, 0),
          age = case_when(ID == "A" ~ "adult",
@@ -118,31 +122,28 @@ esl <- esl %>%
          age = "adult",
          focal = 1)
 
-# seeds
-sum(is.na(eseeds$seeds)) # all included survived
-
 # select data and add month
 fjn <- fjn %>%
-  filter(sp == "Ev") %>%
   select(site, plot, treatment, sp, age, ID, focal, survival, field_notes) %>%
   mutate(month = "June")
 
 fjl <- fjl %>%
-  filter(sp == "Ev") %>%
   select(site, plot, treatment, sp, age, ID, focal, survival, field_notes) %>%
   mutate(month = "July")
 
 fea <- fea %>%
-  filter(sp == "Ev") %>%
   select(site, plot, treatment, sp, age, ID, focal, survival) %>%
   mutate(month = "early August")
 
-ela <- ela %>%
-  filter(sp == "Ev") %>%
+ala <- ala %>%
   select(site, plot, treatment, sp, age, ID, focal, survival, field_notes) %>%
   mutate(month = "late August")
 
 es <- es %>%
+  select(site, plot, treatment, sp, age, ID, focal, survival, field_notes) %>%
+  mutate(month = "September")
+
+ms <- ms %>%
   select(site, plot, treatment, sp, age, ID, focal, survival, field_notes) %>%
   mutate(month = "September")
 
@@ -162,95 +163,143 @@ esl <- esl %>%
   select(site, plot, sp, age, ID, focal, survival, field_notes) %>%
   mutate(month = "September") 
 
+# seeds
+filter(eseeds_lit, is.na(seeds) | seeds == 0) # all included survived
+filter(eseeds_dens, is.na(seeds) | seeds == 0) # all included survived
+
 # survival by seed production
-eseeds2 <- eseeds %>%
+eseeds_dens2 <- eseeds_dens %>%
   filter(ID_unclear == 0) %>%
   mutate(survival_seeds = 1) %>%
-  select(site, plot, treatment, sp, age, ID, focal, survival_seeds) %>%
+  select(site, plot, treatment, sp, age, ID, focal, survival_seeds, month) %>%
+  unique()
+
+eseeds_lit2 <- eseeds_lit %>%
+  filter(ID_unclear == 0) %>%
+  mutate(survival_seeds = 1) %>%
+  select(site, plot, sp, age, ID, focal, survival_seeds, month) %>%
   unique()
 
 # combine all data
-d <- full_join(fjn, fjl) %>%
+d_dens <- full_join(fjn, fjl) %>%
   full_join(fea) %>%
-  full_join(ela) %>%
+  full_join(ala) %>%
   full_join(es) %>%
+  full_join(ms) %>%
   full_join(ew) %>%
-  full_join(ejn) %>%
-  full_join(ejl) %>%
+  full_join(eseeds_dens2)
+
+d_lit <- full_join(ejn, ejl) %>%
   full_join(esl) %>%
-  full_join(eseeds2)
+  full_join(eseeds_lit2)
+
+# examine problematic data
+filter(d_dens, site == "D3" & plot == 2 & treatment == "water" & ID == "1" & sp == "Mv")
 
 # remove compromised data
-d <- d %>%
+d_dens <- d_dens %>%
+  filter(!(site == "D4" & plot == 8 & treatment == "fungicide") &
+           !(site == "D4" & plot == 10 & treatment == "fungicide") &
+           !(site == "D2" & plot == 7 & treatment == "water" & ID == "A" & sp == "Ev") &
+           !(site == "D3" & plot == 2 & treatment == "water" & ID == "1" & sp == "Mv" & month == "September"))
+
+d_lit <- d_lit %>%
   filter(
-    !(site == "D4" & plot == 8 & treatment == "fungicide") & 
-      !(site == "D4" & plot == 10 & treatment == "fungicide") & 
-      !(site == "D2" & plot == 7 & treatment == "water" & ID == "A") &
       !(site == "L2" & plot == 3)
   )
 
 # change survival values if seeds were produced
-d <- d %>%
+d_dens <- d_dens %>%
   mutate(survival_seeds = replace_na(survival_seeds, 0),
          survival = ifelse(survival_seeds == 1, 1, survival))
 
-# change survival values if plant was noted as surviving at a later month
-sum(is.na(d$survival)) #14
-d2 <- d %>%
-  mutate(month = recode(month, "late August" = "lAug", "early August" = "eAug")) %>%
-  select(-field_notes) %>%
-  spread(month, survival) %>%
-  mutate(September = ifelse(April %in% 1, 1, September),
-         lAug = ifelse(September %in% 1, 1, lAug),
-         eAug = ifelse(lAug %in% 1, 1, eAug),
-         July = ifelse(eAug %in%1, 1, July),
-         June = ifelse(July %in% 1, 1, June)) %>%
-  gather("month", "survival", -c(site, plot, treatment, sp, age, ID, focal, survival_seeds)) %>%
-  mutate(month = recode(month, "lAug" = "late August", "eAug" = "early August")) %>%
-  full_join(select(d, site, plot, treatment, sp, age, ID, focal, month, field_notes)) %>%
-  mutate(month = factor(month, levels = c("June", "July", "early August", "late August", "September", "April")))
+d_lit <- d_lit %>%
+  mutate(survival_seeds = replace_na(survival_seeds, 0),
+         survival = ifelse(survival_seeds == 1, 1, survival))
 
-# make sure it worked
-d2 %>% 
-  mutate(plant = paste(site, plot, treatment, ID, age, focal, sep = ".")) %>%
+# check for NA's 
+sum(is.na(d_dens$survival)) #17
+sum(is.na(d_lit$survival)) #0
+
+# change survival values if plant was noted as surviving at a later month or dying in an earlier month
+d_dens2 <- d_dens %>%
+  mutate(month = recode(month, "late August" = "lAug", "early August" = "eAug")) %>%
+  select(-c(field_notes, survival_seeds)) %>%
+  spread(month, survival) %>%
+  mutate(October = case_when(April == 1 ~ 1, TRUE ~ October),
+         September = case_when(October == 1 ~ 1, TRUE ~ September),
+         lAug = case_when(September == 1 ~ 1, TRUE ~ lAug),
+         eAug = case_when(lAug == 1 ~ 1, TRUE ~ eAug),
+         July = case_when(eAug == 1 ~ 1, TRUE ~ July),
+         June = case_when(July == 1 ~ 1, TRUE ~ June),
+         July = case_when(is.na(July) & June == 0 ~ 0, TRUE ~ July),
+         eAug = case_when(is.na(eAug) & July == 0 ~ 0, TRUE ~ eAug),
+         lAug = case_when(is.na(lAug) & eAug == 0 ~ 0, TRUE ~ lAug),
+         September = case_when(is.na(September) & lAug == 0 ~ 0, TRUE ~ September),
+         October = case_when(is.na(October) & September == 0 ~ 0, TRUE ~ October),
+         April = case_when(is.na(April) & October == 0 ~ 0, TRUE ~ April)) %>%
+  gather("month", "survival", -c(site, plot, treatment, sp, age, ID, focal)) %>%
+  mutate(month = recode(month, "lAug" = "late August", "eAug" = "early August")) %>%
+  full_join(select(d_dens, site, plot, treatment, sp, age, ID, focal, month, field_notes)) %>%
+  mutate(month = factor(month, levels = c("June", "July", "early August", "late August", "September", "October", "April")))
+
+d_lit2 <- d_lit %>%
+  select(-c(field_notes, survival_seeds)) %>%
+  spread(month, survival) %>%
+  mutate(July = case_when(September == 1 ~ 1, TRUE ~ July),
+         June = case_when(July == 1 ~ 1, TRUE ~ June),
+         July = case_when(is.na(July) & June == 0 ~ 0, TRUE ~ July),
+         September = case_when(is.na(September) & July == 0 ~ 0, TRUE ~ September)) %>%
+  gather("month", "survival", -c(site, plot, sp, age, ID, focal)) %>%
+  full_join(select(d_lit, site, plot, sp, age, ID, focal, month, field_notes)) %>%
+  mutate(month = factor(month, levels = c("June", "July", "September")))
+
+# check NA values
+sum(is.na(d_dens2$survival)) #968
+filter(d_dens2, is.na(survival) & !(sp == "Mv" & month %in% c("October", "April"))) %>% data.frame() 
+# these are plants that we didn't assess (background) at specific time points or they have notes
+sum(is.na(d_lit$survival)) #0
+
+# make sure none come back to life
+d_dens2 %>% 
+  mutate(plant = paste(site, plot, treatment, sp, ID, age, focal, sep = ".")) %>%
   ggplot(aes(x = as.numeric(month), y = survival, colour = plant)) +
   geom_line() +
   theme(legend.position = "none")
-sum(is.na(d2$survival)) # 67
 
-# check NA values
-filter(d2, is.na(survival)) %>% select(field_notes) %>% unique()
-filter(d2, is.na(survival) & is.na(field_notes)) %>% data.frame() # all individuals we didn't assess
+d_lit2 %>% 
+  mutate(plant = paste(site, plot, ID, age, focal, sep = ".")) %>%
+  ggplot(aes(x = as.numeric(month), y = survival, colour = plant)) +
+  geom_line() +
+  theme(legend.position = "none")
 
 # mean survival through summer
-d2 %>%
+d_dens2 %>%
   filter(month == "September" & !is.na(survival)) %>%
-  group_by(age) %>%
+  group_by(sp, age) %>%
   summarise(sum(survival) / length(survival))
 
-# same, but remove litter plots
-d2 %>%
-  filter(month == "September" & !is.na(survival) & !is.na(treatment)) %>%
-  group_by(age) %>%
+d_lit2 %>%
+  filter(month == "September" & !is.na(survival)) %>%
   summarise(sum(survival) / length(survival))
 
 # survival through summer and winter
-d2 %>%
+d_dens2 %>%
   filter(month == "April" & !is.na(survival)) %>%
-  group_by(age) %>%
+  group_by(sp, age) %>%
   summarise(sum(survival) / length(survival))
 
 # survival through winter given summer survival
-d2 %>%
+d_dens2 %>%
   filter(month == "April" | month == "September") %>%
   select(-field_notes) %>%
   spread(month, survival) %>%
   filter(September == 1 & !is.na(April)) %>%
-  group_by(age) %>%
+  group_by(sp, age) %>%
   summarise(sum(April) / length(April))
 
-# save data
-esurv <- d2
 
 #### output intermediate data ####
-write_csv(filter(esurv, !is.na(treatment)), "intermediate-data/ev_survival_2018_density_exp.csv")
+
+write_csv(d_dens2, "intermediate-data/all_processed_survival_2018_density_exp.csv")
+write_csv(d_lit2, "intermediate-data/ev_processed_survival_2018_litter_exp.csv")

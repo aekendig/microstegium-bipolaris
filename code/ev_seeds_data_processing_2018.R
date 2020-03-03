@@ -2,7 +2,7 @@
 
 # file: ev_seeds_data_processing_2018
 # author: Amy Kendig, Chris Wojan
-# date last edited: 2/6/20
+# date last edited: 3/3/20
 # goal: edit Ev seed data and check for errors
 # background: spikelet counts for all samples, seed counts for a subset
 
@@ -47,7 +47,7 @@ unique(de$ID)
 filter(de, is.na(ID))
 unique(de$collect_date)
 
-# add and modify columns in di
+# add and modify columns in di (spikelet counts)
 di <- di %>%
   mutate(
     experiment = str_extract(site, "[aA-zZ]+") %>% recode("D" = "density", "L" = "litter"),
@@ -75,7 +75,7 @@ select(di, plant, age, ID, focal) %>% unique() %>% data.frame
 filter(di, plant == "?")
 filter(di, focal == 0) %>% select(plot, age) %>% unique()
 
-# add and modify columns in de
+# add and modify columns in de (seed subset count)
 de <- de %>%
   mutate(
     treatment = recode(treatment, "W" = "water", "F" = "fungicide"),
