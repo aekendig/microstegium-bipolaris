@@ -2,7 +2,7 @@
 
 # file: temp_humidity_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 1/19/20
+# date last edited: 3/6/20
 # goal: process data from temperature and humdity loggers
 
 
@@ -19,11 +19,11 @@ library(caTools)
 #### import data ####
 
 # make a list of the file names
-file_names = list.files(path = "./data/temp-humidity-litter-exp-20191025", 
+file_names = list.files(path = "./data/temp-humidity-density-exp-20191025", 
                         pattern = "[.]csv")
 
 # Import files, all in one list
-dat = lapply(paste("./data/temp-humidity-litter-exp-20191025/", file_names, sep = ""), read.csv, header=T)
+dat = lapply(paste("./data/temp-humidity-density-exp-20191025/", file_names, sep = ""), read.csv, header=T)
 
 
 #### edit data ####
@@ -42,13 +42,15 @@ dat2 <- do.call(rbind.data.frame, dat) %>%
   rename(temp = "Temp...C..c.1", rel_hum = "RH.....c.1.2") %>%
   mutate(time = as.POSIXct(Date.Time, format = "%m/%d/%y %H:%M:%S"),
          day = as.Date(Date.Time, format = "%m/%d/%y %H:%M:%S"),
-         plot = substr(id, 4, 5) %>% gsub("[^[:digit:]]", "", .) %>% as.factor()) %>%
+         site = substr(id, 1, 2),
+         plot = substr(id, 4, 5) %>% gsub("[^[:digit:]]", "", .) %>% as.factor(),
+         treatment = "water") %>%
   select(-c(Date.Time)) %>%
   filter(time >= "2019-07-03 00:00:00" & time <= "2019-10-21 23:59:59")
 
 # daily summaries
 day_dat <- dat2 %>%
-  group_by(id, plot, day) %>%
+  group_by(id, site, plot, treatment, day) %>%
   summarise(temp_avg = mean(temp),
             temp_min = min(temp),
             temp_max = max(temp),
@@ -59,17 +61,13 @@ day_dat <- dat2 %>%
 
 #### visualizations ####
 
-ggplot(day_dat, aes(x = day, y = temp_avg, color = plot)) +
-  stat_summary(geom = "point", fun.y = "mean") +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0)
+ggplot(day_dat, aes(x = day, y = temp_avg, color = site)) +
+  geom_point() +
+  facet_wrap(~ plot)
   
-ggplot(day_dat, aes(x = day, y = hum_avg, color = plot)) +
-  stat_summary(geom = "point", fun.y = "mean") +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0)
-
-ggplot(filter(dat2, time > "2019-08-01 01:00:00" & time < "2019-08-05 01:00:00"), aes(x = time, y = temp, color = plot)) +
-  stat_summary(geom = "point", fun.y = "mean") +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0)
+ggplot(day_dat, aes(x = day, y = hum_avg, color = site)) +
+  geom_point() +
+  facet_wrap(~ plot)
 
 
 #### save data #### 
