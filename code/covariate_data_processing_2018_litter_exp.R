@@ -2,7 +2,7 @@
 
 # file: covariate_data_processing_2018_litter_exp
 # author: Amy Kendig
-# date last edited: 1/14/20
+# date last edited: 3/6/20
 # goal: create a dataset of covariates
 
 
@@ -27,9 +27,8 @@ plots <- read_csv("./data/plot_treatments_2018_litter_exp.csv")
 
 # use proportion
 soil2 <- soil %>%
-  mutate(soil_moisture.prop = soil_moisture.vwc / 100,
-         soil_moisture.centered = soil_moisture.prop - mean(soil_moisture.prop)) %>%
-  select(site, plot, soil_moisture.prop, soil_moisture.centered)
+  mutate(soil_moisture.prop = soil_moisture.vwc / 100) %>%
+  select(site, plot, soil_moisture.prop)
 
 # look at canopy notes
 unique(canopy$processing_notes)
@@ -37,9 +36,8 @@ unique(canopy$processing_notes)
 #  proportion canopy cover
 canopy2 <- canopy %>%
   mutate(canopy_cover.prop = case_when(type == "o" ~ 1 - ((count * 1.04) / 100),
-                                       type == "c" ~ (count * 1.04) / 100),
-         canopy_cover.centered = canopy_cover.prop - mean(canopy_cover.prop)) %>%
-  select(site, plot, canopy_cover.prop, canopy_cover.centered)
+                                       type == "c" ~ (count * 1.04) / 100)) %>%
+  select(site, plot, canopy_cover.prop)
   
 # site level proportion canopy cover, 
 canopy_site <- trees %>%
@@ -48,8 +46,7 @@ canopy_site <- trees %>%
                                        type == "c" ~ (count * 1.04) / 100))  %>%
   group_by(site) %>%
   summarise(canopy_cover.prop = mean(canopy_cover.prop)) %>%
-  ungroup() %>%
-  mutate(canopy_cover.centered = canopy_cover.prop - mean(canopy_cover.prop))
+  ungroup()
 
 # site level basal tree stand area
 stand_site <- trees %>%
@@ -57,8 +54,7 @@ stand_site <- trees %>%
   mutate(stand_area.m2ha = trees * 10)  %>%
   group_by(site) %>%
   summarise(stand_area.m2ha = mean(stand_area.m2ha)) %>%
-  ungroup() %>%
-  mutate(stand_area.scaled = (stand_area.m2ha - mean(stand_area.m2ha)) / sd(stand_area.m2ha))
+  ungroup()
 
 # merge plot data
 plot_dat <- full_join(plots, soil2) %>%
