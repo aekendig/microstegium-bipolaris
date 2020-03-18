@@ -1,3 +1,7 @@
+// go to Options...
+// make sure "Black Background" is not selected
+
+
 // strip extension off image title
 // will leaf "f" if it takes off .tif first and it's a .tiff
 function getTitleStripExtension() { 

@@ -1,6 +1,6 @@
 ##### info ####
 
-# file: nonlinear-functions
+# file: nonlinear_functions
 # author: Amy Kendig
 # date last edited: 3/11/20
 # goal: demonstrations of nonlinear functions that can be used to describe species interactions
@@ -21,7 +21,7 @@ library(tidyverse)
 # Law and Watkinson 1987
 # Levine and HilleRisLambers 2009
 # Hart et al. 2018
-# Sigmoide Beverton-Holt: Brett and Kulenovic 2014, Kang 2016
+# Liermann and Hilborn 2001
 
 # exponential
 ex_fun <- function(y0, x, a) {

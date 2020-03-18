@@ -1,8 +1,13 @@
 // go to Options...
 // make sure "Black Background" is not selected
 
-// strip extension off image title
-// will leave "f" if it takes off .tif first and it's a .tiff
+suffix1=".tif"; //Store potential suffixes as variables
+suffix2=".tiff";
+
+	run("Set Scale...", "distance=0 global"); // measure in pixels
+  	id = getTitle(); // get original image id
+  	// strip extension off image title
+// will leaf "f" if it takes off .tif first and it's a .tiff
 function getTitleStripExtension() { 
   t = getTitle(); 
   t = replace(t, ".tiff", "");   
@@ -13,50 +18,10 @@ function getTitleStripExtension() {
   t = replace(t, ".nd2", "");     
   return t; 
 } 
-
-//enter home folder (errors in path names will result in the error "No window with the title 'Summary' found"
-home="/Users/AmyKendig/Dropbox (UFL)/big-oaks-field-experiment-2018-2019/microstegium-bipolaris/data/leaf-scans-litter-exp-20180927";
-//enter input folder path
-input=home + "/scans"; 
-//enter output image folder path
-outputIm=home + "/image-output";
-//enter output text results folder path
-outputRes=home + "/text-output";
-//enter file name for text results
-outputResTxt=outputRes + "/ev_leaf_scan_text_output_sep_2018_litter_exp.tsv";
-
-suffix1=".tiff"; //Store potential suffixes as variables
-suffix2=".tif";
-
-processFolder(input);
-
-// saves results for all images in a single file
-selectWindow("Summary"); 
-saveAs("Results", outputResTxt);
-
-// function to scan folders/subfolders/files to find files with either correct suffix
-function processFolder(input) {
-	list = getFileList(input);
-	list = Array.sort(list);
-	for (i = 0; i < list.length; i++) {
-		if(File.isDirectory(input + File.separator + list[i]))
-			processFolder(input + File.separator + list[i]);
-		if(endsWith(list[i], suffix1))
-			processFile(input, outputIm, outputRes, list[i]);
-		if(endsWith(list[i], suffix2))
-			processFile(input, outputIm, outputRes, list[i]);	
-	}
-}
-
-// full process function
-function processFile(input, outputIm, outputRes, file) {
-	setBatchMode(true); // prevent image windows from opening while the script is running
-	print("Processing: " + input + File.separator + file); // updates on progress
-	open(input + "/" + file); // open file
-	run("Set Scale...", "distance=0 global"); // measure in pixes
-  	id = getTitle(); // get original image id
 	RGBpic=getTitleStripExtension(); // get image name without extension
 	run("Duplicate...", "title=leaf:"+RGBpic); // create a copy to segment leaf from background
+	
+	
 	// color threshold function (HSB) to select the leaf and ignore the background
 	min=newArray(3);
 	max=newArray(3);
@@ -71,13 +36,13 @@ function processFile(input, outputIm, outputRes, file) {
 	selectWindow("Brightness");
 	rename("2");
 	min[0]=0;
-	max[0]=70; // hue is 0 to 70
+	max[0]=73; // hue is 0 to 73
 	filter[0]="pass";
 	min[1]=3;
 	max[1]=255; // saturation is 3 to 255
 	filter[1]="pass";
 	min[2]=20;
-	max[2]=200; // brightness is 0 to 200
+	max[2]=245; // brightness is 0 to 245
 	filter[2]="pass";
 	for (i=0;i<3;i++){
 	  selectWindow(""+i);
@@ -96,6 +61,10 @@ function processFile(input, outputIm, outputRes, file) {
 	selectWindow("Result of Result of 0");
 	rename(a);
 	// end of color threshold function
+
+
+
+	
 	run("Fill Holes"); // edit ROI to include the leaf, but remove shadows on edges and dirt specks
 	run("Close-");
 	run("Fill Holes");
@@ -126,10 +95,10 @@ function processFile(input, outputIm, outputRes, file) {
 	selectWindow("Blue");
 	rename("2");
 	min[0]=0;
-	max[0]=252; // L* is 0 to 252
+	max[0]=253; // L* is 0 to 253
 	filter[0]="pass";
-	min[1]=125;
-	max[1]=169; // a* is 125 to 169
+	min[1]=127;
+	max[1]=169; // a* is 127 to 169
 	filter[1]="pass";
 	min[2]=0;
 	max[2]=255; // b* is 0 to 255
@@ -151,7 +120,9 @@ function processFile(input, outputIm, outputRes, file) {
 	selectWindow("Result of Result of 0");
 	rename(a);
 	// end of color threshold function
-	run("Close-"); // edit ROI to include full lesions
+	// run("Close-"); // seems to connect a lot of the leaf background
+	run("Remove Outliers...", "radius=5 threshold=50 which=Dark"); // added this in for script 3
+	run("Close-");
 	run("Fill Holes");
 	run("Dilate");
 	run("Dilate");
@@ -174,4 +145,3 @@ function processFile(input, outputIm, outputRes, file) {
 	run("Clear Results");
 	run("Close All");
 	run("Collect Garbage");
-}

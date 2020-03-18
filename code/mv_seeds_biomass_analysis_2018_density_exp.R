@@ -16,7 +16,7 @@ library(tidyverse)
 library(cowplot)
 
 # import data
-mv_bio <- read_csv("./data/mv_biomass_oct_2018_density_exp.csv")
+mv_bio <- read_csv("./data/mv_biomass_oct_2018_density_exp.csv") # made an intermediate data file that is already edited - use that
 mv_lit <- read_csv("./data/mv_litter_biomass_apr_2019_density_exp.csv")
 mv_bag <- read_csv("./data/mv_bag_seed_2018_density_exp.csv")
 plots <- read_csv("./data/plot_treatments_for_figures_2018_2019_density_exp.csv")
