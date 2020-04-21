@@ -2,7 +2,7 @@
 
 # file: covariate_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 3/6/20
+# date last edited: 4/21/20
 # goal: create a dataset of covariates for the density experiment
 
 
@@ -23,6 +23,7 @@ bj <- read_csv("./data/plot_edge_mv_weight_jul_2018_density_exp.csv") # July bio
 be <- read_csv("./data/plot_edge_mv_weight_early_aug_2018_density_exp.csv") # early August biomass
 bl <- read_csv("./data/plot_edge_mv_weight_late_aug_2018_density_exp.csv") # late August biomass
 bs <- read_csv("./data/plot_edge_mv_weight_sep_2018_density_exp.csv") # September biomass and infection
+plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 
 
 #### edit data ####
@@ -100,7 +101,7 @@ co <- full_join(sj2, so2) %>%
   full_join(bs2)
 
 
-#### visualize data ####
+#### select unique covariates ####
 
 #co %>%
 #  select(-c(site, plot, treatment)) %>%
@@ -124,8 +125,88 @@ filter(co, mv_sep.g > 15) %>%
   select(site, plot, treatment, mv_sep.g)
 # these match the hand-written entries
 
+# select unique covariates
 co2 <- co %>%
   select(site:canopy_cover.prop, mv_eau.g, mv_sep.g, mv_inf_jul.prop, mv_inf_sep.prop)
+
+
+#### relationship with treatments ####
+
+# combine data
+co3 <- left_join(co2, plots)
+
+# standard plot
+base_plot <- ggplot(co3, aes(x = background_density, y = soil_moisture_jun.prop, fill = treatment)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0.1, position = position_dodge(0.5)) +
+  stat_summary(fun = "mean", geom = "point", size = 2, shape = 21, position = position_dodge(0.5)) +
+  facet_wrap(~ background, scales = "free_x", strip.position = "bottom") +
+  scale_fill_manual(values = c("black", "white"), name = "Treatment") +
+  xlab("Background density") +
+  theme_bw() +
+  theme(axis.text = element_text(size = 10, color="black"),
+        axis.title = element_text(size = 12),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        legend.position = "bottom", 
+        legend.direction = "horizontal",
+        legend.box.margin = margin(-10, -10, -10, -10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10),
+        strip.placement = "outside")
+
+# save treatment figures
+pdf("./output/covariates_visualize_treatment_2018_density_exp.pdf")
+
+# June soil moisture
+base_plot %+%
+  filter(co3, !is.na(soil_moisture_jun.prop)) +
+  ylab("June soil moisture")
+
+# October soil moisture
+base_plot %+%
+  filter(co3, !is.na(soil_moisture_oct.prop)) %+%
+  aes(y = soil_moisture_oct.prop) +
+  ylab("October soil moisture")
+
+# Canopy cover
+base_plot %+%
+  filter(co3, !is.na(canopy_cover.prop)) %+%
+  aes(y = canopy_cover.prop) +
+  ylab("Canopy cover")
+
+# Early August biomass
+base_plot %+%
+  filter(co3, !is.na(mv_eau.g)) %+%
+  aes(y = mv_eau.g) +
+  ylab("Early August biomass")
+
+# September biomass
+base_plot %+%
+  filter(co3, !is.na(mv_sep.g)) %+%
+  aes(y = mv_sep.g) +
+  ylab("September biomass")
+
+# July infection
+base_plot %+%
+  filter(co3, !is.na(mv_inf_jul.prop)) %+%
+  aes(y = mv_inf_jul.prop) +
+  ylab("July proportion infected")
+
+# September infection
+base_plot %+%
+  filter(co3, !is.na(mv_inf_sep.prop)) %+%
+  aes(y = mv_inf_sep.prop) +
+  ylab("September proportion infected")
+
+dev.off()
+
+
+#### start here: statistical tests of treatments ####
+
+# Mv density and early August biomass
 
 
 #### output intermediate data ####
