@@ -2,7 +2,7 @@
 
 # file: covariate_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 4/21/20
+# date last edited: 4/22/20
 # goal: create a dataset of covariates for the density experiment
 
 
@@ -14,6 +14,7 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(GGally)
+library(betareg)
 
 # import data
 sj <- read_csv("./data/soil_moisture_jun_2018_density_exp.csv") # June soil moisture
@@ -129,11 +130,12 @@ filter(co, mv_sep.g > 15) %>%
 co2 <- co %>%
   select(site:canopy_cover.prop, mv_eau.g, mv_sep.g, mv_inf_jul.prop, mv_inf_sep.prop)
 
+# combine with plot data for figures
+co3 <- left_join(co2, plots) %>%
+  mutate(fungicide = recode(treatment, "water" = 0, "fungicide" = 1))
+
 
 #### relationship with treatments ####
-
-# combine data
-co3 <- left_join(co2, plots)
 
 # standard plot
 base_plot <- ggplot(co3, aes(x = background_density, y = soil_moisture_jun.prop, fill = treatment)) +
@@ -204,12 +206,106 @@ base_plot %+%
 dev.off()
 
 
-#### start here: statistical tests of treatments ####
+#### statistical tests of treatments ####
+
+# selected tests based on trends in figure
+
+# Mv density and June soil moisture
+jsm_mv_mod <- betareg(soil_moisture_jun.prop ~ background_density * fungicide, data = filter(co3, background == "Mv seedling"))
+summary(jsm_mv_mod)
+# not sig
+
+# Ev adult density and October soil moisture
+osm_ea_mod <- betareg(soil_moisture_oct.prop ~ background_density * fungicide, data = filter(co3, background == "Ev adult"))
+summary(osm_ea_mod)
+# not sig
+
+# Ev seedling density and October soil moisture
+osm_es_mod <- betareg(soil_moisture_oct.prop ~ background_density * fungicide, data = filter(co3, background == "Ev seedling"))
+summary(osm_es_mod)
+# not sig
+
+# Mv density and October soil moisture
+osm_mv_mod <- betareg(soil_moisture_oct.prop ~ background_density * fungicide, data = filter(co3, background == "Mv seedling"))
+summary(osm_mv_mod)
+# not sig
+
+# Mv density and canopy cover
+cc_mv_mod <- betareg(canopy_cover.prop ~ background_density * fungicide, data = filter(co3, background == "Mv seedling"))
+summary(cc_mv_mod)
+# not sig
+
+# Ev adult density and early August biomass
+eab_ea_mod <- lm(mv_eau.g ~ background_density * fungicide, data = filter(co3, background == "Ev adult"))
+summary(eab_ea_mod)
+# not sig
+
+# Ev seedling density and early August biomass
+eab_es_mod <- lm(mv_eau.g ~ background_density * fungicide, data = filter(co3, background == "Ev seedling"))
+summary(eab_es_mod)
+# not sig
 
 # Mv density and early August biomass
+eab_mv_mod <- lm(mv_eau.g ~ background_density * fungicide, data = filter(co3, background == "Mv seedling"))
+summary(eab_mv_mod)
+# density sig
+eab_mv_mod2 <- update(eab_mv_mod, .~. -background_density:fungicide)
+summary(eab_mv_mod2)
+# density sig
+eab_mv_mod3 <- update(eab_mv_mod2, .~. -fungicide)
+summary(eab_mv_mod3)
+# density sig
+
+# Ev adult density and September biomass
+sb_ea_mod <- lm(mv_sep.g ~ background_density * fungicide, data = filter(co3, background == "Ev adult"))
+summary(sb_ea_mod)
+# not sig
+
+# Ev seedling density and September biomass
+sb_es_mod <- lm(mv_sep.g ~ background_density * fungicide, data = filter(co3, background == "Ev seedling"))
+summary(sb_es_mod)
+# not sig
+
+# Mv density and September biomass
+sb_mv_mod <- lm(mv_sep.g ~ background_density * fungicide, data = filter(co3, background == "Mv seedling"))
+summary(sb_mv_mod)
+# not sig
+
+# Ev seedling density and July infected
+jpi_es_mod <- betareg(mv_inf_jul.prop ~ background_density * fungicide, data = filter(co3, background == "Ev seedling" & mv_inf_jul.prop > 0))
+summary(jpi_es_mod)
+# not sig
+
+# Mv density and July infected
+jpi_mv_mod <- betareg(mv_inf_jul.prop ~ background_density * fungicide, data = filter(co3, background == "Mv seedling" & mv_inf_jul.prop > 0))
+summary(jpi_mv_mod)
+# significant interaction
+
+# Ev seedling density and September infected
+spi_es_mod <- betareg(mv_inf_sep.prop ~ background_density * fungicide, data = filter(co3, background == "Ev seedling"))
+summary(spi_es_mod)
+# not sig
+
+# Mv density and September infected
+spi_mv_mod <- betareg(mv_inf_sep.prop ~ background_density * fungicide, data = filter(co3, background == "Mv seedling"))
+summary(spi_mv_mod)
+# fungicide effect
+# there is a trend of this across the three densities
+spi_mv_mod2 <- update(spi_mv_mod, .~. -background_density:fungicide)
+summary(spi_mv_mod2)
+# not sig
+spi_mv_mod3 <- update(spi_mv_mod2, .~. -background_density)
+summary(spi_mv_mod3)
+# not sig
+
+
+#### remove covariates with treatment effects ####
+
+co4 <- co2 %>%
+  select(-c(mv_eau.g, mv_inf_jul.prop))
 
 
 #### output intermediate data ####
 
-write_csv(co2, "intermediate-data/covariates_2018_density_exp.csv")
+write_csv(co4, "intermediate-data/covariates_2018_density_exp.csv")
 

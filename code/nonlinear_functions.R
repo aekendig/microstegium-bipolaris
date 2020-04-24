@@ -2,7 +2,7 @@
 
 # file: nonlinear_functions
 # author: Amy Kendig
-# date last edited: 3/11/20
+# date last edited: 4/22/20
 # goal: demonstrations of nonlinear functions that can be used to describe species interactions
 
 
@@ -21,7 +21,7 @@ library(tidyverse)
 # Law and Watkinson 1987
 # Levine and HilleRisLambers 2009
 # Hart et al. 2018
-# Liermann and Hilborn 2001
+# Liermann and Hilborn 2001 (Eq. 26)
 
 # exponential
 ex_fun <- function(y0, x, a) {
@@ -76,7 +76,8 @@ sbh_fun <- function(x, r, a, d){
   y = x^(d-1) / (1/r + a * x^d)
   return(y)
 }
-# a is defined as 1/asymptote
+# a is defined as 1/asymptote for total y (not per capita)
+# r and d contribute to the growth rate
 
 
 #### simulate data ####

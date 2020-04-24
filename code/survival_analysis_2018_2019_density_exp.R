@@ -2,7 +2,7 @@
 
 # file: survival_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/6/20
+# date last edited: 4/22/20
 # goal: evaluate the effects of density and fungicide on survival
 
 
@@ -233,26 +233,6 @@ temp_fig_cov %+%
   xlab("Proportion canopy cover") +
   ylab("Year 2 summer all survival")
 
-# early August biomass summer survival year 1
-temp_fig_cov %+%
-  aes(x = mv_eau.g) +
-  xlab("Early August biomass") +
-  ylab("Year 1 summer all survival")
-
-# early August biomass winter survival year 1
-temp_fig_cov %+%
-  winy1 %+%
-  aes(x = mv_eau.g) +
-  xlab("Early August biomass") +
-  ylab("Year 1 winter all survival")  
-
-# early August biomass summer survival year 2
-temp_fig_cov %+%
-  sumy2 %+%
-  aes(x = mv_eau.g) +
-  xlab("Early August biomass") +
-  ylab("Year 2 summer all survival")
-
 # September biomass summer survival year 1
 temp_fig_cov %+%
   aes(x = mv_sep.g) +
@@ -274,3 +254,25 @@ temp_fig_cov %+%
   ylab("Year 2 summer all survival")
 
 dev.off()
+
+
+#### model decisions ####
+
+# linearly increasing
+# saturating increase
+# low density peak
+# hump-shaped
+# no change
+# intercept ranges from 0.25 to 1
+
+# literature search
+# Beverton-Holt (fish, Shepherd and Cushing 1980)
+# linear (fish, Forrester 1995; plants, Schamp and Aarssen 1991)
+# ANOVA (plants, Bell et al. 2006)
+# logistic glm (plants, Sletvold 2005)
+# linear regression of ln(-ln(1-p)) (trees, Zhu et al. 2015)
+
+# soil moisture June increases year 1 summer survival
+# soil moisture Oct does too, but less linear
+
+# survival ~ 

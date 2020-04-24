@@ -2,7 +2,7 @@
 
 # file: temp_humidity_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/6/20
+# date last edited: 4/23/20
 # goal: process data from temperature and humdity loggers
 
 
@@ -44,7 +44,8 @@ dat2 <- do.call(rbind.data.frame, dat) %>%
          day = as.Date(Date.Time, format = "%m/%d/%y %H:%M:%S"),
          site = substr(id, 1, 2),
          plot = substr(id, 4, 5) %>% gsub("[^[:digit:]]", "", .) %>% as.factor(),
-         treatment = "water") %>%
+         treatment = "water",
+         hum_prop = rel_hum / 100) %>%
   select(-c(Date.Time)) %>%
   filter(time >= "2019-07-03 00:00:00" & time <= "2019-10-21 23:59:59")
 
@@ -54,9 +55,9 @@ day_dat <- dat2 %>%
   summarise(temp_avg = mean(temp),
             temp_min = min(temp),
             temp_max = max(temp),
-            hum_avg = mean(rel_hum),
-            hum_min = min(rel_hum),
-            hum_max = max(rel_hum))
+            hum_avg = mean(hum_prop),
+            hum_min = min(hum_prop),
+            hum_max = max(hum_prop))
 
 
 #### visualizations ####
