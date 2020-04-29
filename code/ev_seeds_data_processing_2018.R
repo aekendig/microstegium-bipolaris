@@ -429,3 +429,4 @@ dev.off()
 # density and litter experiment
 write_csv(d4d, "./intermediate-data/ev_processed_seeds_2018_density_exp.csv")
 write_csv(d4l, "./intermediate-data/ev_processed_seeds_2018_litter_exp.csv")
+write_csv(d3, "./intermediate-data/ev_spikelets_seeds_2018.csv")

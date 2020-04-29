@@ -275,4 +275,4 @@ dev.off()
 # soil moisture June increases year 1 summer survival
 # soil moisture Oct does too, but less linear
 
-# survival ~ 
+# survival ~ surv_int + density / (1/r + a*density^2)

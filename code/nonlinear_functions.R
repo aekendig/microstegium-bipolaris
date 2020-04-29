@@ -110,7 +110,7 @@ funs = tibble(fun = c("abhe", "aln", "bh", "bhe", "el", "ex", "ln", "nli", "sbh"
                            "y = y0 * exp(a * x)",
                            "y = y0 - a * x",
                            "y = y0 / (1 + x^a)",
-                           "y = x^d / (1/r + a * x^d)"))
+                           "y = x^(d-1) / (1/r + a * x^d)"))
 
 # combine with combinations of x and a
 sim_dat = expand.grid(0:64, c(-2:2, -0.1, -0.05, -0.01, 0.01, 0.05, 0.1)) %>%
