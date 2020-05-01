@@ -301,40 +301,69 @@ dev.off()
 
 #### 2019 seed models ####
 
+
+### manual model fitting ###
+
+# sigmoid Beverton-Holt
+sbh_fun <- function(dat_in, r, a, d){
+  
+  # extract values
+  xmin = min(dat_in$background_density)
+  xmax = max(dat_in$background_density)
+  y0 = filter(dat_in, fungicide == 0) %>%
+          summarise(mean_seed = mean(seeds)) %>%
+          as.numeric() %>%
+          round()
+  print(y0)
+  
+  # create data
+  dat <- tibble(x = seq(xmin, xmax, length.out = 100)) %>%
+    mutate(y = y0 + x^(d-1) / (1/r + a * x^d))
+  
+  # plot
+  print(ggplot(dat_in, aes(x = background_density, y = seeds)) +
+          stat_summary(geom = "point", fun = "mean", aes(color = treatment)) +
+          stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.1, aes(color = treatment)) +
+          geom_line(data = dat, aes(x = x, y = y)))
+}
+
 # separate data
 ea_ea_dat <- filter(seed19, age == "adult" & background == "Ev adult")
 
-### Ev adult seeds, Ev adult background
+# try values
+sbh_fun(ea_ea_dat, 30, 0.005, 2)
 
-# priors
-(filter(ea_ea_dat, fungicide == 0) %>%
-  summarise(mean_seed = mean(seeds)) %>%
-  as.numeric() %>%
-  round())
 
-# model
+### Ev adult seeds, Ev adult background ###
+
+# ea_seeds_ea_bg_mod <- brm(data = ea_ea_dat, family = gaussian,
+#                           bf(seeds ~ s0 + background_density / (k + alpha * background_density^2),
+#                              s0 ~ fungicide + (1|site),
+#                              k ~ fungicide,
+#                              alpha ~ fungicide,
+#                              nl = T),
+#                           prior <- c(prior(normal(97, 10), nlpar = "s0"),
+#                                      prior(normal(0.03, 1), nlpar = "k"),
+#                                      prior(normal(0.005, 1), nlpar = "alpha")),
+#                           iter = 6000, warmup = 1000, chains = 3, cores = 2,
+#                           control = list(adapt_delta = 0.9999, max_treedepth = 15))
+# 1178 divergent transitions
+
+# remove site random effect
+
 ea_seeds_ea_bg_mod <- brm(data = ea_ea_dat, family = gaussian,
                           bf(seeds ~ s0 + background_density / (k + alpha * background_density^2),
-                             s0 ~ fungicide + (1|site),
+                             s0 ~ fungicide,
                              k ~ fungicide,
                              alpha ~ fungicide,
                              nl = T),
-                          prior <- c(prior(normal(84, 10), nlpar = "s0"),
-                                     prior(normal(1, 1), nlpar = "k"),
-                                     prior(normal(0.1, 1), nlpar = "alpha")),
-                          iter = 6000, warmup = 1000, chains = 3, cores = 2)
+                          prior <- c(prior(normal(97, 10), nlpar = "s0"),
+                                     prior(normal(0.03, 1), nlpar = "k"),
+                                     prior(normal(0.005, 1), nlpar = "alpha")),
+                          iter = 6000, warmup = 1000, chains = 3, cores = 2,
+                          control = list(adapt_delta = 0.9999, max_treedepth = 15))
+# 1006 divergent transitions
 
-# adjust controls to address errors
-ea_seeds_ea_bg_mod <- update(ea_seeds_ea_bg_mod, 
-                             control = list(adapt_delta = 0.9999, max_treedepth = 15))
-# ran for a long time and still had 209 divergent transitions
 
-### try to make a parameter constant
-
-# sigmoid Beverton-Holt
-sbh_fun <- function(x, r, a, d){
-  y = x^(d-1) / (1/r + a * x^d)
-  return(y)
-}
 
 

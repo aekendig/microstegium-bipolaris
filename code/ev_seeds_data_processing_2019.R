@@ -14,7 +14,6 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(lubridate)
-# library(propagate)
 
 # import data
 spikelets <- read_csv("./data/ev_spikelets_2019_density_exp.csv")
@@ -104,8 +103,6 @@ spikelets3 <- spikelets2 %>%
 unique(seeds$processing_notes)
 sort(unique(seeds$collect_date))
 
-#### start here, combine data from same samples ####
-
 # select rows with dummy seeds
 # change collect dates for October
 # update age column
@@ -113,7 +110,10 @@ seeds2 <- seeds %>%
   filter(is.na(processing_notes) | !(processing_notes %in% c("lost two seeds; this row has weight of reduced seed count", "lost one seed; this row has weight of reduced seed count"))) %>%
   mutate(collect_date = ifelse(collect_date > 20190928, 20191022, collect_date),
          age = recode(age, A = "adult", S = "seedling")) %>%
-  group_by(site, plot, treatment, sp, ID, collect_date) %>%
+  group_by(site, plot, treatment, ID, age, collect_date) %>%
+  summarise(seeds = sum(seeds),
+            seed_weight = sum(seed_weight)) %>%
+  ungroup()
 
 # check seed data for this plant
 filter(seeds2, site == "D3" & plot == 7 & treatment == "fungicide" & ID == 2)
@@ -145,89 +145,42 @@ spike_seed %>%
   geom_point(size = 2, aes(colour = age, shape = collect_month)) +
   stat_smooth(method = "lm")
 
-# remove high values
-spike_seed %>%
-  filter(spikelet_weight.g < 2) %>%
-  ggplot(aes(x = spikelet_weight.g, y = seeds)) +
-  geom_point(size = 2, aes(colour = age, shape = collect_month)) +
-  stat_smooth(method = "lm")
-
-# examine high values
-spike_seed %>%
-  filter(spikelet_weight.g > 2) %>%
-  data.frame()
-# green may affect weight
-
 # spikelet weight distribution
 spikelets3 %>%
   ggplot(aes(x = spikelet_weight.g)) +
   geom_histogram()
 # a handful are that large
 
-# examine high values
-spikelets3 %>%
-  filter(spikelet_weight.g > 2) %>%
-  data.frame()
-# some of these green as well
-
 
 #### linear models ####
 
 # all data
-mod_all <- lm(seeds ~ spikelet_weight.g, data = spike_seed)
-summary(mod_all)
-# R2 = 0.73
+mod_19 <- lm(seeds ~ spikelet_weight.g, data = spike_seed)
+summary(mod_19)
+# R2 = 0.95
 
 # all data, origin
-mod_allb <- lm(seeds ~ 0 + spikelet_weight.g, data = spike_seed)
-summary(mod_allb)
-# R2 = 0.79
+mod_19b <- lm(seeds ~ 0 + spikelet_weight.g, data = spike_seed)
+summary(mod_19b)
+# R2 = 0.96
 
-# data without high values
-mod_low <- lm(seeds ~ spikelet_weight.g, 
-              data = filter(spike_seed, spikelet_weight.g < 2))
-summary(mod_low)
-# R2 = 0.85
-
-# data without high values, origin
-mod_lowb <- lm(seeds ~ 0 + spikelet_weight.g, 
-              data = filter(spike_seed, spikelet_weight.g < 2))
-summary(mod_lowb)
-# R2 = 0.92
-
-
-#### non-linear model ####
-
-# based on nls_self_starter_models.R, the amsymptotic model that passes through the origin is most appropriate
-
-# initial values
-init <- getInitial(seeds ~ SSasympOrig(spikelet_weight.g, asym, lrc), data = spike_seed)
-
-asym <- init[1]
-lrc <- init[2]
-
-# SSasymOrig model
-mod_nls <- nls(seeds ~ SSasympOrig(spikelet_weight.g, asym, lrc), data = spike_seed)
-summary(mod_nls)
+AIC(mod_19, mod_19b)
+# equal
 
 # predicted values
 pred_dat <- tibble(spikelet_weight.g = seq(min(spike_seed$spikelet_weight.g), max(spike_seed$spikelet_weight.g), length.out = 100)) %>%
-  mutate(seeds_nl = predict(mod_nls, newdata = .),
-         seeds_l = predict(mod_allb, newdata = .))
-# confidence intervals are not supplied for the nls function
-# can use predictNLS in the propagate package to get confidence intervals, but it is very slow
+  mutate(seeds = predict(mod_19b, newdata = .),
+         seeds.se = predict(mod_19b, newdata = ., se.fit = T)$se.fit)
 
 # figure
 pred_plot <- spike_seed %>%
-  ggplot(aes(x = spikelet_weight.g)) +
-  geom_point(size = 2, aes(y = seeds, colour = age, shape = treatment)) +
-  geom_line(data = pred_dat, aes(y = seeds_l), linetype = "dashed") +
-  geom_line(data = pred_dat, aes(y = seeds_nl), linetype = "dashed") +
+  ggplot(aes(x = spikelet_weight.g, y = seeds)) +
+  geom_ribbon(data = pred_dat, alpha = 0.5, aes(ymin = seeds - seeds.se, ymax = seeds + seeds.se)) +
+  geom_line(data = pred_dat, linetype = "dashed") +
+  geom_point(size = 2, aes(colour = age, shape = treatment)) +
   theme_bw() +
   xlab("spikelet weight (g)")
 
-# compare models
-AIC(mod_allb, mod_nls)
 
 
 #### combine data from both years ####
@@ -256,36 +209,28 @@ dat <- spike_seed %>%
   mutate(year = as.character(collect_date) %>% 
            as.Date(., format = "%Y%m%d") %>% 
            year(),
-         Year = as.factor(year),
-         Green = case_when(spikelet_bags_green > 0 ~ "yes",
-                           TRUE ~ "no"))
+         Year = as.factor(year))
 
 # prediction data
-pred_dat_comb <- tibble(spikelet_weight.g = c(seq(min(spike_seed$spikelet_weight.g), max(spike_seed$spikelet_weight.g), length.out = 100),
-                                              seq(min(dat18b$spikelet_weight.g), max(dat18b$spikelet_weight.g), length.out = 100)),
-                        Year = rep(c("2019", "2018"), each = 100) %>% as.factor()) %>%
-  mutate(seeds = case_when(Year == "2019" ~ predict(mod_nls, newdata = .),
-                           Year == "2018" ~ predict(mod_18, newdata = .)))
+pred_dat_comb <- pred_dat %>%
+  mutate(Year = "2019") %>%
+  full_join(tibble(spikelet_weight.g = seq(min(dat18b$spikelet_weight.g), max(dat18b$spikelet_weight.g), length.out = 100),
+                        Year = rep("2018", each = 100)) %>%
+  mutate(seeds = predict(mod_18, newdata = .),
+         seeds.se = predict(mod_18, newdata = ., se.fit = T)$se.fit))
 
 # visualize
 pred_plot_comb <- dat %>%
   ggplot(aes(x = spikelet_weight.g, y = seeds, color = Year)) +
+  geom_ribbon(data = pred_dat_comb, alpha = 0.5, aes(ymin = seeds - seeds.se, ymax = seeds + seeds.se)) +
+  geom_line(data = pred_dat_comb, linetype = "dashed") +
   geom_point(alpha = 0.75) +
-  geom_line(data = pred_dat_comb) +
   theme_bw() +
   xlab("spikelet weight (g)")
 
 # coefficients from linear models
 summary(mod_18)
-summary(mod_lowb)
-
-# visualize green/not
-dat %>%
-  ggplot(aes(x = spikelet_weight.g, y = seeds, color = Year)) +
-  geom_point(alpha = 0.75, aes(shape = Green)) +
-  geom_line(data = pred_dat_comb) +
-  theme_bw() +
-  xlab("spikelet weight (g)")
+summary(mod_19b)
 
 # fit model to both years
 mod_both <- lm(seeds ~ 0 + spikelet_weight.g, data = dat)
@@ -340,11 +285,11 @@ pdf("./output/ev_seeds_data_processing_2019_seeds_spikelet_weight.pdf", width = 
 pred_plot
 dev.off()
 
-pdf("./output/ev_seeds_data_processing_2018_2019_seeds_spikelet_weight.pdf", width = 5, height = 5)
+pdf("./output/ev_seeds_data_processing_2018_2019_seeds_spikelet_weight.pdf", width = 5, height = 4)
 pred_plot_comb
 dev.off()
 
-pdf("./output/ev_seeds_data_processing_2019_seeds_spikelet_weight_combined.pdf", width = 5, height = 5)
+pdf("./output/ev_seeds_data_processing_2019_seeds_spikelet_weight_combined.pdf", width = 4, height = 4)
 pred_plot_both
 dev.off()
 
