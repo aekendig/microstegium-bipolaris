@@ -200,7 +200,7 @@ plot_grid(temp_fig_cov %+%
 dev.off()
 
 
-#### 2019 seed models ####
+#### 2019 biomass models ####
 
 
 ### manual model fitting ###
