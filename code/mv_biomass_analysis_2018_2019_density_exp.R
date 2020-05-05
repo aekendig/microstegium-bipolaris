@@ -2,7 +2,7 @@
 
 # file: mv_biomass_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/30/20
+# date last edited: 5/4/20
 # goal: evaluate the effects of density treatments and environmental covariates on the biomass of Microstegium
 
 
@@ -21,6 +21,7 @@ bio18 <- read_csv("./data/mv_biomass_oct_2018_density_exp.csv")
 bio19 <- read_csv("./data/mv_biomass_seeds_2019_density_exp.csv")
 plots <- read_csv("./data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 covar <- read_csv("./intermediate-data/covariates_2018_density_exp.csv")
+treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 
 #### edit data ####
@@ -47,6 +48,7 @@ bio19b <- bio19 %>%
          fungicide = recode(treatment, water = 0, fungicide = 1)) %>%
   left_join(plots) %>%
   left_join(covar)
+
 
 #### check datasets ####
 
@@ -200,7 +202,11 @@ plot_grid(temp_fig_cov %+%
 dev.off()
 
 
-#### 2019 biomass models ####
+#### separate data ####
+
+# treatments
+bio_dat_water_19 <- filter(bio19b, treatment == "water")
+bio_dat_fungicide_19 <- filter(bio19b, treatment == "fungicide")
 
 
 ### manual model fitting ###
