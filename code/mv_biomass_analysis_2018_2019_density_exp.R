@@ -49,6 +49,16 @@ bio19b <- bio19 %>%
   left_join(plots) %>%
   left_join(covar)
 
+# 2019 without plot repetition
+bio19t <- bio19 %>%
+  rename(bio.g = biomass_weight.g) %>%
+  mutate(log_bio.g = log(bio.g),
+         fungicide = recode(treatment, water = 0, fungicide = 1)) %>%
+  left_join(treat) %>%
+  left_join(covar) %>%
+  mutate(background = fct_relevel(background, "none"),
+         Treatment = recode(treatment, water = "Control (water)", fungicide = "Fungicide"))
+
 
 #### check datasets ####
 
@@ -94,6 +104,10 @@ temp_theme <- theme_bw() +
         strip.text = element_text(size = 10),
         strip.placement = "outside")
 
+# settings
+col_pal = c("black", "#0072B2", "#56B4E9", "#D55E00")
+dodge_value = 1
+
 # template figure
 temp_fig <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
@@ -135,6 +149,16 @@ plot_grid(temp_fig %+%
           nrow = 2)
 
 dev.off()
+
+ggplot(bio19t, aes(x = background_density, y = bio.g, color = background)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, alpha = 0.5, position = position_dodge(dodge_value)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(dodge_value)) +
+  facet_wrap(~ Treatment) +
+  scale_color_manual(values = col_pal, name = "Neighbors") +
+  temp_theme +
+  xlab("Neighbor density") +
+  ylab(expression(paste(italic(Microstegium), " biomass (g ", individual^-1, ")", sep = ""))) +
+  theme(strip.text = element_text(size = 12))
 
 
 #### visualize covariate effects ####

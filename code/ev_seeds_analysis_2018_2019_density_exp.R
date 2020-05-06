@@ -24,7 +24,9 @@ spike19 <- read_csv("./intermediate-data/ev_processed_seeds_both_year_conversion
 surv18 <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 covar <- read_csv("intermediate-data/covariates_2018_density_exp.csv")
-treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
+
+# import seed model
+load("./output/ev_seeds_data_processing_2018_2019_seed_spikelet_weight_mod.rda")
 
 
 #### edit data ####
@@ -36,14 +38,6 @@ foc19 <- tibble(site = rep(c("D1", "D2", "D3", "D4"), each = 4),
   mutate(sp = "Ev",
          focal = 1) %>%
   merge(plots, all = T) %>%
-  as_tibble()
-
-foc19b <- tibble(site = rep(c("D1", "D2", "D3", "D4"), each = 4),
-                ID = rep(c("1", "2", "3", "A"), 4),
-                age = rep(c(rep("seedling", 3), "adult"), 4)) %>%
-  mutate(sp = "Ev",
-         focal = 1) %>%
-  merge(treat, all = T) %>%
   as_tibble()
 
 # 2018 plants
@@ -85,12 +79,18 @@ seed18 <- spike18 %>%
 fseed18 <- seed18 %>%
   filter(focal == 1)
 
+# 2018 seed with single "none" treatment
+fseed18b <- fseed18 %>%
+  filter(background_density != 0 | (background_density == 0 & background == "Ev adult")) %>%
+  mutate(background = case_when(background_density == 0 ~ "none",
+                                TRUE ~ background) %>% fct_relevel("none"))
+
 # check 2019 data
 unique(spike19$spikelet_notes)
 filter(spike19, spikelet_notes == "D2?") # does this need to be removed?
 unique(spike19$processing_notes)
 
-# 2019 seed with "none" treatment repeated across backgrounds
+# 2019 seed
 seed19 <- spike19 %>%
   group_by(site, plot, treatment, sp, ID) %>%
   summarise(spikelet_weight.g = sum(spikelet_weight.g),
@@ -107,19 +107,21 @@ seed19 <- spike19 %>%
          fungicide = recode(treatment, water = 0, fungicide = 1))
 
 # 2019 seed with single "none" treatment
-seed19b <- spike19 %>%
-  group_by(site, plot, treatment, sp, ID) %>%
-  summarise(spikelet_weight.g = sum(spikelet_weight.g),
-            seeds = sum(seeds)) %>%
-  mutate(age = case_when(ID == "A" ~ "adult",
-                         TRUE ~ "seedling"),
-         focal = 1) %>%
-  ungroup() %>%
-  full_join(foc19b) %>%
-  mutate(spikelet_weight.g = replace_na(spikelet_weight.g, 0),
-         seeds = replace_na(seeds, 0),
-         plant_type = paste(sp, age, sep = " "),
-         fungicide = recode(treatment, water = 0, fungicide = 1))
+seed19b <- seed19 %>%
+  filter(background_density != 0 | (background_density == 0 & background == "Ev adult")) %>%
+  mutate(background = case_when(background_density == 0 ~ "none",
+                                TRUE ~ background) %>% fct_relevel("none"))
+
+# combine years
+seed <- fseed18 %>%
+  mutate(yearf = "Year 1") %>%
+  full_join(seed19 %>%
+              mutate(yearf = "Year 2"))
+
+seedb <- fseed18b %>%
+  mutate(yearf = "Year 1") %>%
+  full_join(seed19b %>%
+              mutate(yearf = "Year 2"))
 
 
 #### check datasets ####
@@ -207,7 +209,49 @@ plot_grid(temp_fig %+%
           nrow = 2)
 
 # all background treatments
+plot_grid(ggplot(filter(fseed18b, fungicide == 0), 
+                 aes(x = background_density, y = seeds, color = background)) +
+            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
+            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
+            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
+            temp_theme +
+            xlab("Background density") +
+            ggtitle("Year 1 Water treatment") +
+            theme(plot.title = element_text(hjust = 0.5),
+                  legend.position = "none"),
+          ggplot(filter(fseed18b, fungicide == 1), 
+                 aes(x = background_density, y = seeds, color = background)) +
+            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
+            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
+            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
+            temp_theme +
+            xlab("Background density") +
+            ggtitle("Year 1 Fungicide treatment") +
+            theme(plot.title = element_text(hjust = 0.5)),
+          nrow = 2)
+
 plot_grid(ggplot(filter(seed19b, fungicide == 0), 
+                 aes(x = background_density, y = seeds, color = background)) +
+            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
+            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
+            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
+            temp_theme +
+            xlab("Background density") +
+            ggtitle("Year 2 Water treatment") +
+            theme(plot.title = element_text(hjust = 0.5),
+                  legend.position = "none"),
+          ggplot(filter(seed19b, fungicide == 1), 
+                 aes(x = background_density, y = seeds, color = background)) +
+            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
+            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
+            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
+            temp_theme +
+            xlab("Background density") +
+            ggtitle("Year 2 Fungicide treatment") +
+            theme(plot.title = element_text(hjust = 0.5)),
+          nrow = 2)
+
+plot_grid(ggplot(filter(seedb, fungicide == 0), 
                  aes(x = background_density, y = seeds, color = background)) +
             stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
             stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
@@ -217,7 +261,7 @@ plot_grid(ggplot(filter(seed19b, fungicide == 0),
             ggtitle("Water treatment") +
             theme(plot.title = element_text(hjust = 0.5),
                   legend.position = "none"),
-          ggplot(filter(seed19b, fungicide == 1), 
+          ggplot(filter(seedb, fungicide == 1), 
                  aes(x = background_density, y = seeds, color = background)) +
             stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
             stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
@@ -350,23 +394,16 @@ dev.off()
 
 #### separate data ####
 
-# non-repeat data
-ea_dat_19b <- filter(seed19b, age == "adult")
-es_dat_19b <- filter(seed19b, age == "seedling")
-
 # data
-# use mean and sd from non-repeat data to scale
-ea_dat_19 <- filter(seed19, age == "adult") %>%
-  mutate(seeds_scale = (seeds - mean(ea_dat_19b$seeds)) / sd(ea_dat_19b$seeds))
+ea_dat_19 <- filter(seed19, age == "adult")
 es_dat_19 <- filter(seed19, age == "seedling") %>%
-  mutate(seeds_scale = (seeds - mean(es_dat_19b$seeds)) / sd(es_dat_19b$seeds),
-         background = fct_relevel(background, "Ev seedling"))
+  mutate(background = fct_relevel(background, "Ev seedling"))
 
 # histograms
-ggplot(ea_dat_19, aes(x = seeds_scale)) +
-  geom_histogram(binwidth = 0.1)
-ggplot(es_dat_19, aes(x = seeds_scale)) +
-  geom_histogram(binwidth = 0.1)
+ggplot(ea_dat_19, aes(x = seeds)) +
+  geom_histogram()
+ggplot(es_dat_19, aes(x = seeds)) +
+  geom_histogram()
 
 # treatment
 ea_dat_fungicide_19 <- filter(ea_dat_19, fungicide == 1)
@@ -374,44 +411,51 @@ ea_dat_water_19 <- filter(ea_dat_19, fungicide == 0)
 es_dat_fungicide_19 <- filter(es_dat_19, fungicide == 1)
 es_dat_water_19 <- filter(es_dat_19, fungicide == 0)
 
+# error from seed estimate
+sd(resid(mod_both)) # 17
+
 
 #### manual model fitting ####
 
 # sigmoid Beverton-Holt
-sbh_fun_simple <- function(dat_in, r, a, d){
+sbh_fun_simple <- function(dat_in, a, b){
   
   # extract values
   xmin = min(dat_in$background_density)
   xmax = max(dat_in$background_density)
   y0 = filter(dat_in,
               background_density == 0 ) %>%
-          summarise(mean_seed = mean(seeds_scale)) %>%
+          summarise(mean_seed = mean(seeds)) %>%
           as.numeric() %>%
   round(2)
   print(y0)
   
   # create data
   dat <- tibble(x = seq(xmin, xmax, length.out = 300)) %>%
-    mutate(y = y0 + r * x^(d-1) / (1 + a * x^d))
+    mutate(y = y0 + a * x / (1 + b * x^2))
   
   # plot
-  print(ggplot(dat_in, aes(x = background_density, y = seeds_scale)) +
+  print(ggplot(dat_in, aes(x = background_density, y = seeds)) +
           stat_summary(geom = "point", fun = "mean", shape = 21, aes(color = background)) +
           stat_summary(geom = "line", fun = "mean", aes(color = background)) +
     geom_line(data = dat, aes(x = x, y = y)))
 }
 
 # try values
-sbh_fun_simple(ea_dat_water_19, 1, 1, 2) # alpha needs to be positive
-sbh_fun_simple(ea_dat_fungicide_19, 0.5, 1, 2)
-sbh_fun_simple(es_dat_water_19, 0.4, 0.1, 2)
+sbh_fun_simple(ea_dat_water_19, 75, 0.1)
+sbh_fun_simple(ea_dat_19, 40, 0.1)
+sbh_fun_simple(ea_dat_fungicide_19, 20, 0.1)
+sbh_fun_simple(es_dat_water_19, 5, 0.1)
+sbh_fun_simple(es_dat_fungicide_19, 5, 0.1)
 
 # distributions
-x <- seq(0, 10, length.out = 200)
-y <- dgamma(x, shape = 1.5, scale = 1)
+x <- seq(0, 100, length.out = 200)
+# y <- dexp(x, 5)
+# y <- dexp(x, 0.03)
+# y <- dgamma(x, shape = 1.5, scale = 1)
 # y <- dlnorm(x, 0.25, 7)
 # y <- dinvgamma(x, 3, 0.5)
-# y <- dnorm(x, 0, 100)
+y <- dnorm(x, 30, 20)
 plot(x, y, type = "l")
 
 # function for trying results
@@ -437,130 +481,145 @@ sbh_fun_treatment <- function(dat_in, mod){
 
 # chose gaussian because I couldn't fit the simplest negative binomial model without errors and I don't understand how the non-normal priors work with Poisson model (super small estimates when there shouldn't have been)
 
-mean(filter(ea_dat_19, background_density == 0)$seeds_scale)
+mean(filter(ea_dat_19, background_density == 0)$seeds)
 
 # priors
 ea_seeds_2019_prior <- brm(data = ea_dat_19, family = gaussian,
-                                 bf(seeds_scale ~ 0.07 + k * background_density / (1 + alpha * background_density^2),
+                                 bf(seeds ~ 107 + k * background_density / (1 + alpha * background_density^2),
                                     k + alpha ~ 1,
                                     nl = T),
-                                 prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                            prior(gamma(1.5, 1), nlpar = "alpha", lb = 0)),
+                                 prior <- c(prior(normal(30, 20), nlpar = "k"),
+                                            prior(exponential(5), nlpar = "alpha", lb = 0)),
                                  sample_prior = "only", seed = 1234)
 plot(ea_seeds_2019_prior)
 
-# k intercept model
-ea_seeds_2019_mod_1 <- brm(data = ea_dat_19, family = gaussian,
-                                 bf(seeds_scale ~ 0.07 + k * background_density / (1 + background_density^2),
-                                    k ~ 1,
-                                    nl = T),
-                                 prior <- c(prior(normal(1, 10), nlpar = "k")),
-                                 iter = 6000, warmup = 1000, chains = 1, cores = 1) 
-summary(ea_seeds_2019_mod_1)
-plot(ea_seeds_2019_mod_1)
-
-# k and alpha intercept model
-ea_seeds_2019_mod_2 <- brm(data = ea_dat_19, family = gaussian,
-                           bf(seeds_scale ~ 0.07 + k * background_density / (1 + alpha * background_density^2),
-                              k + alpha ~ 1,
-                              nl = T),
-                           prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                      prior(gamma(1.5, 1), nlpar = "alpha", lb = 0)),
-                           iter = 6000, warmup = 1000, chains = 1, cores = 1) 
-summary(ea_seeds_2019_mod_2)
-plot(ea_seeds_2019_mod_2)
-# 53 divergent transitions
-pairs(ea_seeds_2019_mod_2)
-ea_seeds_2019_mod_2 <- update(ea_seeds_2019_mod_2,
-                              control = list(adapt_delta = 0.99))
-
-# k, alpha, and y0 intercept model
-ea_seeds_2019_mod_3 <- brm(data = ea_dat_19, family = gaussian,
-                                 bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
-                                    k + alpha + y0 ~ 1,
-                                    nl = T),
-                           prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                            prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
-                                            prior(normal(0, 1), nlpar = "y0")),
-                           iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                           control = list(adapt_delta = 0.99))
-# 46 divergent transisions
-ea_seeds_2019_mod_3 <- update(ea_seeds_2019_mod_3, control = list(adapt_delta = 0.9999))
-summary(ea_seeds_2019_mod_3)
-plot(ea_seeds_2019_mod_3)
-
-# k, alpha intercept model, y0 random effect
-ea_seeds_2019_mod_4 <- brm(data = ea_dat_19, family = gaussian,
-                           bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
-                              k + alpha ~ 1,
-                              y0 ~ 1 + (1|site),
-                              nl = T),
-                           prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                      prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
-                                      prior(normal(0, 1), nlpar = "y0")),
-                           iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                           control = list(adapt_delta = 0.9999))
-summary(ea_seeds_2019_mod_4)
-plot(ea_seeds_2019_mod_4)
-
-# k, alpha intercept model, y0 random effect and treatment
-ea_seeds_2019_mod_5 <- brm(data = ea_dat_19, family = gaussian,
-                           bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
-                              k + alpha ~ 1,
-                              y0 ~ fungicide + (1|site),
-                              nl = T),
-                           prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                      prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
-                                      prior(normal(0, 1), nlpar = "y0")),
-                           iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                           control = list(adapt_delta = 0.9999))
-ea_seeds_2019_mod_5 <- update(ea_seeds_2019_mod_5,
-                              control = list(adapt_delta = 0.9999, max_treedepth = 15))
-summary(ea_seeds_2019_mod_5)
-
-# k background, y0 random effect and treatment, alpha intercept
-ea_seeds_2019_mod_6 <- brm(data = ea_dat_19, family = gaussian,
-                           bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
-                              alpha ~ 1,
-                              k ~ background,
-                              y0 ~ fungicide + (1|site),
-                              nl = T),
-                           prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                      prior(normal(0, 1), nlpar = "k", coef = "backgroundEvseedling"),
-                                      prior(normal(0, 1), nlpar = "k", coef = "backgroundMvseedling"),
-                                      prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
-                                      prior(normal(0, 1), nlpar = "y0")),
-                           iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                           control = list(adapt_delta = 0.9999, max_treedepth = 15))
-summary(ea_seeds_2019_mod_6)
-
-# k and alpha background, y0 random effect, water-only
-ea_seeds_water_2019_mod_7 <- brm(data = ea_dat_water_19, family = gaussian,
-                           bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
-                              alpha + k ~ background,
-                              y0 ~ 1 + (1|site),
-                              nl = T),
-                           prior <- c(prior(normal(1, 10), nlpar = "k"),
-                                      prior(normal(0, 1), nlpar = "k", coef = "backgroundEvseedling"),
-                                      prior(normal(0, 1), nlpar = "k", coef = "backgroundMvseedling"),
-                                      prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
-                                      prior(normal(0, 1), nlpar = "alpha", coef = "backgroundEvseedling"),
-                                      prior(normal(0, 1), nlpar = "alpha", coef = "backgroundMvseedling"),
-                                      prior(normal(0, 1), nlpar = "y0")),
-                           iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                           control = list(adapt_delta = 0.99999, max_treedepth = 15))
-summary(ea_seeds_water_2019_mod_7)
-sbh_fun_treatment(ea_dat_water_19, ea_seeds_water_2019_mod_7)
+# # k intercept model
+# ea_seeds_2019_mod_1 <- brm(data = ea_dat_19, family = gaussian,
+#                                  bf(seeds_scale ~ 0.07 + k * background_density / (1 + background_density^2),
+#                                     k ~ 1,
+#                                     nl = T),
+#                                  prior <- c(prior(normal(1, 10), nlpar = "k")),
+#                                  iter = 6000, warmup = 1000, chains = 1, cores = 1) 
+# summary(ea_seeds_2019_mod_1)
+# plot(ea_seeds_2019_mod_1)
+# 
+# # k and alpha intercept model
+# ea_seeds_2019_mod_2 <- brm(data = ea_dat_19, family = gaussian,
+#                            bf(seeds_scale ~ 0.07 + k * background_density / (1 + alpha * background_density^2),
+#                               k + alpha ~ 1,
+#                               nl = T),
+#                            prior <- c(prior(normal(1, 10), nlpar = "k"),
+#                                       prior(gamma(1.5, 1), nlpar = "alpha", lb = 0)),
+#                            iter = 6000, warmup = 1000, chains = 1, cores = 1) 
+# summary(ea_seeds_2019_mod_2)
+# plot(ea_seeds_2019_mod_2)
+# # 53 divergent transitions
+# pairs(ea_seeds_2019_mod_2)
+# ea_seeds_2019_mod_2 <- update(ea_seeds_2019_mod_2,
+#                               control = list(adapt_delta = 0.99))
+# 
+# # k, alpha, and y0 intercept model
+# ea_seeds_2019_mod_3 <- brm(data = ea_dat_19, family = gaussian,
+#                                  bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
+#                                     k + alpha + y0 ~ 1,
+#                                     nl = T),
+#                            prior <- c(prior(normal(1, 10), nlpar = "k"),
+#                                             prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
+#                                             prior(normal(0, 1), nlpar = "y0")),
+#                            iter = 6000, warmup = 1000, chains = 1, cores = 1,
+#                            control = list(adapt_delta = 0.99))
+# # 46 divergent transisions
+# ea_seeds_2019_mod_3 <- update(ea_seeds_2019_mod_3, control = list(adapt_delta = 0.9999))
+# summary(ea_seeds_2019_mod_3)
+# plot(ea_seeds_2019_mod_3)
+# 
+# # k, alpha intercept model, y0 random effect
+# ea_seeds_2019_mod_4 <- brm(data = ea_dat_19, family = gaussian,
+#                            bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
+#                               k + alpha ~ 1,
+#                               y0 ~ 1 + (1|site),
+#                               nl = T),
+#                            prior <- c(prior(normal(1, 10), nlpar = "k"),
+#                                       prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
+#                                       prior(normal(0, 1), nlpar = "y0")),
+#                            iter = 6000, warmup = 1000, chains = 1, cores = 1,
+#                            control = list(adapt_delta = 0.9999))
+# summary(ea_seeds_2019_mod_4)
+# plot(ea_seeds_2019_mod_4)
+# 
+# # k, alpha intercept model, y0 random effect and treatment
+# ea_seeds_2019_mod_5 <- brm(data = ea_dat_19, family = gaussian,
+#                            bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
+#                               k + alpha ~ 1,
+#                               y0 ~ fungicide + (1|site),
+#                               nl = T),
+#                            prior <- c(prior(normal(1, 10), nlpar = "k"),
+#                                       prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
+#                                       prior(normal(0, 1), nlpar = "y0")),
+#                            iter = 6000, warmup = 1000, chains = 1, cores = 1,
+#                            control = list(adapt_delta = 0.9999))
+# ea_seeds_2019_mod_5 <- update(ea_seeds_2019_mod_5,
+#                               control = list(adapt_delta = 0.9999, max_treedepth = 15))
+# summary(ea_seeds_2019_mod_5)
+# 
+# # k background, y0 random effect and treatment, alpha intercept
+# ea_seeds_2019_mod_6 <- brm(data = ea_dat_19, family = gaussian,
+#                            bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
+#                               alpha ~ 1,
+#                               k ~ background,
+#                               y0 ~ fungicide + (1|site),
+#                               nl = T),
+#                            prior <- c(prior(normal(1, 10), nlpar = "k"),
+#                                       prior(normal(0, 1), nlpar = "k", coef = "backgroundEvseedling"),
+#                                       prior(normal(0, 1), nlpar = "k", coef = "backgroundMvseedling"),
+#                                       prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
+#                                       prior(normal(0, 1), nlpar = "y0")),
+#                            iter = 6000, warmup = 1000, chains = 1, cores = 1,
+#                            control = list(adapt_delta = 0.9999, max_treedepth = 15))
+# summary(ea_seeds_2019_mod_6)
+# 
+# # k and alpha background, y0 random effect, water-only
+# ea_seeds_water_2019_mod_7 <- brm(data = ea_dat_water_19, family = gaussian,
+#                            bf(seeds_scale ~ y0 + k * background_density / (1 + alpha * background_density^2),
+#                               alpha + k ~ background,
+#                               y0 ~ 1 + (1|site),
+#                               nl = T),
+#                            prior <- c(prior(normal(1, 10), nlpar = "k"),
+#                                       prior(normal(0, 1), nlpar = "k", coef = "backgroundEvseedling"),
+#                                       prior(normal(0, 1), nlpar = "k", coef = "backgroundMvseedling"),
+#                                       prior(gamma(1.5, 1), nlpar = "alpha", lb = 0),
+#                                       prior(normal(0, 1), nlpar = "alpha", coef = "backgroundEvseedling"),
+#                                       prior(normal(0, 1), nlpar = "alpha", coef = "backgroundMvseedling"),
+#                                       prior(normal(0, 1), nlpar = "y0")),
+#                            iter = 6000, warmup = 1000, chains = 1, cores = 1,
+#                            control = list(adapt_delta = 0.99999, max_treedepth = 15))
+# summary(ea_seeds_water_2019_mod_7)
+# sbh_fun_treatment(ea_dat_water_19, ea_seeds_water_2019_mod_7)
 
 
 #### Ev adult seed models 2019 ####
 
 # water treatment
-ea_seeds_water_2019_mod <- update(ea_seeds_water_2019_mod_7,
-                           chains = 3, cores = 2)
+mean(ea_dat_water_19$seeds)
+ea_seeds_water_2019_mod <- brm(data = ea_dat_water_19, family = gaussian,
+                               bf(seeds | mi(17) ~ y0 + k * background_density / (1 + alpha * background_density^2),
+                                  alpha + k ~ background,
+                                  y0 ~ 1 + (1|site),
+                                  nl = T),
+                               prior <- c(prior(normal(40, 20), nlpar = "k"),
+                                          prior(normal(0, 20), nlpar = "k", coef = "backgroundEvseedling"),
+                                          prior(normal(0, 20), nlpar = "k", coef = "backgroundMvseedling"),
+                                          prior(exponential(5), nlpar = "alpha", lb = 0),
+                                          prior(normal(0, 1), nlpar = "alpha", coef = "backgroundEvseedling"),
+                                          prior(normal(0, 1), nlpar = "alpha", coef = "backgroundMvseedling"),
+                                          prior(normal(90, 20), nlpar = "y0")),
+                               iter = 6000, warmup = 1000, chains = 3, cores = 2)
 summary(ea_seeds_water_2019_mod)
-sbh_fun_treatment(ea_dat_water_19, ea_seeds_water_2019_mod)
-pp_check(ea_seeds_water_2019_mod, nsamples = 50)
+# huge variation in the k estimate
+
+#### left off here thinking about above issue ####
+# use 2018 data (seems inherently different - less affected by density)
+# don't worry about it?
 
 # fungicide treatment
 ea_seeds_fungicide_2019_mod <- brm(data = ea_dat_fungicide_19, family = gaussian,

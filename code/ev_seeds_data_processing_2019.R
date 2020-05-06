@@ -12,6 +12,7 @@
 rm(list=ls())
 
 # load packages
+library(MASS)
 library(tidyverse)
 library(lubridate)
 
@@ -152,25 +153,82 @@ spikelets3 %>%
 # a handful are that large
 
 
-#### linear models ####
+#### regressions ####
 
-# all data
-mod_19 <- lm(seeds ~ spikelet_weight.g, data = spike_seed)
-summary(mod_19)
-# R2 = 0.95
+# examine data
+mean(spike_seed$seeds)
+var(spike_seed$seeds)
+ggplot(spike_seed, aes(x = seeds)) +
+  geom_histogram(binwidth = 1)
 
-# all data, origin
-mod_19b <- lm(seeds ~ 0 + spikelet_weight.g, data = spike_seed)
+# poisson
+mod_19a <- glm(seeds ~ spikelet_weight.g, data = spike_seed, family = poisson)
+summary(mod_19a)
+plot(mod_19a)
+
+# neg binomial
+mod_19b <- glm.nb(seeds ~ spikelet_weight.g, data = spike_seed)
 summary(mod_19b)
-# R2 = 0.96
+# dispersion parameter is close to 1
+plot(mod_19b)
+# much smaller std deviance residuals
 
-AIC(mod_19, mod_19b)
-# equal
+# compare
+AIC(mod_19a, mod_19b)
+# neg binomial better
+
+# simulation
+sim_dat = tibble(spikelet_weight.g = seq(0, max(spike_seed$spikelet_weight.g), length.out = 100))
+sim_dat$yp = predict(mod_19a, newdata = sim_dat, type = "response")
+sim_dat$yn = predict(mod_19b, newdata = sim_dat, type = "response")
+
+ggplot(spike_seed, aes(x = spikelet_weight.g)) +
+  geom_point(aes(y = seeds)) +
+  geom_line(data = sim_dat, aes(y = yp), color = "blue") +
+  geom_line(data = sim_dat, aes(y = yn), color = "green")
+# Poisson looks way better
+
+# Poisson, origin
+mod_19c <- glm(seeds ~ 0 + spikelet_weight.g, data = spike_seed, family = poisson)
+summary(mod_19c)
+plot(mod_19c)
+
+AIC(mod_19a, mod_19c)
+# a is a better fit
+
+# simulation
+sim_dat$yp0 = predict(mod_19c, newdata = sim_dat, type = "response")
+
+ggplot(spike_seed, aes(x = spikelet_weight.g)) +
+  geom_point(aes(y = seeds)) +
+  geom_line(data = sim_dat, aes(y = yp), color = "blue") +
+  geom_line(data = sim_dat, aes(y = yp0), color = "purple")
+# the 0 intercept forces it too low
+
+# linear models
+mod_19d <- lm(seeds ~ spikelet_weight.g, data = spike_seed)
+mod_19e <- lm(seeds ~ 0 + spikelet_weight.g, data = spike_seed)
+
+# compare
+AIC(mod_19a, mod_19b, mod_19d, mod_19e)
+# linear are better, no difference with intercept
+
+# simulation
+sim_dat$yl = predict(mod_19d, newdata = sim_dat)
+sim_dat$yl0 = predict(mod_19e, newdata = sim_dat)
+
+ggplot(spike_seed, aes(x = spikelet_weight.g)) +
+  geom_point(aes(y = seeds)) +
+  geom_line(data = sim_dat, aes(y = yp), color = "blue") +
+  geom_line(data = sim_dat, aes(y = yp0), color = "purple") +
+  geom_line(data = sim_dat, aes(y = yl), color = "red") +
+  geom_line(data = sim_dat, aes(y = yl0), color = "orange")
 
 # predicted values
-pred_dat <- tibble(spikelet_weight.g = seq(min(spike_seed$spikelet_weight.g), max(spike_seed$spikelet_weight.g), length.out = 100)) %>%
-  mutate(seeds = predict(mod_19b, newdata = .),
-         seeds.se = predict(mod_19b, newdata = ., se.fit = T)$se.fit)
+pred_dat <- sim_dat %>%
+  select(spikelet_weight.g, yl0) %>%
+  rename(seeds = yl0) %>%
+  mutate(seeds.se = predict(mod_19e, newdata = ., se.fit = T)$se.fit)
 
 # figure
 pred_plot <- spike_seed %>%
