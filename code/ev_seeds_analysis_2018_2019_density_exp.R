@@ -2,7 +2,7 @@
 
 # file: ev_seeds_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/5/20
+# date last edited: 5/6/20
 # goal: evaluate the effects of density treatments and environmental covariates on the seed production of Elymus
 
 
@@ -620,6 +620,7 @@ summary(ea_seeds_water_2019_mod)
 #### left off here thinking about above issue ####
 # use 2018 data (seems inherently different - less affected by density)
 # don't worry about it?
+# return to separate models for each density type
 
 # fungicide treatment
 ea_seeds_fungicide_2019_mod <- brm(data = ea_dat_fungicide_19, family = gaussian,
