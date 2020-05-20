@@ -2,7 +2,7 @@
 
 # file: mv_biomass_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/4/20
+# date last edited: 4/30/20
 # goal: evaluate the effects of density treatments and environmental covariates on the biomass of Microstegium
 
 
@@ -21,8 +21,6 @@ bio18 <- read_csv("./data/mv_biomass_oct_2018_density_exp.csv")
 bio19 <- read_csv("./data/mv_biomass_seeds_2019_density_exp.csv")
 plots <- read_csv("./data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 covar <- read_csv("./intermediate-data/covariates_2018_density_exp.csv")
-treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
-expt <- read_csv("./data/mv_biomass_seeds_height_jun_2019_fungicide_exp.csv")
 
 
 #### edit data ####
@@ -49,17 +47,6 @@ bio19b <- bio19 %>%
          fungicide = recode(treatment, water = 0, fungicide = 1)) %>%
   left_join(plots) %>%
   left_join(covar)
-
-# 2019 without plot repetition
-bio19t <- bio19 %>%
-  rename(bio.g = biomass_weight.g) %>%
-  mutate(log_bio.g = log(bio.g),
-         fungicide = recode(treatment, water = 0, fungicide = 1)) %>%
-  left_join(treat) %>%
-  left_join(covar) %>%
-  mutate(background = fct_relevel(background, "none"),
-         Treatment = recode(treatment, water = "Control (water)", fungicide = "Fungicide"))
-
 
 #### check datasets ####
 
@@ -105,10 +92,6 @@ temp_theme <- theme_bw() +
         strip.text = element_text(size = 10),
         strip.placement = "outside")
 
-# settings
-col_pal = c("black", "#0072B2", "#56B4E9", "#D55E00")
-dodge_value = 1
-
 # template figure
 temp_fig <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
@@ -150,16 +133,6 @@ plot_grid(temp_fig %+%
           nrow = 2)
 
 dev.off()
-
-ggplot(bio19t, aes(x = background_density, y = bio.g, color = background)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, alpha = 0.5, position = position_dodge(dodge_value)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(dodge_value)) +
-  facet_wrap(~ Treatment) +
-  scale_color_manual(values = col_pal, name = "Neighbors") +
-  temp_theme +
-  xlab("Neighbor density") +
-  ylab(expression(paste(italic(Microstegium), " biomass (g ", individual^-1, ")", sep = ""))) +
-  theme(strip.text = element_text(size = 12))
 
 
 #### visualize covariate effects ####
@@ -227,48 +200,26 @@ plot_grid(temp_fig_cov %+%
 dev.off()
 
 
-#### fungicide effect ####
-
-# add fungicide column
-expt2 <- expt %>%
-  mutate(fungicide = recode(treatment, fungicide = "1", water = "0"))
-
-# model
-fung_mod <- brm(data = expt2, family = gaussian,
-                weight.g ~ fungicide,
-                prior <- c(prior(normal(0, 100), class = Intercept),
-                           prior(normal(0, 10), class = b),
-                           prior(cauchy(0, 1), class = sigma)),
-                iter = 6000, warmup = 1000, chains = 3, cores = 2)
-summary(fung_mod)
-plot(fung_mod)
-
-# remove 0 plots
-bio19m <- filter(bio19t, density_level != "none")
-
-# translate to field experiment values
-bio19m %>%
-  filter(!is.na(bio.g) & density_level =="low") %>%
-  ggplot(aes(x = bio.g)) +
-  geom_histogram() +
-  geom_vline(aes(xintercept = mean(bio.g)), color = "blue", linetype = "dashed")
-
-mean(filter(bio19m, !is.na(bio.g) & density_level =="low")$bio.g)  
+#### 2019 seed models ####
 
 
 ### manual model fitting ###
 
-# Beverton-Holt
-bh_fun <- function(dat_in, a){
+# sigmoid Beverton-Holt
+sbh_fun <- function(dat_in, r, a, d){
   
   # extract values
-  xmin = 0
+  xmin = min(dat_in$background_density)
   xmax = max(dat_in$background_density)
-  y0 = mean(filter(bio19m, !is.na(bio.g) & density_level =="low")$bio.g)
+  y0 = filter(dat_in, fungicide == 0) %>%
+    summarise(mean_bio = mean(bio.g)) %>%
+    as.numeric() %>%
+    round()
+  print(y0)
   
   # create data
   dat <- tibble(x = seq(xmin, xmax, length.out = 100)) %>%
-    mutate(y = y0 / (1 + a * x))
+    mutate(y = y0 + x^(d-1) / (1/r + a * x^d))
   
   # plot
   print(ggplot(dat_in, aes(x = background_density, y = bio.g)) +
@@ -277,43 +228,42 @@ bh_fun <- function(dat_in, a){
           geom_line(data = dat, aes(x = x, y = y)))
 }
 
-# separate background types
-bio19m_mv <- filter(bio19m, background == "Mv seedling")
+# separate data
+bio19b_mv <- filter(bio19b, background == "Mv seedling")
 
 # try values
-bh_fun(filter(bio19m_mv, fungicide == 0), 0.03)
+sbh_fun(bio19b_mv, 2, 0.05, 2)
 
-# distributions
-x <- seq(0, 10, length.out = 100)
-y <- dexp(x, 1)
-plot(x, y, type = "l")
-
-
+bio19b_mv$fungicide_factor = factor(bio19b_mv$fungicide)
 ### Mv background 2019 ###
 
-mv_bio_mv_bg_2019_mod <- brm(data = bio19m_mv, family = gaussian,
-                             bf(bio.g ~ (y0 + f)/ (alpha * background_density),
-                                y0 ~ fungicide + (1|site),
-                                f ~ fungicide,
-                                alpha ~ fungicide,
-                                nl = T),
-                             prior <- c(prior(normal(23, 10), coef = "Intercept", nlpar = "y0"),
-                                        prior(normal(0, 10), coef = "fungicide", nlpar = "y0"),
-                                        prior(normal(0, 0.001), coef = "Intercept", nlpar = "f"),
-                                        prior(normal(-2, 1), coef = "fungicide", nlpar = "f"),
-                                        prior(normal(0, 1), coef = "fungicide", nlpar = "alpha"),
-                                        prior(exponential(1), nlpar = "alpha")),
-                             iter = 6000, warmup = 1000, chains = 1, cores = 1)
-summary(mv_bio_mv_bg_2019_mod)
-plot(mv_bio_mv_bg_2019_mod)
-# 143 divergent transitions
-mv_bio_mv_bg_2019_mod <- update(mv_bio_mv_bg_2019_mod, control = list(adapt_delta = 0.99))
-# 5 divergent transitions, 29 exceed max treedepth
-mv_bio_mv_bg_2019_mod <- update(mv_bio_mv_bg_2019_mod, control = list(adapt_delta = 0.999, max_treedepth = 15))
-# 5 divergent transitions
-mv_bio_mv_bg_2019_mod <- update(mv_bio_mv_bg_2019_mod, control = list(adapt_delta = 0.9999, max_treedepth = 15))
-# 1 divergent transition
-mv_bio_mv_bg_2019_mod <- update(mv_bio_mv_bg_2019_mod, control = list(adapt_delta = 0.99999, max_treedepth = 15))
-# 8 divergent transitions
-mv_bio_mv_bg_2019_mod <- update(mv_bio_mv_bg_2019_mod, control = list(adapt_delta = 0.99999999, max_treedepth = 15))
-# 3 divergent transitions
+# Incorporating greenhouse data on fungicide effect in the absence of pathogen
+# This is something of a hack: we use two intercepts which would normally be
+# completely unidentifiable, but constrain their priors at the different 
+# levels (with/without fungicide) to reflect info from greenhouse study:
+mv_bio_mv_bg_2019_mod <- brm(data = bio19b_mv, family = gaussian,
+                          bf(bio.g ~ f + s0 + background_density / (k + alpha * background_density^2),
+                             f ~ fungicide,
+                             s0 ~ fungicide + (1|site),
+                             k ~ fungicide,
+                             alpha ~ fungicide_factor + 0,
+                             nl = T),
+                          prior <- c(# weakly informative prior from greenhouse w/out fungicide:
+                                     prior(normal(12, 10), nlpar = 's0'), 
+                                     # fungicide effect when no fungicide = 0:
+                                     prior(normal(0, 0.001), coef = 'Intercept', nlpar = 'f'),
+                                     # fungicide effect on plants with strong or, at least more strongly, 
+                                     # informed prior from greenhouse study: 
+                                     prior(normal(-2, 0.4), coef = 'fungicide', nlpar = 'f'),
+                                     # all nonlinear parameters need informed/constrained priors
+                                     prior(exponential(1), nlpar = "k", lb = 0),
+                                    # prior(exponential(0.5), coef = 'Intercept', nlpar = "alpha"),
+                                     prior(exponential(0.5), nlpar = 'alpha', lb = 0)),
+                          iter = 2000, warmup = 1000, chains = 1, cores = 1,
+                          control = list(adapt_delta = 0.9))
+# 325 divergent transitions
+
+
+
+
+

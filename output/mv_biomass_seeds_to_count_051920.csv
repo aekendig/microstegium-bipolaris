@@ -1,0 +1,16 @@
+process_date,site,plot,treatment,sp,plant,flowers,stem_seed_weight.g,biomass_weight.g,process_notes
+11/23/19,D1,5,fungicide,Mv,3,17,0.5807,14.86,NA
+11/12/19,D1,10,fungicide,Mv,3,180,7.2888,91.42,NA
+11/12/19,D1,1,water,Mv,2,20,2.0037,23.69,NA
+11/23/19,D1,8,water,Mv,1,76,4.2533,49,NA
+12/7/19,D1,8,water,Mv,2,39,2.2677,45.89,NA
+11/19/19,D1,10,water,Mv,1,90,3.3069,42.92,NA
+11/16/19,D1,10,water,Mv,2,27,1.1682,25.78,NA
+2/25/20,D2,1,fungicide,Mv,2,27,1.9352,28.35,NA
+2/22/20,D2,3,fungicide,Mv,2,3,0.2341,11.85,NA
+2/28/20,D2,7,fungicide,Mv,3,0,0.0694,2.29,NA
+12/7/19,D3,4,fungicide,Mv,2,2,0.1385,4.93,NA
+1/31/20,D3,7,water,Mv,2,2,0.3436,11.36,NA
+2/12/20,D4,4,fungicide,Mv,3,24,0.4363,16.94,NA
+2/11/20,D4,7,fungicide,Mv,2,36,0.7058,24.77,NA
+2/12/20,D4,6,water,Mv,3,26,0.8859,13.05,NA
