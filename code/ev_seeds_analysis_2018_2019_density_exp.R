@@ -2,7 +2,7 @@
 
 # file: ev_seeds_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/6/20
+# date last edited: 5/20/20
 # goal: evaluate the effects of density treatments and environmental covariates on the seed production of Elymus
 
 
@@ -16,12 +16,12 @@ library(tidyverse)
 library(cowplot)
 library(brms)
 library(tidybayes)
-library(invgamma)
 
 # import data
 spike18 <- read_csv("./intermediate-data/ev_processed_seeds_both_year_conversion_2018_density_exp.csv")
 spike19 <- read_csv("./intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv")
 surv18 <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
+bgbio <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 covar <- read_csv("intermediate-data/covariates_2018_density_exp.csv")
 
@@ -79,12 +79,6 @@ seed18 <- spike18 %>%
 fseed18 <- seed18 %>%
   filter(focal == 1)
 
-# 2018 seed with single "none" treatment
-fseed18b <- fseed18 %>%
-  filter(background_density != 0 | (background_density == 0 & background == "Ev adult")) %>%
-  mutate(background = case_when(background_density == 0 ~ "none",
-                                TRUE ~ background) %>% fct_relevel("none"))
-
 # check 2019 data
 unique(spike19$spikelet_notes)
 filter(spike19, spikelet_notes == "D2?") # does this need to be removed?
@@ -101,16 +95,13 @@ seed19 <- spike19 %>%
   ungroup() %>%
   full_join(foc19) %>%
   left_join(covar) %>%
+  left_join(bgbio %>%
+              rename(background_biomass = biomass.g)) %>%
   mutate(spikelet_weight.g = replace_na(spikelet_weight.g, 0),
          seeds = replace_na(seeds, 0),
          plant_type = paste(sp, age, sep = " "),
-         fungicide = recode(treatment, water = 0, fungicide = 1))
-
-# 2019 seed with single "none" treatment
-seed19b <- seed19 %>%
-  filter(background_density != 0 | (background_density == 0 & background == "Ev adult")) %>%
-  mutate(background = case_when(background_density == 0 ~ "none",
-                                TRUE ~ background) %>% fct_relevel("none"))
+         fungicide = recode(treatment, water = 0, fungicide = 1),
+         background_pc_bio = background_biomass / background_density)
 
 # combine years
 seed <- fseed18 %>%
@@ -118,10 +109,9 @@ seed <- fseed18 %>%
   full_join(seed19 %>%
               mutate(yearf = "Year 2"))
 
-seedb <- fseed18b %>%
-  mutate(yearf = "Year 1") %>%
-  full_join(seed19b %>%
-              mutate(yearf = "Year 2"))
+# datasets without 0's
+fseed180 <- filter(fseed18, background_density > 0)
+seed190 <- filter(seed19, background_density > 0)
 
 
 #### check datasets ####
@@ -168,7 +158,7 @@ temp_theme <- theme_bw() +
         strip.text = element_text(size = 10),
         strip.placement = "outside")
 
-# template figure
+# template figures
 temp_fig <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
   stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3)) +
@@ -177,10 +167,24 @@ temp_fig <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment
   temp_theme +
   xlab("Background density")
 
+temp_fig2 <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment)) +
+  geom_point(size = 2, shape = 21, alpha = 0.7) +
+  facet_grid(plant_type ~ background, scales = "free", switch = "both") +
+  scale_fill_manual(values = c("black", "white"), name = "Treatment") +
+  temp_theme +
+  xlab("Background density")
+
+temp_fig3 <- ggplot(plots, aes(x = treatment, y = plot)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(0.3)) +
+  facet_grid(plant_type ~ background, scales = "free", switch = "both") +
+  temp_theme +
+  xlab("Treatment")
+
 # save treatment figures
 pdf("./output/ev_seeds_visualize_treatment_2018_2019_density_exp.pdf")
 
-# focal plants 2018
+# density 2018
 plot_grid(temp_fig %+%
             fseed18 %+%
             aes(y = spikelet_weight.g) +
@@ -194,7 +198,7 @@ plot_grid(temp_fig %+%
             ylab("Year 1 focal seeds"),
           nrow = 2)
   
-# focal plants 2019
+# density 2019
 plot_grid(temp_fig %+%
             seed19 %+%
             aes(y = spikelet_weight.g) +
@@ -208,68 +212,61 @@ plot_grid(temp_fig %+%
             ylab("Year 2 focal seeds"),
           nrow = 2)
 
-# all background treatments
-plot_grid(ggplot(filter(fseed18b, fungicide == 0), 
-                 aes(x = background_density, y = seeds, color = background)) +
-            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
-            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
-            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
-            temp_theme +
-            xlab("Background density") +
-            ggtitle("Year 1 Water treatment") +
-            theme(plot.title = element_text(hjust = 0.5),
-                  legend.position = "none"),
-          ggplot(filter(fseed18b, fungicide == 1), 
-                 aes(x = background_density, y = seeds, color = background)) +
-            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
-            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
-            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
-            temp_theme +
-            xlab("Background density") +
-            ggtitle("Year 1 Fungicide treatment") +
-            theme(plot.title = element_text(hjust = 0.5)),
+# biomass 2019
+plot_grid(temp_fig2 %+%
+            seed19 %+%
+            aes(x = background_biomass, y = spikelet_weight.g) +
+            ylab("Year 2 focal spikelet weight (g)") +
+            theme(legend.position = "none",
+                  axis.title.x = element_blank(),
+                  strip.text.x = element_blank()),
+          temp_fig2 %+%
+            seed19 %+%
+            aes(x = background_biomass, y = seeds) +
+            xlab("Background biomass (g)") +
+            ylab("Year 2 focal seeds"),
           nrow = 2)
 
-plot_grid(ggplot(filter(seed19b, fungicide == 0), 
-                 aes(x = background_density, y = seeds, color = background)) +
-            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
-            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
-            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
-            temp_theme +
-            xlab("Background density") +
-            ggtitle("Year 2 Water treatment") +
-            theme(plot.title = element_text(hjust = 0.5),
-                  legend.position = "none"),
-          ggplot(filter(seed19b, fungicide == 1), 
-                 aes(x = background_density, y = seeds, color = background)) +
-            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
-            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
-            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
-            temp_theme +
-            xlab("Background density") +
-            ggtitle("Year 2 Fungicide treatment") +
-            theme(plot.title = element_text(hjust = 0.5)),
+# Per capita biomass 2019
+plot_grid(temp_fig2 %+%
+            seed19 %+%
+            aes(x = background_pc_bio, y = spikelet_weight.g) +
+            ylab("Year 2 focal spikelet weight (g)") +
+            theme(legend.position = "none",
+                  axis.title.x = element_blank(),
+                  strip.text.x = element_blank()),
+          temp_fig2 %+%
+            seed19 %+%
+            aes(x = background_pc_bio, y = seeds) +
+            xlab("Per capita background biomass (g)") +
+            ylab("Year 2 focal seeds"),
           nrow = 2)
 
-plot_grid(ggplot(filter(seedb, fungicide == 0), 
-                 aes(x = background_density, y = seeds, color = background)) +
-            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
-            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
-            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
-            temp_theme +
-            xlab("Background density") +
-            ggtitle("Water treatment") +
-            theme(plot.title = element_text(hjust = 0.5),
-                  legend.position = "none"),
-          ggplot(filter(seedb, fungicide == 1), 
-                 aes(x = background_density, y = seeds, color = background)) +
-            stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(1)) +
-            stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(1)) +
-            facet_wrap(~ plant_type, scales = "free", nrow = 2, strip.position = "right") +
-            temp_theme +
-            xlab("Background density") +
-            ggtitle("Fungicide treatment") +
-            theme(plot.title = element_text(hjust = 0.5)),
+# treatment within background 2018
+plot_grid(temp_fig3 %+%
+            fseed180 %+%
+            aes(y = spikelet_weight.g) +
+            ylab("Year 1 focal spikelet weight (g)") +
+            theme(legend.position = "none",
+                  axis.title.x = element_blank(),
+                  strip.text.x = element_blank()),
+          temp_fig3 %+%
+            fseed180 %+%
+            aes(y = seeds) +
+            ylab("Year 1 focal seeds"),
+          nrow = 2)
+
+plot_grid(temp_fig3 %+%
+            seed190 %+%
+            aes(y = spikelet_weight.g) +
+            ylab("Year 2 focal spikelet weight (g)") +
+            theme(legend.position = "none",
+                  axis.title.x = element_blank(),
+                  strip.text.x = element_blank()),
+          temp_fig3 %+%
+            seed190 %+%
+            aes(y = seeds) +
+            ylab("Year 2 focal seeds"),
           nrow = 2)
 
 dev.off()

@@ -2,7 +2,7 @@
 
 # file: survival_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/22/20
+# date last edited: 5/20/20
 # goal: evaluate the effects of density and fungicide on survival
 
 
@@ -17,6 +17,7 @@ library(tidyverse)
 # import data
 daty1_0 <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
 daty2_0 <- read_csv("data/all_replacement_2019_density_exp.csv")
+bgbio <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 covar <- read_csv("intermediate-data/covariates_2018_density_exp.csv")
 
@@ -96,14 +97,17 @@ nrow(allid)
 2*4*(7*3 + 4+7 + 16+7 + 64+7 + 4+7 + 8+7 + 16+7 + 2+7 + 4+7 + 8+7)
 # yes - matches 
   
-# summer survival 2018
+# summer survival 2019
 sumy2 <- daty2_2 %>%
   select(-replace_date) %>%
   unique() %>%
   mutate(survival = 0) %>%
   full_join(allid) %>%
   mutate(survival = replace_na(survival, 1)) %>%
-  left_join(covar)
+  left_join(covar) %>%
+  left_join(bgbio %>%
+              rename(background_biomass = biomass.g)) %>%
+  mutate(background_pc_bio = background_biomass / background_density)
 
 
 #### visualize treatment effects ####
@@ -127,11 +131,27 @@ temp_theme <- theme_bw() +
 # template figure
 temp_fig <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
-  stat_summary(geom = "point", fun.y = "mean", size = 3, shape = 21, position = position_dodge(0.3)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3)) +
   facet_grid(plant_type ~ background, scales = "free_x", switch = "both") +
   scale_fill_manual(values = c("black", "white"), name = "Treatment") +
   temp_theme +
   xlab("Background density")
+
+temp_fig2 <- ggplot(plots, aes(x = background_density, y = plot, fill = treatment)) +
+  geom_point(size = 2, shape = 21, alpha = 0.7) +
+  geom_smooth(method = "glm", aes(color = treatment)) +
+  facet_grid(plant_type ~ background, scales = "free", switch = "both") +
+  scale_fill_manual(values = c("black", "white"), name = "Treatment") +
+  scale_color_manual(values = c("black", "red"), name = "Treatment") +
+  temp_theme +
+  xlab("Background density")
+
+temp_fig3 <- ggplot(plots, aes(x = treatment, y = plot)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(0.3)) +
+  facet_grid(plant_type ~ background, scales = "free", switch = "both") +
+  temp_theme +
+  xlab("Background")
 
 # save treatment figures
 pdf("./output/survival_visualize_treatment_2018_2019_density_exp.pdf")
@@ -171,6 +191,35 @@ temp_fig %+%
   sumy2 %+%
   aes(y = survival) +
   ylab("Year 2 summer all survival") 
+
+# focal plants, summer survival, biomass 2019
+temp_fig2 %+%
+  filter(sumy2, focal == 1) %+%
+  aes(x = background_biomass, y = survival) +
+  ylab("Year 2 summer focal survival") +
+  xlab("Background biomass (g)")
+
+# focal plants, summer survival, per capita biomass 2019
+temp_fig2 %+%
+  filter(sumy2, focal == 1) %+%
+  aes(x = background_pc_bio, y = survival) +
+  ylab("Year 2 summer focal survival") +
+  xlab("Per capita ackground biomass (g)")
+
+# focal plants, summer survival, treatment 2018
+temp_fig3 %+%
+  filter(sumy1, focal == 1 & background_density > 0) +
+  ylab("Year 1 summer focal survival")
+
+# focal plants, winter survival, treatment 2018
+temp_fig3 %+%
+  filter(sumy1, focal == 1 & background_density > 0) +
+  ylab("Year 1 winter focal survival")
+
+# focal plants, summer survival, treatment 2019
+temp_fig3 %+%
+  filter(sumy2, focal == 1 & background_density > 0) +
+  ylab("Year 2 summer focal survival")
 
 dev.off()
 

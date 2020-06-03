@@ -1,6 +1,6 @@
 ##### info ####
 
-# file: leaf_scans_data_processing_litter_exp_2018
+# file: leaf_scans_data_processing_2018_litter_exp
 # author: Amy Kendig
 # date last edited: 1/6/20
 # goal: process raw 2018 Elymus leaf scan data

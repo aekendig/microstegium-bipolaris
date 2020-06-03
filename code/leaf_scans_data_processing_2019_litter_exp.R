@@ -1,6 +1,6 @@
 ##### info ####
 
-# file: leaf_scans_data_processing_litter_exp_2018
+# file: leaf_scans_data_processing_2019_litter_exp
 # author: Amy Kendig
 # date last edited: 1/26/20
 # goal: process raw 2019 Microstegium leaf scan data
