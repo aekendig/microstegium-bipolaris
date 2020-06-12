@@ -2,7 +2,7 @@
 
 # file: leaf_scans_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/2/20
+# date last edited: 6/8/20
 # goal: combine raw 2019 leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm
 
@@ -99,7 +99,9 @@ col_fun <- function(dat){
 }
 
 # add columns
-# adjust for inconsistent naming
+
+# adjust for inconsistent naming before running function
+# remove scan that has no field info or uncropped image
 ls_ev_may2 <- col_fun(mutate(ls_ev_may, month = "may", sp = "Ev",
                              Slice = case_when(Slice == "leaf:D3_9W_EvR4_May" ~ "leaf:D3_9W_Ev_R4_May",
                                                Slice == "lesions:D3_9W_EvR4_May" ~ "lesions:D3_9W_Ev_R4_May",
@@ -107,17 +109,25 @@ ls_ev_may2 <- col_fun(mutate(ls_ev_may, month = "may", sp = "Ev",
                                                Slice == "lesions:D2_9E_Ev_R2_May" ~ "lesions:D2_9W_Ev_R2_May",
                                                Slice == "leaf:D2_9E_Ev_R3_May" ~ "leaf:D2_9W_Ev_R3_May",
                                                Slice == "lesions:D2_9E_Ev_R3_May" ~ "lesions:D2_9W_Ev_R3_May",
+                                               Slice == "leaf:D2_4F_Ev_A_May" ~ "leaf:D2_5F_Ev_A_May",
+                                               Slice == "lesions:D2_4F_Ev_A_May" ~ "lesions:D2_5F_Ev_A_May",
                                                TRUE ~ Slice))) %>%
   mutate(ID = case_when(focal == 0 ~ substr(plant, 10, 12) %>%
                           gsub(c("_"), "", .),
-                        TRUE ~ ID))
+                        TRUE ~ ID)) %>%
+  filter(!plant %in% c("D1_9W_Ev_R8_May", "D2_8F_Ev_A_May"))
+
 ls_mv_may2 <- col_fun(mutate(ls_mv_may, month = "may", sp = "Mv"))
+
+# adjust for inconsistent naming before running function
 ls_ev_jun2 <- col_fun(mutate(ls_ev_jun, month = "jun", sp = "Ev",
                              Slice = case_when(Slice == "leaf:D1_8W_Ev_a_June" ~ "leaf:D1_8W_Ev_A_June",
                                                Slice == "lesions:D1_8W_Ev_a_June" ~ "lesions:D1_8W_Ev_A_June",
                                                Slice == "leaf:D1_9W_Ev_a_June" ~ "leaf:D1_9W_Ev_A_June",
                                                Slice == "lesions:D1_9W_Ev_a_June" ~ "lesions:D1_9W_Ev_A_June",
                                                TRUE ~ Slice)))
+
+# adjust for inconsistent naming before running function
 ls_mv_jun2 <- col_fun(mutate(ls_mv_jun, month = "jun", sp = "Mv",
                              Slice = case_when(Slice == "leaf:D3_W_Mv_1_June" ~ "leaf:D3_8W_Mv_1_June",
                                                Slice == "lesions:D3_W_Mv_1_June" ~ "lesions:D3_8W_Mv_1_June",
@@ -126,19 +136,29 @@ ls_mv_jun2 <- col_fun(mutate(ls_mv_jun, month = "jun", sp = "Mv",
                                                Slice == "leaf:d3_2W_Mv_2_june" ~ "leaf:D3_2W_Mv_2_june",
                                                Slice == "lesions:d3_2W_Mv_2_june" ~ "lesions:D3_2W_Mv_2_june",
                                                TRUE ~ Slice)))
+
+# rename mis-labelled photos before running function
 ls_ev_jul2 <- col_fun(mutate(ls_ev_jul, month = "jul", sp = "Ev",
                              Slice = case_when(Slice == "leaf:D4_1W_Ev_A_July" ~ "leaf:D4_1W_Ev_3_July",
                                                Slice == "lesions:D4_1W_Ev_A_July" ~ "lesions:D4_1W_Ev_3_July",
                                                Slice == "leaf:D4_4W_Ev_A_July" ~ "leaf:D4_4W_Ev_1_July",
                                                Slice == "lesions:D4_4W_Ev_A_July" ~ "lesions:D4_4W_Ev_1_July",
-                                               TRUE ~ Slice)))  # scans were unexpected and missing from the same plot, reassigned names, but the ID's may be mixed up within the plot. re-analyze in fiji for uncropped image
+                                               TRUE ~ Slice))) %>%
+  filter(plant != "D2_6W_Ev_July") # scans were unexpected and missing from the same plot. The ID's may be mixed up within the plot, uncropped image that was left in folder 
+
+# adjust for inconsistent naming before running function
 ls_mv_jul2 <- col_fun(mutate(ls_mv_jul, month = "jul", sp = "Mv",
                              Slice = case_when(Slice == "leaf:D3_9w_Mv_3_July" ~ "leaf:D3_9W_Mv_3_July",
                                                Slice == "lesions:D3_9w_Mv_3_July" ~ "lesions:D3_9W_Mv_3_July",
                                                TRUE ~ Slice))) %>%
   filter(plant != "D1_10W_Mv_July") # uncropped image that was left in folder
+
+
 ls_ev_early_aug2 <- col_fun(mutate(ls_ev_early_aug, month = "early_aug", sp = "Ev"))
+
 ls_mv_early_aug2 <- col_fun(mutate(ls_mv_early_aug, month = "early_aug", sp = "Mv"))
+
+# rename mis-labelled photos before running function
 ls_ev_late_aug2 <- col_fun(mutate(ls_ev_late_aug, month = "late_aug", sp = "Ev",
                                   Slice = case_when(Slice == "leaf:D1_1W_Ev_4_LateAug" ~ "leaf:D1_1W_Ev_A_LateAug",
                                                     Slice == "lesions:D1_1W_Ev_4_LateAug" ~ "lesions:D1_1W_Ev_A_LateAug",
@@ -146,8 +166,20 @@ ls_ev_late_aug2 <- col_fun(mutate(ls_ev_late_aug, month = "late_aug", sp = "Ev",
                                                     Slice == "lesions:D1_4W_Ev_4_LateAug" ~ "lesions:D1_4W_Ev_A_LateAug",
                                                     Slice == "leaf:D3_2W_Ev_4_LateAug" ~ "leaf:D3_2W_Ev_A_LateAug",
                                                     Slice == "lesions:D3_2W_Ev_4_LateAug" ~ "lesions:D3_2W_Ev_A_LateAug",
-                                                    TRUE ~ Slice)))
+                                                    Slice == "leaf:D3_1F_Ev_3_LatAug" ~ "leaf:D3_1F_Ev_A_LatAug",
+                                                    Slice == "lesions:D3_1F_Ev_3_LatAug" ~ "lesions:D3_1F_Ev_A_LatAug",
+                                                    Slice == "leaf:D3_1F_Ev_2_LatAug" ~ "leaf:D3_1F_Ev_3_LatAug",
+                                                    Slice == "lesions:D3_1F_Ev_2_LatAug" ~ "lesions:D3_1F_Ev_3_LatAug",
+                                                    Slice == "leaf:D4_2W_Ev_3_LatAug" ~ "leaf:D4_2W_Ev_A_LatAug",
+                                                    Slice == "lesions:D4_2W_Ev_3_LatAug" ~ "lesions:D4_2W_Ev_A_LatAug",
+                                                    Slice == "leaf:D4_2W_Ev_2_LatAug" ~ "leaf:D4_2W_Ev_3_LatAug",
+                                                    Slice == "lesions:D4_2W_Ev_2_LatAug" ~ "lesions:D4_2W_Ev_3_LatAug",
+                                                    TRUE ~ Slice))) %>%
+  filter(!(plant %in% c("D4_2F_Ev_1_LateAug", "D3_7W_Ev_3_LateAug")))  # scans were unexpected and missing from the same plot. The ID's may be mixed up within the plot.
+
+# remove scans that were not a leaf or mis-labelled and couldn't be reconciled
 ls_mv_late_aug2 <- col_fun(mutate(ls_mv_late_aug, month = "late_aug", sp = "Mv"))
+
 ls_ev_sep2 <- col_fun(mutate(ls_ev_sep, month = "sep", sp = "Ev")) %>%
   mutate(ID = case_when(ID == "S" ~ substr(plant, 9, 10) %>% 
                           gsub(c("_"), "", .),
@@ -156,6 +188,7 @@ ls_ev_sep2 <- col_fun(mutate(ls_ev_sep, month = "sep", sp = "Ev")) %>%
          age = ifelse(ID == "A" | (focal == 0 & plot > 7),
                       "adult", 
                       "seedling"))
+
 ls_mv_sep2 <- col_fun(mutate(ls_mv_sep, month = "sep", sp = "Mv")) %>%
   mutate(ID = case_when(ID == "S" ~ substr(plant, 9, 10) %>% 
                           gsub(c("_"), "", .),
@@ -173,90 +206,122 @@ dt_early_aug2 <- full_join(dt_early_aug, full_join(ls_ev_early_aug2, ls_mv_early
   filter(ID != "Edge")
 dt_late_aug2 <- full_join(dt_late_aug, full_join(ls_ev_late_aug2, ls_mv_late_aug2)) %>%
   filter(ID != "Edge")
+dt_sep2 <- full_join(dt_sep, full_join(ls_ev_sep2, ls_mv_sep2)) %>%
+  filter(ID != "Edge")
 
 # check against field data
 filter(dt_may2, is.na(scan)) %>% select(field_notes) %>% unique() # missing from field data
-filter(dt_may2, is.na(scan) & is.na(field_notes)) # D1 9W Ev R8 doesn't have field info
+filter(dt_may2, is.na(scan) & !is.na(area)) # D1 9W Ev R8 doesn't have field info, didn't see uncropped scan - removed. Uncropped scan for D2 4F Ev A has the plot cut off, but I'm not sure what other plot it could be. This leaf may have come from D2 5F because the two scans were done together - switched. D2 8F Ev A is R2, this leaf was labelled twice - removed.
 filter(dt_may2, scan == 0 & !is.na(area)) # no unexpected scans
-filter(dt_may2, scan == 1 & is.na(area)) # scan missing for D2 5F Ev A
+filter(dt_may2, scan == 1 & is.na(area)) # scan missing for D2 5F Ev A (uncropped scan indicates that bag was empty)
 
 filter(dt_jun2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
 filter(dt_jun2, scan == 0 & !is.na(area)) # no unexpected scans
-filter(dt_jun2, scan == 1 & is.na(area)) # scans missing for D4 6W Mv3 and D3 9F Ev1
+filter(dt_jun2, scan == 1 & is.na(area)) # scans missing for D4 6W Mv3 and D3 9F Ev1 (no uncropped scans available and I double checked OneDrive for these)
 
-filter(dt_jul2, is.na(scan)) %>% select(field_notes) %>% unique() # missing from field data
+filter(dt_jul2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
 filter(dt_jul2, is.na(scan) & is.na(field_notes)) %>% select(plant) %>% unique()
-filter(dt_jul2, scan == 0 & !is.na(area)) # unexpected scans: D3 8F Ev3
-filter(dt_jul2, scan == 1 & is.na(area)) # missing scans: D3 4W Mv2, D1 6F EvA, D1 7F Ev1
+filter(dt_jul2, scan == 0 & !is.na(area)) # unexpected scans: D3 8F Ev3 (no uncropped scans available to check, but this plant had 7 leaves, so it's possible the scan = 0 is a mistake)
+filter(dt_jul2, scan == 1 & is.na(area)) # missing scans: D3 4W Mv2, D1 6F EvA, D1 7F Ev1 (no uncropped scans available to check)
 
 filter(dt_early_aug2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
 filter(dt_early_aug2, scan == 0 & !is.na(area)) # no unexpected scans
-filter(dt_early_aug2, scan == 1 & is.na(area)) # missing scan: D1 5W Mv3. Checked uncropped scand and only two Mv leaves received from D1 5W
+filter(dt_early_aug2, scan == 1 & is.na(area)) # missing scan: D1 5W Mv3 (checked uncropped scan and only two Mv leaves received from D1 5W)
 
 filter(dt_late_aug2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
-### start here: checking below for possible manual corrections ####
-filter(dt_late_aug2, scan == 0 & !is.na(area)) # unexpected scans: D2 6W Ev3 (seems correct), D3 1F Ev2, D3 7W Ev3, D4 2F Ev1, D4 2W Ev2
-filter(dt_late_aug2, scan == 1 & is.na(area)) # missing scans: D1 2W Ev1, D1 3W Ev3, D1 5W Ev1, D1 6W Ev2, D1 7W Ev3, D1 9W EvA, D3 1F EvA, D3 7W Ev2, D3 8W EvA, D4 2W EvA
+filter(dt_late_aug2, scan == 0 & !is.na(area)) # unexpected scans: D2 6W Ev3 (seems correct from uncropped scan and other information)
+filter(dt_late_aug2, scan == 1 & is.na(area)) # missing scans: 
+# D1 2W Ev1
+# D1 3W Ev3
+# D1 5W Ev1
+# D1 6W Ev2
+# D1 7W Ev3
+# D1 9W EvA (missing the uncropped for all of the D1 W Ev scans)
+# D3 7W Ev2 (not in uncropped scan, only Ev 1)
+
+filter(dt_sep2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
+filter(dt_sep2, scan == 0 & !is.na(area)) # no unexpected scans
+filter(dt_sep2, scan == 1 & is.na(area)) %>% select(site, plot, treatment, sp) %>% unique() %>% data.frame() # missing scans: the D1 and D2 scans were in the box that got lost in the mail. I'm not sure if the D3 and D4 scans were also lost in the mail or if they were not uploaded properly to OneDrive
+
+# combine edge data
+dt_edge <- full_join(ls_mv_may2, ls_mv_jun2) %>%
+  full_join(ls_mv_jul2) %>%
+  full_join(ls_mv_early_aug2) %>%
+  full_join(ls_mv_late_aug2) %>%
+  full_join(ls_mv_sep2) %>%
+  filter(ID == "Edge")
+
+# combine data
+dat <- full_join(dt_may2, dt_jun2) %>%
+  full_join(dt_jul2) %>%
+  full_join(dt_early_aug2) %>%
+  full_join(dt_late_aug2) %>%
+  full_join(dt_sep2)
+# row number matches summed row numbers
 
 # spread by part
 datw <- dat %>%
-  select(-c(slice)) %>%
-  gather(variable, value, -(edited:age)) %>%
+  filter(!is.na(part)) %>% # all are missing area values
+  rename(count = Count) %>%
+  select(-c(Slice)) %>%
+  gather(variable, value, -c(date:field_notes, month:flower_bags)) %>%
   unite(temp, part, variable) %>%
-  spread(temp, value)
+  spread(temp, value) %>%
+  rename(leaf_area.pix = leaf_area,
+         lesion_area.pix = lesion_area)
 
-# indicate values to remove
-datw <- datw %>%
-  mutate(remove = ifelse(plant %in% c("D3_3F_Ev_A", "D3_6F_Ev_A", "D3_10W_Ev_R8") & month == "May",1, 0))
+datw_edge <- dt_edge %>%
+  rename(count = Count) %>%
+  select(-c(Slice)) %>%
+  gather(variable, value, -c(month:age)) %>%
+  unite(temp, part, variable) %>%
+  spread(temp, value) %>%
+  rename(leaf_area.pix = leaf_area,
+         lesion_area.pix = lesion_area)
+
+# check that all plots were collected for Mv
+datw_edge %>%
+  group_by(month, site, treatment) %>%
+  summarise(n = length(unique(plant))) %>%
+  filter(n != 10)
+data.frame() 
+# D1 6F early Aug uncropped scan missing 
+# Sep scans lost in mail: D1 8F, 9F and 10F, D1 9W and 10W, D4 9F and 10F, D4 9W and 10W
 
 
 #### check values ####
 
 # leaf area
 datw %>%
-  filter(remove == 0) %>%
   ggplot(aes(x = leaf_area.pix)) +
   geom_histogram() +
   facet_wrap(~sp, scales = "free")
 
 # manually check extremes
 datw %>%
-  filter(sp == "Ev" & leaf_area.pix > 7.5e5) %>% data.frame()
+  filter(sp == "Ev" & leaf_area.pix > 8e5) %>% data.frame()
 
 # percent lesion area 
 datw %>%
-  filter(remove == 0) %>%
-  ggplot(aes(x = (lesion_area.pix - green_area.pix)/leaf_area.pix)) +
+  ggplot(aes(x = lesion_area.pix/leaf_area.pix)) +
+  geom_histogram() +
+  facet_wrap(~sp, scales = "free")
+# a lot of 1's
+
+# leaf area edge
+datw_edge %>%
+  ggplot(aes(x = leaf_area.pix)) +
   geom_histogram() +
   facet_wrap(~sp, scales = "free")
 
-# manually check extremes
-datw %>%
-  filter(remove == 0) %>%
-  filter(sp == "Ev" & (lesion_area.pix - green_area.pix)/leaf_area.pix > 0.6) %>% data.frame()
-
-# check that all plots were collect for Mv
-datw %>%
-  filter(ID == "Edge") %>%
-  group_by(month, site, treatment) %>%
-  summarise(n = length(unique(plant)))
-
-# check that all Ev were collected
-ev_may %>%
-  filter(scan == 1) %>%
-  left_join(datw) %>%
-  filter(is.na(plant)) %>%
-  data.frame()
-# missing scans - will ask Laney about these
-
-datw %>%
-  filter(sp == "Ev") %>%
-  left_join(ev_may) %>%
-  filter(is.na(leaves_tot)) %>% 
-  data.frame()
-# shouldn't have scans - could be the ones above, but mislabelled
+# percent lesion area edge
+datw_edge %>%
+  ggplot(aes(x = lesion_area.pix/leaf_area.pix)) +
+  geom_histogram() +
+  facet_wrap(~sp, scales = "free")
 
 
 #### save data ####
 
-leaf <- datw
+write_csv(datw, "./intermediate-data/all_leaf_scans_2019_density_exp.csv")
+write_csv(datw_edge, "./intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv")
