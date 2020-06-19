@@ -16,15 +16,15 @@ function getTitleStripExtension() {
 } 
 
 //enter home folder (errors in path names will result in the error "No window with the title 'Summary' found"
-home="/Users/AmyKendig/Dropbox (UFL)/big-oaks-field-experiment-2018-2019/leaf-scans/leaf-scans-sep-2019-density-exp";
+home="/Users/AmyKendig/Dropbox (UFL)/big-oaks-field-experiment-2018-2019/leaf-scans/leaf-scans-add-on";
 //enter input folder path
-input=home + "/scans/mv"; 
+input=home + "/lightened-scans"; 
 //enter output image folder path
 outputIm=home + "/image-output";
 //enter output text results folder path
 outputRes=home + "/text-output";
 //enter file name for text results
-outputResTxt=outputRes + "/mv_leaf_scan_text_output_sep_2019_density_exp.tsv";
+outputResTxt=outputRes + "/lightened_mv_leaf_scan_text_output_may_2019_density_exp.tsv";
 
 suffix1=".tiff"; //Store potential suffixes as variables
 suffix2=".tif";
