@@ -2,7 +2,7 @@
 
 # file: temp_humidity_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/23/20
+# date last edited: 6/23/20
 # goal: process data from temperature and humdity loggers
 
 
@@ -40,17 +40,29 @@ for(i in 1:length(file_names)){
 dat2 <- do.call(rbind.data.frame, dat) %>%
   as_tibble() %>%
   rename(temp = "Temp...C..c.1", rel_hum = "RH.....c.1.2") %>%
-  mutate(time = as.POSIXct(Date.Time, format = "%m/%d/%y %H:%M:%S"),
-         day = as.Date(Date.Time, format = "%m/%d/%y %H:%M:%S"),
-         site = substr(id, 1, 2),
+  mutate(site = substr(id, 1, 2),
          plot = substr(id, 4, 5) %>% gsub("[^[:digit:]]", "", .) %>% as.factor(),
          treatment = "water",
+         time = case_when(site == "D3" & plot == 6 ~ as.POSIXct(Date.Time, format = "%m/%d/%y %H:%M"),
+                          TRUE ~ as.POSIXct(Date.Time, format = "%m/%d/%y %H:%M:%S")),
+         day = case_when(site == "D3" & plot == 6 ~ as.Date(Date.Time, format = "%m/%d/%y %H:%M"),
+                         TRUE ~ as.Date(Date.Time, format = "%m/%d/%y %H:%M:%S")),
          hum_prop = rel_hum / 100) %>%
   select(-c(Date.Time)) %>%
   filter(time >= "2019-07-03 00:00:00" & time <= "2019-10-21 23:59:59")
 
+# check for missing data
+filter(dat2, is.na(temp) | is.na(hum_prop)) 
+filter(dat2, site == "D3" & plot == 6 & day == as.Date("2019-07-23")) %>% data.frame()
+filter(dat2, site == "D3" & plot == 6 & day == as.Date("2019-09-12")) %>% data.frame()
+# one hour missing from each day
+
+# remove missing data
+dat3 <- dat2 %>%
+  filter(!is.na(temp) & !is.na(hum_prop))
+
 # daily summaries
-day_dat <- dat2 %>%
+day_dat <- dat3 %>%
   group_by(id, site, plot, treatment, day) %>%
   summarise(temp_avg = mean(temp),
             temp_min = min(temp),
@@ -72,5 +84,5 @@ ggplot(day_dat, aes(x = day, y = hum_avg, color = site)) +
 
 
 #### save data #### 
-write_csv(dat2, "./intermediate-data/temp_humidity_hourly_2019_density_exp.csv")
-write_csv(day_dat, "./intermediate-data/temp_humidity_daily_2019_density_exp.csv")
+write_csv(dat3, "./intermediate-data/temp_humidity_hourly_2019_density_exp.csv")
+

@@ -2,7 +2,7 @@
 
 # file: temp_humidity_analysis_2019_dens_exp
 # author: Amy Kendig
-# date last edited: 4/23/20
+# date last edited: 6/23/20
 # goal: evaluate the effects of density on temperature and humidity
 
 
@@ -21,8 +21,21 @@ library(DHARMa) # plot residuals for glmmTMB
 
 # import data
 hr_dat <- read_csv("./intermediate-data/temp_humidity_hourly_2019_density_exp.csv")
-dy_dat <- read_csv("./intermediate-data/temp_humidity_daily_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
+
+
+#### relative humidity duration ####
+
+# visualize
+# hr_dat %>%
+#   mutate(hour = hour(time)) %>%
+#   filter(day < as.Date("2019-07-29")) %>%
+#   ggplot(aes(x = hour, y = rel_hum, color = as.factor(day))) +
+#   geom_line() +
+#   facet_grid(site ~ plot) +
+#   theme_bw() +
+#   theme(legend.position = "none")
+# threhsold at or near 1
 
 
 #### monthly summaries ####
@@ -38,25 +51,38 @@ mo_hr_dat <- hr_dat %>%
             hum_min = min(hum_prop),
             hum_max = max(hum_prop),
             temp_avg_se = sd(temp)/sqrt(length(temp)),
-            hum_avg_se = sd(hum_prop)/sqrt(length(hum_prop))) %>%
+            hum_avg_se = sd(hum_prop)/sqrt(length(hum_prop)),
+            hum_dur = sum(hum_prop == 1)) %>%
+  ungroup() %>%
   mutate(time = "hourly")
 
-# from daily data
-mo_dy_dat <- dy_dat %>%
+# from daily calculations
+mo_dy_dat <- hr_dat %>%
+  group_by(site, plot, treatment, day) %>%
+  summarise(temp_avg = mean(temp),
+            temp_min = min(temp),
+            temp_max = max(temp),
+            hum_avg = mean(hum_prop),
+            hum_min = min(hum_prop),
+            hum_max = max(hum_prop),
+            hum_dur = sum(hum_prop == 1)) %>%
+  ungroup() %>%
   mutate(month = month(day)) %>%
   group_by(site, plot, treatment, month) %>%
-  summarise(temp_avg = mean(temp_avg),
+  summarise(temp_avg_se = sd(temp_avg)/sqrt(length(temp_avg)),
+            temp_min_se = sd(temp_min)/sqrt(length(temp_min)),
+            temp_max_se = sd(temp_max)/sqrt(length(temp_max)),
+            hum_avg_se = sd(hum_avg)/sqrt(length(hum_avg)),
+            hum_min_se = sd(hum_min)/sqrt(length(hum_min)),
+            hum_max_se = sd(hum_max)/sqrt(length(hum_max)),
+            temp_avg = mean(temp_avg),
             temp_min = mean(temp_min),
             temp_max = mean(temp_max),
             hum_avg = mean(hum_avg),
             hum_min = mean(hum_min),
             hum_max = mean(hum_max),
-            temp_avg_se = sd(temp_avg)/sqrt(length(temp_avg)),
-            temp_min_se = sd(temp_min)/sqrt(length(temp_min)),
-            temp_max_se = sd(temp_max)/sqrt(length(temp_max)),
-            hum_avg_se = sd(hum_avg)/sqrt(length(hum_avg)),
-            hum_min_se = sd(hum_min)/sqrt(length(hum_min)),
-            hum_max_se = sd(hum_max)/sqrt(length(hum_max))) %>%
+            hum_dur = mean(hum_dur)) %>%
+  ungroup() %>%
   mutate(time = "daily")
 
 # combine dataframes
@@ -102,6 +128,17 @@ avgt_plot %+%
   aes(y = temp_min,
       ymin = temp_min - temp_min_se,
       ymax = temp_min + temp_min_se)
+# hourly is lower
+
+# humidity duration
+ggplot(mo_dat, aes(x = background_density, 
+                   y = hum_dur,
+                   fill = time)) +
+  geom_point(size = 2, shape = 21, position = position_dodge(0.3)) +
+  facet_grid(month ~ background, scales = "free_x", switch = "both") +
+  scale_fill_manual(values = c("black", "white")) +
+  plot_theme
+# daily makes more sense
 
 # use daily stats
 dat <- left_join(mo_dy_dat, plots) %>%
@@ -148,6 +185,23 @@ dmaxh_plot <- davgt_plot %+%
   aes(x = background_density, y = hum_max)
 dmaxh_plot
 # positive effect of plants
+
+# humidity duration
+ddurh <- davgt_plot %+%
+  aes(x = background_density, y = hum_dur)
+ddurh
+# slightly higher with Mv than without
+
+
+#### monthly averages ####
+
+mo_dy_dat %>%
+  filter(plot == 1) %>%
+  group_by(month) %>%
+  summarise(average_temp = mean(temp_avg),
+            min_temp = mean(temp_min),
+            max_temp = mean(temp_max),
+            hum_dur = mean(hum_dur))
 
 
 #### average temperature stats ####
@@ -412,6 +466,53 @@ summary(hmax_ms_mod2)
 # slight decrease in residuals with predicted values
 
 
+#### humidity duration stats ####
+
+# Ev adult
+hdur_ea_mod <- lmer(hum_dur ~ background_density *  month + (1|site),
+                       data = filter(dat, background == "Ev adult"))
+summary(hdur_ea_mod)
+# none sig
+hdur_ea_mod2 <- update(hdur_ea_mod, .~. -background_density:month)
+summary(hdur_ea_mod2)
+# density sig
+# plot(hdur_ea_mod2)
+
+# Ev seedling
+hdur_es_mod <- lmer(hum_dur ~ background_density *  month + (1|site),
+                       data = filter(dat, background == "Ev seedling"))
+summary(hdur_es_mod)
+# none sig
+hdur_es_mod2 <- update(hdur_es_mod, .~. -background_density:month)
+summary(hdur_es_mod2)
+# density sig
+# plot(hdur_es_mod2)
+
+# Mv seedling
+hdur_ms_mod <- lmer(hum_dur ~ background_density *  month + (1|site),
+                       data = filter(dat, background == "Mv seedling"))
+summary(hdur_ms_mod)
+# none sig
+hdur_ms_mod2 <- update(hdur_ms_mod, .~. -background_density:month)
+summary(hdur_ms_mod2)
+# none sig
+# plot(hdur_ms_mod2)
+
+# Mv seedling presence/absence
+mv_dat <- filter(dat, background == "Mv seedling") %>%
+  mutate(background_mv = case_when(background_density == 0 ~ 0,
+                                   TRUE ~ 1))
+
+hdur_ms_mod3 <- lmer(hum_dur ~ background_mv *  month + (1|site),
+                    data = mv_dat)
+summary(hdur_ms_mod3)
+# none sig
+hdur_ms_mod4 <- update(hdur_ms_mod3, .~. -background_mv:month)
+summary(hdur_ms_mod4)
+# background Mv is sig
+# plot(hdur_ms_mod4)
+
+
 #### figures ####
 
 # simulate data
@@ -444,3 +545,19 @@ hum_plot <- ggplot(dat_hum, aes(x = background_density, y = hum_avg, color = mon
   ylab("Monthly average relative humidity")
 hum_plot
 # it would be nice to have curves that can saturate
+
+
+#### save daily data ####
+
+day_dat <- hr_dat %>%
+  group_by(site, plot, treatment, day) %>%
+  summarise(temp_avg = mean(temp),
+            temp_min = min(temp),
+            temp_max = max(temp),
+            hum_avg = mean(hum_prop),
+            hum_min = min(hum_prop),
+            hum_max = max(hum_prop),
+            hum_dur = sum(hum_prop == 1)) %>%
+  ungroup() 
+
+write_csv(day_dat, "./intermediate-data/temp_humidity_daily_2019_density_exp.csv")

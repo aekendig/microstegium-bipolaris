@@ -16,22 +16,114 @@ library(tidyverse)
 library(glmmTMB)
 library(brms)
 library(cowplot)
+library(lubridate)
+library(GGally)
 
 # import all raw data files
 dat <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv")
 edge_dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
-covar <- read_csv("intermediate-data/covariates_2018_density_exp.csv") # didn't use this yet...
+plots_simple <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
+temp_hum <- read_csv("intermediate-data/temp_humidity_daily_2019_density_exp.csv")
+bg_bio <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv")
+mv_bio <- read_csv("data/mv_biomass_seeds_2019_density_exp.csv")
+ev_bio <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
 
 
 #### edit data ####
 
+# severity dates
+dat %>%
+  group_by(month) %>%
+  summarise(first_day = min(date),
+            last_day = max(date))
+
+# temp/hum data
+# take average of daily values over the month leading up to sampling
+temp_hum2 <- temp_hum %>%
+  mutate(month = case_when(day < as.Date("2019-07-29") ~ "early_aug",
+                           day >= as.Date("2019-07-29") & day < as.Date("2019-08-28") ~ "late_aug",
+                           day >= as.Date("2019-08-28") & day < as.Date("2019-09-24") ~ "sep",
+                           TRUE ~ "oct")) %>%
+  group_by(site, plot, treatment, month) %>%
+  summarise(temp_avg = mean(temp_avg),
+            temp_min = mean(temp_min),
+            temp_max = mean(temp_max),
+            hum_avg = mean(hum_avg),
+            hum_min = mean(hum_min),
+            hum_max = mean(hum_max),
+            hum_dur = mean(hum_dur)) %>%
+  ungroup() %>%
+  filter(month != "oct")
+
 # edge data
+# use data collected one month before leaf severity sampling
 edge_dat2 <- edge_dat %>%
   filter(month != "sep") %>%
   mutate(edge_severity = lesion_area.pix / leaf_area.pix,
          month = recode(month, "may" = "jun", "jun" = "jul", "jul" = "early_aug", "early_aug" = "late_aug", "late_aug" = "sep")) %>%
   select(month, site, plot, treatment, edge_severity)
+
+# background biomass data
+filter(bg_bio, is.na(biomass.g))
+# add species and age
+# remove no background plots (biomass = 0)
+bg_bio2 <- bg_bio %>%
+  mutate(sp = case_when(plot %in% 2:4 ~ "Mv",
+                        plot %in% 5:10 ~ "Ev",
+                        TRUE ~ "none"),
+         age = case_when(plot %in% 8:10 ~ "adult",
+                         TRUE ~ "seedling"),
+         focal = 0) %>%
+  filter(sp != "none")
+
+# mv biomass data
+unique(mv_bio$process_notes) # all issues addressed
+group_by(mv_bio, site, plot, treatment) %>%
+  count() %>%
+  filter(n != 3) # all plots have 3 plants
+filter(mv_bio, is.na(biomass_weight.g))
+filter(mv_bio, (site == "D3" & plot == 7 & treatment == "fungicide") | (site == "D4" & plot == 8 & treatment == "water"))
+# because two individuals are missing, multiply the average individual weight by 3
+# vegetative biomass from individuals within plots
+mv_bio2 <- mv_bio %>%
+  group_by(site, plot, treatment, sp) %>%
+  summarise(biomass.g = mean(biomass_weight.g, na.rm = T) * 3) %>%
+  ungroup() %>%
+  mutate(age = "seedling",
+         focal = 1)
+
+# ev biomass data
+unique(ev_bio$processing_notes) # all issues addressed
+group_by(ev_bio, site, plot, treatment) %>%
+  count() %>%
+  filter(n != 4) # all plots have 4 plants
+filter(ev_bio, is.na(weight)) # one seedling missing
+# because one individual is missing, multiply the average individual weight by 3
+# vegetative biomass from individuals within plots
+ev_bio2 <- ev_bio %>%
+  mutate(age = case_when(ID == "A" ~ "adult",
+                         TRUE ~ "seedling")) %>%
+  group_by(site, plot, treatment, sp, age) %>%
+  summarise(biomass.g = mean(weight, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(biomass.g = case_when(age == "seedling" ~ biomass.g * 3,
+                               TRUE ~ biomass.g),
+         focal = 1)
+
+# combine all biomass
+bio <- full_join(bg_bio2, mv_bio2) %>%
+  full_join(ev_bio2) %>%
+  group_by(site, treatment, plot, sp) %>%
+  summarise(biomass.g = sum(biomass.g)) %>%
+  ungroup() %>%
+  spread(key = sp, value = biomass.g) %>%
+  mutate(total_biomass.g = Ev + Mv) %>%
+  rename("Ev_biomass.g" = "Ev", "Mv_biomass.g" = "Mv")
+
+# combine temp/hum, edge, and biomass
+cov_dat <- full_join(edge_dat2, temp_hum2) %>%
+  full_join(bio)
 
 # calculate severity
 # add month columns
@@ -53,7 +145,7 @@ dat2 <- dat %>%
                                TRUE ~ 1),
          exp_plot = paste0(plot, toupper(substr(treatment, 1, 1))),
          sp_trt = paste0(sp, toupper(substr(treatment, 1, 1)))) %>%
-  left_join(edge_dat2)
+  left_join(cov_dat)
 
 # separate out May data
 may_dat <- dat2 %>%
@@ -64,14 +156,14 @@ foc_dat <- dat2 %>%
   filter(focal == 1)
 
 # add treatment plots (repeats no neighbor plots)
+may_dat_plots <- may_dat %>%
+  left_join(plots)
+
+# add treatment plots (repeats no neighbor plots)
 foc_dat_plots <- foc_dat %>%
   left_join(plots) %>%
   mutate(background_pres = case_when(density_level == "none" ~ 0,
                                      TRUE ~ 1))
-
-# add treatment plots (repeats no neighbor plots)
-may_dat_plots <- may_dat %>%
-  left_join(plots)
 
 # only allow for sites with both treatment in September (some lost in the mail)
 # information obtained from examine data section
@@ -117,19 +209,6 @@ all_dat_viz %+%
 # generally healthy-looking leaves in June too. The high values seem to be from tip senescence
 # lesions aren't super common in early August even. seems like senescence is a big contributor
 
-# look at relationship with edge severity
-(edge_viz <- foc_dat2 %>%
-  filter(!is.na(leaf_severity) & !is.na(edge_severity)) %>%
-  ggplot(aes(edge_severity, leaf_severity, color = treatment)) +
-  stat_summary(fun = "mean", geom = "point") +
-  facet_grid(sp ~ Month, scales = "free_x"))
-# maybe most positive for Mv in early August (makes sense)
-
-edge_viz %+%
-  filter(foc_dat2, !is.na(plant_severity) & !is.na(edge_severity)) %+%
-  aes(y = plant_severity)
-# similar to leaf metric
-
 # treatment effect
 (treat_viz <- foc_dat2 %>%
   filter(!is.na(leaf_severity)) %>%
@@ -142,6 +221,10 @@ treat_viz %+%
   filter(foc_dat2, !is.na(plant_severity))  %+%
   aes(y = plant_severity)
 # much more intuitive pattern
+
+# for comparison to Vida's results
+treat_viz %+%
+  aes(y = (leaves_infec/leaves_tot))
 
 # treatment effect in May for Ev from previous year
 (may_treat_viz <- may_dat %>%
@@ -226,6 +309,98 @@ month_viz %+%
   filter(foc_dat_plots2, Month == "September") %+%
   aes(y = plant_severity)
 # strong density effect of Mv on Mv 
+
+# correlations between covariates
+filter(cov_dat, treatment == "water" & month == "early_aug") %>%
+  select(temp_avg:total_biomass.g) %>%
+  ggpairs()
+# can only pick one temp or humidity metric, all are correlated except max temp and humidity
+# total biomass and Mv biomass are correlated
+# Mv and Ev biomass are negatively correlated at 0.36
+
+filter(cov_dat, treatment == "water" & month == "late_aug") %>%
+  select(temp_avg:total_biomass.g) %>%
+  ggpairs()
+# same as above
+# humidity average seems like a representative variable
+
+# focal severity and edge severity
+(edge_viz <- foc_dat2 %>%
+    filter(!is.na(leaf_severity) & !is.na(edge_severity)) %>%
+    ggplot(aes(edge_severity, leaf_severity, color = treatment)) +
+    stat_summary(fun = "mean", geom = "point") +
+    facet_grid(sp ~ Month, scales = "free_x"))
+# maybe most positive for Mv in early August (makes sense)
+
+edge_viz %+%
+  filter(foc_dat2, !is.na(plant_severity) & !is.na(edge_severity)) %+%
+  aes(y = plant_severity)
+# similar to leaf metric
+
+# focal severity and biomass
+(bio_viz <- foc_dat2 %>%
+    filter(!is.na(leaf_severity) & !is.na(total_biomass.g)) %>%
+    ggplot(aes(total_biomass.g, leaf_severity, color = treatment)) +
+    stat_summary(fun = "mean", geom = "point") +
+    facet_grid(sp ~ Month, scales = "free_x"))
+
+bio_viz %+%
+  filter(foc_dat2, !is.na(plant_severity) & !is.na(total_biomass.g)) %+%
+  aes(y = plant_severity)
+
+# focal severity and Mv biomass
+(mbio_viz <- foc_dat2 %>%
+    filter(!is.na(leaf_severity) & !is.na(Mv_biomass.g)) %>%
+    ggplot(aes(Mv_biomass.g, leaf_severity, color = treatment)) +
+    stat_summary(fun = "mean", geom = "point") +
+    facet_grid(sp ~ Month, scales = "free_x"))
+
+mbio_viz %+%
+  filter(foc_dat2, !is.na(plant_severity) & !is.na(Mv_biomass.g)) %+%
+  aes(y = plant_severity)
+
+# focal severity and Ev biomass
+(ebio_viz <- foc_dat2 %>%
+    filter(!is.na(leaf_severity) & !is.na(Ev_biomass.g)) %>%
+    ggplot(aes(Ev_biomass.g, leaf_severity, color = treatment)) +
+    stat_summary(fun = "mean", geom = "point") +
+    facet_grid(sp ~ Month, scales = "free_x"))
+
+ebio_viz %+%
+  filter(foc_dat2, !is.na(plant_severity) & !is.na(Ev_biomass.g)) %+%
+  aes(y = plant_severity)
+
+# focal severity and temperature
+(temp_viz <- foc_dat2 %>%
+    filter(!is.na(leaf_severity) & !is.na(temp_avg)) %>%
+    ggplot(aes(temp_avg, leaf_severity, color = treatment)) +
+    geom_point() +
+    facet_grid(sp ~ Month, scales = "free_x"))
+
+temp_viz %+%
+  filter(foc_dat2, !is.na(plant_severity) & !is.na(temp_avg)) %+%
+  aes(y = plant_severity)
+
+filter(foc_dat2, !is.na(plant_severity) & !is.na(temp_avg)) %>%
+  ggplot(aes(temp_avg, plant_severity)) +
+  geom_point() +
+  facet_wrap(~sp, scales = "free")
+
+# focal severity and humidity
+(hum_viz <- foc_dat2 %>%
+    filter(!is.na(leaf_severity) & !is.na(hum_avg)) %>%
+    ggplot(aes(hum_avg, leaf_severity, color = treatment)) +
+    geom_point() +
+    facet_grid(sp ~ Month, scales = "free_x"))
+
+hum_viz %+%
+  filter(foc_dat2, !is.na(plant_severity) & !is.na(hum_avg)) %+%
+  aes(y = plant_severity)
+
+filter(foc_dat2, !is.na(plant_severity) & !is.na(hum_avg)) %>%
+  ggplot(aes(hum_avg, plant_severity)) +
+  geom_point() +
+  facet_wrap(~sp, scales = "free")
 
 
 #### examine data ####

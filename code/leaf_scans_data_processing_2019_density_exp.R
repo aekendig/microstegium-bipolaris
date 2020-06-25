@@ -2,7 +2,7 @@
 
 # file: leaf_scans_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/8/20
+# date last edited: 6/25/20
 # goal: combine raw 2019 leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm
 
@@ -252,11 +252,13 @@ dt_edge <- full_join(ls_mv_may2, ls_mv_jun2) %>%
   filter(ID == "Edge")
 
 # combine data
+# remove unrelated variables
 dat <- full_join(dt_may2, dt_jun2) %>%
   full_join(dt_jul2) %>%
   full_join(dt_early_aug2) %>%
   full_join(dt_late_aug2) %>%
-  full_join(dt_sep2)
+  full_join(dt_sep2) %>%
+  select(-c(microbiome, seeds_collected, path_ID, flower_bags))
 # row number matches summed row numbers
 
 # spread by part
@@ -264,7 +266,7 @@ datw <- dat %>%
   filter(!is.na(part)) %>% # all are missing area values
   rename(count = Count) %>%
   select(-c(Slice)) %>%
-  gather(variable, value, -c(date:field_notes, month:flower_bags)) %>%
+  gather(variable, value, -c(date:field_notes, month:Bp_spots)) %>%
   unite(temp, part, variable) %>%
   spread(temp, value) %>%
   rename(leaf_area.pix = leaf_area,
