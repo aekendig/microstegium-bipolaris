@@ -12,6 +12,9 @@
 rm(list=ls())
 
 # load packages
+library(DHARMa)
+library(MASS)
+library(MuMIn)
 library(tidyverse)
 library(glmmTMB)
 library(brms)
@@ -121,9 +124,22 @@ bio <- full_join(bg_bio2, mv_bio2) %>%
   mutate(total_biomass.g = Ev + Mv) %>%
   rename("Ev_biomass.g" = "Ev", "Mv_biomass.g" = "Mv")
 
+# density
+dens_dat <- plots_simple %>%
+  select(plot, background_sp, background_density) %>%
+  unique() %>%
+  filter(background_density > 0) %>%
+  spread(key = background_sp, value = background_density) %>%
+  full_join(tibble(plot = 1, Ev = 0, Mv = 0)) %>%
+  mutate(Ev = replace_na(Ev, 0) + 4,
+         Mv = replace_na(Mv, 0) + 3,
+         total_density = Ev + Mv) %>%
+  rename(Ev_density = Ev, Mv_density = Mv)
+
 # combine temp/hum, edge, and biomass
 cov_dat <- full_join(edge_dat2, temp_hum2) %>%
-  full_join(bio)
+  full_join(bio) %>%
+  full_join(dens_dat)
 
 # calculate severity
 # add month columns
@@ -312,17 +328,18 @@ month_viz %+%
 
 # correlations between covariates
 filter(cov_dat, treatment == "water" & month == "early_aug") %>%
-  select(temp_avg:total_biomass.g) %>%
+  select(temp_avg:total_density) %>%
   ggpairs()
 # can only pick one temp or humidity metric, all are correlated except max temp and humidity
 # total biomass and Mv biomass are correlated
+# density and biomass are correlated
 # Mv and Ev biomass are negatively correlated at 0.36
 
 filter(cov_dat, treatment == "water" & month == "late_aug") %>%
-  select(temp_avg:total_biomass.g) %>%
+  select(temp_avg:total_density) %>%
   ggpairs()
 # same as above
-# humidity average seems like a representative variable
+# humidity average seems like a representative variable because it's correlated with all three temperature metrics and all three humidity metrics in both months
 
 # focal severity and edge severity
 (edge_viz <- foc_dat2 %>%
@@ -432,27 +449,142 @@ dat2 %>%
 # make edits in edit data section
 
 
-#### edge analysis ####
+#### model selection for water treatment ####
 
 # divide data
-eau_ev_edge_dat <- filter(eau_ev_dat, treatment == "water")
-lau_ev_edge_dat <- filter(lau_ev_dat, treatment == "water")
-lau_mv_edge_dat <- filter(lau_mv_dat, treatment == "water")
+eau_ev_water_dat <- filter(eau_ev_dat, treatment == "water")
+lau_ev_water_dat <- filter(lau_ev_dat, treatment == "water")
+lau_mv_water_dat <- filter(lau_mv_dat, treatment == "water")
 
-# early August ev
-eau_ev_edge_mod <- glmmTMB(plant_severity_adjusted ~ edge_severity, data = eau_ev_edge_dat, family = "beta_family")
-summary(eau_ev_edge_mod)
-# positive, not sig
+## early August Ev ##
+eau_ev_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "beta_family")
+eau_ev_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "beta_family")
+eau_ev_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "beta_family")
+eau_ev_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "beta_family")
 
-# late August mv
-lau_mv_edge_mod <- glmmTMB(plant_severity_adjusted ~ edge_severity, data = lau_mv_edge_dat, family = "beta_family")
-summary(lau_mv_edge_mod)
-# positive, significant
+# compare different plant models
+AIC(eau_ev_totb_water_mod, eau_ev_sepb_water_mod, eau_ev_totd_water_mod, eau_ev_sepd_water_mod)
+# all are pretty similar, total density is the lowest
+summary(eau_ev_totd_water_mod)
+plot(simulateResiduals(eau_ev_totd_water_mod))
 
-# late August ev
-lau_ev_edge_mod <- glmmTMB(plant_severity_adjusted ~ edge_severity, data = lau_ev_edge_dat, family = "beta_family")
+# model averaging
+stepAIC(eau_ev_totd_water_mod)
+eau_ev_totd_water_mod2 <- model.avg(get.models(dredge(eau_ev_totd_water_mod), subset = cumsum(weight) <= .95))
+summary(eau_ev_totd_water_mod2)
+# the model with no covariates is the best
+
+## late August Ev ##
+lau_ev_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
+# can ignore warning "NA/NaN function evaluation" if model converges
+lau_ev_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
+lau_ev_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
+lau_ev_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
+
+# compare different plant models
+AIC(lau_ev_totb_water_mod, lau_ev_sepb_water_mod, lau_ev_totd_water_mod, lau_ev_sepd_water_mod)
+# all are pretty similar, total biomass is the lowest
+summary(lau_ev_totb_water_mod)
+plot(simulateResiduals(lau_ev_totb_water_mod))
+
+# model averaging
+stepAIC(lau_ev_totb_water_mod)
+lau_ev_totb_water_mod2 <- model.avg(get.models(dredge(lau_ev_totb_water_mod), subset = cumsum(weight) <= .95))
+summary(lau_ev_totb_water_mod2)
+# edge severity
+
+## late August Mv ##
+lau_mv_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
+# can ignore warning "NA/NaN function evaluation" if model converges
+lau_mv_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
+lau_mv_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
+lau_mv_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
+
+# compare different plant models
+AIC(lau_mv_totb_water_mod, lau_mv_sepb_water_mod, lau_mv_totd_water_mod, lau_mv_sepd_water_mod)
+# all are pretty similar, total biomass is the lowest
+summary(lau_mv_totb_water_mod)
+plot(simulateResiduals(lau_mv_totb_water_mod))
+
+# model averaging
+stepAIC(lau_mv_totb_water_mod)
+lau_mv_totb_water_mod2 <- model.avg(get.models(dredge(lau_mv_totb_water_mod), subset = cumsum(weight) <= .95))
+summary(lau_mv_totb_water_mod2)
+# edge severity
+
+
+#### model selection for both treatments ####
+
+## early August Ev ##
+eau_ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site), data = eau_ev_dat, family = "beta_family")
+# model doesn't converge with plot in random effect
+eau_ev_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site), data = eau_ev_dat, family = "beta_family")
+eau_ev_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) + (1|site), data = eau_ev_dat, family = "beta_family")
+eau_ev_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site), data = eau_ev_dat, family = "beta_family")
+
+# compare different plant models
+AIC(eau_ev_totb_mod, eau_ev_sepb_mod, eau_ev_totd_mod, eau_ev_sepd_mod)
+# all are pretty similar, total biomass is the lowest
+summary(eau_ev_totb_mod)
+plot(simulateResiduals(eau_ev_totb_mod))
+summary(eau_ev_sepd_mod)
+plot(simulateResiduals(eau_ev_sepd_mod))
+
+# model averaging
+stepAIC(eau_ev_totb_mod)
+eau_ev_totb_mod2 <- model.avg(get.models(dredge(eau_ev_totb_mod), subset = cumsum(weight) <= .95))
+summary(eau_ev_totb_mod2)
+# fungicide is the only significant variable
+
+## late August Ev ##
+lau_ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site), data = lau_ev_dat, family = "beta_family")
+lau_ev_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site), data = lau_ev_dat, family = "beta_family")
+lau_ev_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) + (1|site), data = lau_ev_dat, family = "beta_family")
+lau_ev_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site), data = lau_ev_dat, family = "beta_family")
+
+# compare different plant models
+AIC(lau_ev_totb_mod, lau_ev_sepb_mod, lau_ev_totd_mod, lau_ev_sepd_mod)
+# all are pretty similar, total biomass is the lowest
+summary(lau_ev_totb_mod)
+plot(simulateResiduals(lau_ev_totb_mod))
+
+# model averaging
+stepAIC(lau_ev_totb_mod)
+lau_ev_totb_mod2 <- model.avg(get.models(dredge(lau_ev_totb_mod), subset = cumsum(weight) <= .95))
+# edge severity missing from D1 6F
+summary(lau_ev_totb_mod2)
+# severity and fungicide are significant
+
+## late August Mv ##
+lau_mv_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site), data = lau_mv_dat, family = "beta_family")
+lau_mv_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site), data = lau_mv_dat, family = "beta_family")
+lau_mv_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) + (1|site), data = lau_mv_dat, family = "beta_family")
+lau_mv_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site), data = lau_mv_dat, family = "beta_family")
+
+# compare different plant models
+AIC(lau_mv_totb_mod, lau_mv_sepb_mod, lau_mv_totd_mod, lau_mv_sepd_mod)
+# all are pretty similar, separate biomass is the lowest
+summary(lau_mv_sepb_mod)
+plot(simulateResiduals(lau_mv_sepb_mod))
+
+# model averaging
+stepAIC(lau_mv_sepb_mod)
+lau_mv_sepb_mod2 <- model.avg(get.models(dredge(lau_mv_sepb_mod), subset = cumsum(weight) <= .95))
+# edge severity missing from D1 6F
+summary(lau_mv_sepb_mod2)
+
+
+#### edge severity models ####
+
+# Ev
+lau_ev_edge_mod <- glmmTMB(plant_severity_adjusted ~ edge_severity + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
 summary(lau_ev_edge_mod)
-# positive, significant
+plot(simulateResiduals(lau_ev_edge_mod))
+
+# Mv
+lau_mv_edge_mod <- glmmTMB(plant_severity_adjusted ~ edge_severity + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
+summary(lau_mv_edge_mod)
+plot(simulateResiduals(lau_mv_edge_mod))
 
 
 #### treatment analysis ####
@@ -570,6 +702,7 @@ foc_trt_sig = mutate(foc_trt_sig,
                      treatment = case_when(Month == "September" & sp == "Mv" ~ "water",
                                            TRUE ~ treatment))
 
+
 #### density analysis ####
 
 # select Mv background data from late August
@@ -661,11 +794,11 @@ eau_ev_mv_dat %>%
 #   geom_ribbon(data = lau_mv_mv_sim_dat, aes(ymin = lower, ymax = upper), alpha = 0.3)
 # # not a great fit, mostly showing differences at high density
 
-# significance codes dataset
-foc_den_sig = tibble(background_density = rep(c(0, 4, 16, 64), 2),
-                     sp = rep(c("Ev", "Mv"), each = 4)) %>%
-  mutate(sig = "",
-         treatment = NA_character_)
+# # significance codes dataset
+# foc_den_sig = tibble(background_density = rep(c(0, 4, 16, 64), 2),
+#                      sp = rep(c("Ev", "Mv"), each = 4)) %>%
+#   mutate(sig = "",
+#          treatment = NA_character_)
 
 # # divide data by density treatment
 # lau_mv_mv_0_dat <- filter(lau_mv_mv_dat, background_density == 0)
@@ -818,12 +951,12 @@ foc_trt_plot <- foc_trt_dat %>%
 # join edge data with predictions and labels
 # capitalize columns
 # calculate mean and 95% CI
-foc_edge_dat <- lau_ev_edge_dat %>%
-  mutate(pred = predict(lau_ev_edge_mod, newdata = lau_ev_edge_dat, re.form = NA, type = "response"),
-         pred.se = predict(lau_ev_edge_mod, newdata = lau_ev_edge_dat, re.form = NA, type = "response", se.fit = T)$se.fit) %>%
-  full_join(lau_mv_edge_dat %>%
-              mutate(pred = predict(lau_mv_edge_mod, newdata = lau_mv_edge_dat, re.form = NA, type = "response"),
-                     pred.se = predict(lau_mv_edge_mod, newdata = lau_mv_edge_dat, re.form = NA, type = "response", se.fit = T)$se.fit)) %>%
+foc_edge_dat <- lau_ev_water_dat %>%
+  mutate(pred = predict(lau_ev_edge_mod, newdata = lau_ev_water_dat, re.form = NA, type = "response"),
+         pred.se = predict(lau_ev_edge_mod, newdata = lau_ev_water_dat, re.form = NA, type = "response", se.fit = T)$se.fit) %>%
+  full_join(lau_mv_water_dat %>%
+              mutate(pred = predict(lau_mv_edge_mod, newdata = lau_mv_water_dat, re.form = NA, type = "response"),
+                     pred.se = predict(lau_mv_edge_mod, newdata = lau_mv_water_dat, re.form = NA, type = "response", se.fit = T)$se.fit)) %>%
   mutate(label = case_when(sp == "Ev" ~ "B",
                            sp == "Mv" ~ "C"),
          label_x = case_when(sp == "Ev" ~ 0.001,
@@ -841,7 +974,7 @@ foc_edge_plot <- foc_edge_dat %>%
   geom_text(aes(label = label, x = label_x), y = 1.05, check_overlap = T, size = label_size) +
   facet_wrap(~ Species, nrow = 1, scales = "free_x") +
   scale_shape_manual(values = shape_pal) +
-  xlab("Environmental disease pressure") +
+  xlab(expression(paste("Proportion edge ", italic(Microstegium), " leaf area brown", sep = ""))) +
   ylab("Proportion leaf area brown") +
   ylim(0, 1.05) +
   temp_theme +
@@ -862,7 +995,8 @@ foc_den_dat <- foc_dat_plots2 %>%
             lower = mean_cl_boot(plant_severity_adjusted)$ymin,
             upper = mean_cl_boot(plant_severity_adjusted)$ymax) %>%
   ungroup() %>%
-  mutate(Treatment = recode(Treatment, water = "control (water)"))
+  mutate(Treatment = recode(Treatment, water = "control (water)"),
+         Species = recode(Species, Ev = "Elymus", Mv = "Microstegium"))
 
 # treatment effect over density
 foc_den_plot <- foc_den_dat %>%
@@ -870,7 +1004,7 @@ foc_den_plot <- foc_den_dat %>%
   geom_line(aes(linetype = Species, color = Treatment)) +
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 3) +
   geom_point(aes(shape = Species, fill = Treatment), size = 3) +
-  geom_text(aes(label = label), x = -0.3, y = 0.65, check_overlap = T, size = label_size) +
+  geom_text(aes(label = label), x = -0.3, y = 0.64, check_overlap = T, size = label_size) +
   facet_wrap(~ Species, nrow = 1) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = col_pal) +
@@ -879,8 +1013,7 @@ foc_den_plot <- foc_den_dat %>%
   xlab(expression(paste(italic("Microstegium"), " density", sep = ""))) +
   ylab("Proportion leaf area brown") +
   temp_theme +
-  theme(legend.position = "none",
-        strip.text = element_blank())
+  theme(legend.position = "none")
 # foc_den_plot
 
 # combine figures
