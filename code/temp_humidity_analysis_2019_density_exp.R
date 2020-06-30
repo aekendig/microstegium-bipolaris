@@ -254,39 +254,41 @@ dat <- left_join(mo_dy_dat, bio) %>%
 #### average temperature stats ####
 
 # models
-tavg_totb_mod <- glmmTMB(temp_avg ~ total_biomass.g + (1|site) + (1|month), data = dat, family = "gaussian")
-tavg_sepb_mod <- glmmTMB(temp_avg ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat, family = "gaussian")
-tavg_totd_mod <- glmmTMB(temp_avg ~ total_density + (1|site) + (1|month), data = dat, family = "gaussian")
-tavg_sepd_mod <- glmmTMB(temp_avg ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat, family = "gaussian")
-tavg_totp_mod <- glmmTMB(temp_avg ~ bg_present + (1|site) + (1|month), data = dat, family = "gaussian")
-tavg_sepp_mod <- glmmTMB(temp_avg ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat, family = "gaussian")
+tavg_totb_mod <- glmmTMB(temp_avg ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
+tavg_sepb_mod <- glmmTMB(temp_avg ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat, family = "gaussian")
+tavg_totd_mod <- glmmTMB(temp_avg ~ total_density * month_name + (1|site), data = dat, family = "gaussian")
+tavg_sepd_mod <- glmmTMB(temp_avg ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat, family = "gaussian")
+tavg_totp_mod <- glmmTMB(temp_avg ~ bg_present * month_name + (1|site), data = dat, family = "gaussian")
+tavg_sepp_mod <- glmmTMB(temp_avg ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat, family = "gaussian")
 
 # model comparison
 AIC(tavg_totb_mod, tavg_sepb_mod, tavg_totd_mod, tavg_sepd_mod, tavg_totp_mod, tavg_sepp_mod)
 # sep present
 summary(tavg_sepp_mod)
-# both reduce temperature with different effects (Mv > Ev)
+# Mv reduces temperature
 stepAIC(tavg_sepp_mod)
-# keep both in model
+# keep full model
 plot(simulateResiduals(tavg_sepp_mod))
-# sig deviation
+# adding month to fixed effects instead of random improved this
 
 
 #### min temperature stats ####
 
 # models
-tmin_totb_mod <- glmmTMB(temp_min ~ total_biomass.g + (1|site) + (1|month), data = dat, family = "gaussian")
-tmin_sepb_mod <- glmmTMB(temp_min ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat, family = "gaussian")
-tmin_totd_mod <- glmmTMB(temp_min ~ total_density + (1|site) + (1|month), data = dat, family = "gaussian")
-tmin_sepd_mod <- glmmTMB(temp_min ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat, family = "gaussian")
-tmin_totp_mod <- glmmTMB(temp_min ~ bg_present + (1|site) + (1|month), data = dat, family = "gaussian")
-tmin_sepp_mod <- glmmTMB(temp_min ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat, family = "gaussian")
+tmin_totb_mod <- glmmTMB(temp_min ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
+tmin_sepb_mod <- glmmTMB(temp_min ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat, family = "gaussian")
+tmin_totd_mod <- glmmTMB(temp_min ~ total_density * month_name + (1|site), data = dat, family = "gaussian")
+tmin_sepd_mod <- glmmTMB(temp_min ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat, family = "gaussian")
+tmin_totp_mod <- glmmTMB(temp_min ~ bg_present * month_name + (1|site), data = dat, family = "gaussian")
+tmin_sepp_mod <- glmmTMB(temp_min ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat, family = "gaussian")
 
 # model comparison
 AIC(tmin_totb_mod, tmin_sepb_mod, tmin_totd_mod, tmin_sepd_mod, tmin_totp_mod, tmin_sepp_mod)
 # total density
 summary(tmin_totd_mod)
-# slightly positive
+# not sig
+stepAIC(tmin_totd_mod)
+# keep full model
 plot(simulateResiduals(tmin_totd_mod))
 # sig deviation
 
@@ -294,59 +296,61 @@ plot(simulateResiduals(tmin_totd_mod))
 #### max temperature stats ####
 
 # models
-tmax_totb_mod <- glmmTMB(temp_max ~ total_biomass.g + (1|site) + (1|month), data = dat, family = "gaussian")
-tmax_sepb_mod <- glmmTMB(temp_max ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat, family = "gaussian")
-tmax_totd_mod <- glmmTMB(temp_max ~ total_density + (1|site) + (1|month), data = dat, family = "gaussian")
-tmax_sepd_mod <- glmmTMB(temp_max ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat, family = "gaussian")
-tmax_totp_mod <- glmmTMB(temp_max ~ bg_present + (1|site) + (1|month), data = dat, family = "gaussian")
-tmax_sepp_mod <- glmmTMB(temp_max ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat, family = "gaussian")
+tmax_totb_mod <- glmmTMB(temp_max ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
+tmax_sepb_mod <- glmmTMB(temp_max ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat, family = "gaussian")
+tmax_totd_mod <- glmmTMB(temp_max ~ total_density * month_name + (1|site), data = dat, family = "gaussian")
+tmax_sepd_mod <- glmmTMB(temp_max ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat, family = "gaussian")
+tmax_totp_mod <- glmmTMB(temp_max ~ bg_present * month_name + (1|site), data = dat, family = "gaussian")
+tmax_sepp_mod <- glmmTMB(temp_max ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat, family = "gaussian")
 
 # model comparison
 AIC(tmax_totb_mod, tmax_sepb_mod, tmax_totd_mod, tmax_sepd_mod, tmax_totp_mod, tmax_sepp_mod)
 # sep biomass
 summary(tmax_sepb_mod)
-# Ev biomass positive
+# not sig
 stepAIC(tmax_sepb_mod)
-# keep both in model
+# keep full model
 plot(simulateResiduals(tmax_sepb_mod))
 
 
 #### average humidity stats ####
 
 # models
-havg_totb_mod <- glmmTMB(hum_avg ~ total_biomass.g + (1|site) + (1|month), data = dat, family = "beta_family")
+havg_totb_mod <- glmmTMB(hum_avg ~ total_biomass.g * month_name + (1|site), data = dat, family = "beta_family")
 # can ignore warning if model converges
-havg_sepb_mod <- glmmTMB(hum_avg ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat, family = "beta_family")
-havg_totd_mod <- glmmTMB(hum_avg ~ total_density + (1|site) + (1|month), data = dat, family = "beta_family")
-havg_sepd_mod <- glmmTMB(hum_avg ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat, family = "beta_family")
-havg_totp_mod <- glmmTMB(hum_avg ~ bg_present + (1|site) + (1|month), data = dat, family = "beta_family")
-havg_sepp_mod <- glmmTMB(hum_avg ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat, family = "beta_family")
+havg_sepb_mod <- glmmTMB(hum_avg ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat, family = "beta_family")
+havg_totd_mod <- glmmTMB(hum_avg ~ total_density * month_name + (1|site), data = dat, family = "beta_family")
+havg_sepd_mod <- glmmTMB(hum_avg ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat, family = "beta_family")
+havg_totp_mod <- glmmTMB(hum_avg ~ bg_present * month_name + (1|site), data = dat, family = "beta_family")
+havg_sepp_mod <- glmmTMB(hum_avg ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat, family = "beta_family")
 
 # model comparison
 AIC(havg_totb_mod, havg_sepb_mod, havg_totd_mod, havg_sepd_mod, havg_totp_mod, havg_sepp_mod)
 # total biomass
 summary(havg_totb_mod)
-# slight increase
+# increase
+stepAIC(havg_totb_mod)
+# keep full model
 plot(simulateResiduals(havg_totb_mod))
 
 
 #### min humidity stats ####
 
 # models
-hmin_totb_mod <- glmmTMB(hum_min ~ total_biomass.g + (1|site) + (1|month), data = dat, family = "beta_family")
-hmin_sepb_mod <- glmmTMB(hum_min ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat, family = "beta_family")
-hmin_totd_mod <- glmmTMB(hum_min ~ total_density + (1|site) + (1|month), data = dat, family = "beta_family")
-hmin_sepd_mod <- glmmTMB(hum_min ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat, family = "beta_family")
-hmin_totp_mod <- glmmTMB(hum_min ~ bg_present + (1|site) + (1|month), data = dat, family = "beta_family")
-hmin_sepp_mod <- glmmTMB(hum_min ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat, family = "beta_family")
+hmin_totb_mod <- glmmTMB(hum_min ~ total_biomass.g * month_name + (1|site), data = dat, family = "beta_family")
+hmin_sepb_mod <- glmmTMB(hum_min ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat, family = "beta_family")
+hmin_totd_mod <- glmmTMB(hum_min ~ total_density * month_name + (1|site), data = dat, family = "beta_family")
+hmin_sepd_mod <- glmmTMB(hum_min ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat, family = "beta_family")
+hmin_totp_mod <- glmmTMB(hum_min ~ bg_present * month_name + (1|site), data = dat, family = "beta_family")
+hmin_sepp_mod <- glmmTMB(hum_min ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat, family = "beta_family")
 
 # model comparison
 AIC(hmin_totb_mod, hmin_sepb_mod, hmin_totd_mod, hmin_sepd_mod, hmin_totp_mod, hmin_sepp_mod)
 # separate biomass
 summary(hmin_sepb_mod)
-# Ev reduces
+# not sig
 stepAIC(hmin_sepb_mod)
-# keep both in model
+# keep full model
 plot(simulateResiduals(hmin_sepb_mod))
 
 
@@ -357,40 +361,39 @@ dat_max <- dat %>%
   mutate(hum_max = hum_max - 1e-7)
 
 # models
-hmax_totb_mod <- glmmTMB(hum_max ~ total_biomass.g + (1|site) + (1|month), data = dat_max, family = "beta_family")
-hmax_sepb_mod <- glmmTMB(hum_max ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat_max, family = "beta_family")
-hmax_totd_mod <- glmmTMB(hum_max ~ total_density + (1|site) + (1|month), data = dat_max, family = "beta_family")
-hmax_sepd_mod <- glmmTMB(hum_max ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat_max, family = "beta_family")
-hmax_totp_mod <- glmmTMB(hum_max ~ bg_present + (1|site) + (1|month), data = dat_max, family = "beta_family")
-hmax_sepp_mod <- glmmTMB(hum_max ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat_max, family = "beta_family")
+hmax_totb_mod <- glmmTMB(hum_max ~ total_biomass.g * month_name + (1|site), data = dat_max, family = "beta_family")
+hmax_sepb_mod <- glmmTMB(hum_max ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat_max, family = "beta_family")
+hmax_totd_mod <- glmmTMB(hum_max ~ total_density * month_name + (1|site), data = dat_max, family = "beta_family")
+hmax_sepd_mod <- glmmTMB(hum_max ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat_max, family = "beta_family")
+hmax_totp_mod <- glmmTMB(hum_max ~ bg_present * month_name + (1|site), data = dat_max, family = "beta_family")
+hmax_sepp_mod <- glmmTMB(hum_max ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat_max, family = "beta_family")
 
 # model comparison
 AIC(hmax_totb_mod, hmax_sepb_mod, hmax_totd_mod, hmax_sepd_mod, hmax_totp_mod, hmax_sepp_mod)
-# separate biomass
-summary(hmax_sepb_mod)
-# both increase
-stepAIC(hmax_sepb_mod)
-# keep both in model
-plot(simulateResiduals(hmax_sepb_mod))
-# sig deviation
+# total biomass
+summary(hmax_totb_mod)
+# not sig
+stepAIC(hmax_totb_mod)
+# keep full model
+plot(simulateResiduals(hmax_totb_mod))
 
 
 #### humidity duration stats ####
 
 # models
-hdur_totb_mod <- glmmTMB(hum_dur ~ total_biomass.g + (1|site) + (1|month), data = dat_max, family = "gaussian")
-hdur_sepb_mod <- glmmTMB(hum_dur ~ Ev_biomass.g + Mv_biomass.g + (1|site) + (1|month), data = dat_max, family = "gaussian")
-hdur_totd_mod <- glmmTMB(hum_dur ~ total_density + (1|site) + (1|month), data = dat_max, family = "gaussian")
-hdur_sepd_mod <- glmmTMB(hum_dur ~ Ev_density + Mv_density + (1|site) + (1|month), data = dat_max, family = "gaussian")
-hdur_totp_mod <- glmmTMB(hum_dur ~ bg_present + (1|site) + (1|month), data = dat_max, family = "gaussian")
-hdur_sepp_mod <- glmmTMB(hum_dur ~ Ev_present + Mv_present + (1|site) + (1|month), data = dat_max, family = "gaussian")
+hdur_totb_mod <- glmmTMB(hum_dur ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
+hdur_sepb_mod <- glmmTMB(hum_dur ~ (Ev_biomass.g + Mv_biomass.g) * month_name + (1|site), data = dat, family = "gaussian")
+hdur_totd_mod <- glmmTMB(hum_dur ~ total_density * month_name + (1|site), data = dat, family = "gaussian")
+hdur_sepd_mod <- glmmTMB(hum_dur ~ (Ev_density + Mv_density) * month_name + (1|site), data = dat, family = "gaussian")
+hdur_totp_mod <- glmmTMB(hum_dur ~ bg_present * month_name + (1|site), data = dat, family = "gaussian")
+hdur_sepp_mod <- glmmTMB(hum_dur ~ (Ev_present + Mv_present) * month_name + (1|site), data = dat, family = "gaussian")
 
 # model comparison
 AIC(hdur_totb_mod, hdur_sepb_mod, hdur_totd_mod, hdur_sepd_mod, hdur_totp_mod, hdur_sepp_mod)
-# separate biomass
-summary(hdur_sepb_mod)
-# both increase
-stepAIC(hdur_sepb_mod)
+# total biomass
+summary(hdur_totb_mod)
+# total biomass has a positive effect in September
+stepAIC(hdur_totb_mod)
 # keep both in model
 plot(simulateResiduals(hdur_sepb_mod))
 
@@ -398,16 +401,15 @@ plot(simulateResiduals(hdur_sepb_mod))
 #### figures ####
 
 # presence/absence data
-pres_sim_dat <- expand_grid(month = c("early_aug", "late_aug", "sep", "oct"), site = c("D1", "D2", "D3", "D4"), Ev_present = c(0, 1), Mv_present = c(0, 1)) %>%
+pres_sim_dat <- expand_grid(month_name = c("Early August", "Late August", "September", "October"), site = c("D1", "D2", "D3", "D4"), Ev_present = c(0, 1), Mv_present = c(0, 1)) %>%
   filter(!(Ev_present == 1 & Mv_present == 1)) %>%
-  mutate(month = fct_relevel(month, "early_aug", "late_aug", "sep", "oct"),
+  mutate(month_name = fct_relevel(month_name, "Early August", "Late August", "September", "October"),
          pred = predict(tavg_sepp_mod, newdata = .),
          pred_se = predict(tavg_sepp_mod, newdata = ., se.fit = T)$se.fit,
          background = case_when(Ev_present == 0 & Mv_present == 0 ~ "none",
                                 Ev_present == 1 & Mv_present == 0 ~ "Ev",
                                 Ev_present == 0 & Mv_present == 1 ~ "Mv") %>%
-           fct_relevel("none", "Ev", "Mv"),
-         month_name = recode(month, "early_aug" = "Early August", "late_aug" = "Late August", "sep" = "September", "oct" = "October"))
+           fct_relevel("none", "Ev", "Mv"))
 
 # edit raw data
 dat_pres <- dat %>%
@@ -426,127 +428,85 @@ tavg_plot <- ggplot(pres_sim_dat, aes(x = background, y = pred)) +
   ylab("Average daily temperature (°C)") +
   xlab("Background plants")
 
-# total density data
-totd_sim_dat <- expand_grid(month = c("early_aug", "late_aug", "sep", "oct"), site = c("D1", "D2", "D3", "D4"), total_density = 7:71) %>%
-  mutate(month = fct_relevel(month, "early_aug", "late_aug", "sep", "oct"),
-         pred = predict(tmin_totd_mod, newdata = .),
-         pred_se = predict(tmin_totd_mod, newdata = ., se.fit = T)$se.fit,
-         month_name = recode(month, "early_aug" = "Early August", "late_aug" = "Late August", "sep" = "September", "oct" = "October"))
+# # total density data
+# totd_sim_dat <- expand_grid(month = c("early_aug", "late_aug", "sep", "oct"), site = c("D1", "D2", "D3", "D4"), total_density = 7:71) %>%
+#   mutate(month = fct_relevel(month, "early_aug", "late_aug", "sep", "oct"),
+#          pred = predict(tmin_totd_mod, newdata = .),
+#          pred_se = predict(tmin_totd_mod, newdata = ., se.fit = T)$se.fit,
+#          month_name = recode(month, "early_aug" = "Early August", "late_aug" = "Late August", "sep" = "September", "oct" = "October"))
+# 
+# # minimum temperature
+# tmin_plot <- ggplot(totd_sim_dat, aes(x = total_density, y = pred)) +
+#   geom_point(data = dat, alpha = 0.3, aes(y = temp_min, color = site)) +
+#   geom_ribbon(alpha = 0.5, aes(ymin = pred - pred_se, ymax = pred + pred_se, fill = site)) +
+#   geom_line(aes(color = site)) +
+#   facet_wrap(~month_name, scales = "free") +
+#   plot_theme +
+#   ylab("Minimum daily temperature (°C)") +
+#   xlab(expression(paste("Total plant density (plants ", m^-1, ")", sep = "")))
 
-# minimum temperature
-tmin_plot <- ggplot(totd_sim_dat, aes(x = total_density, y = pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(y = temp_min, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = pred - pred_se, ymax = pred + pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name, scales = "free") +
-  plot_theme +
-  ylab("Minimum daily temperature (°C)") +
-  xlab(expression(paste("Total plant density (plants ", m^-1, ")", sep = "")))
+# # separate biomass
+# sepb_sim_dat <- dat %>%
+#   group_by(month, month_name, site) %>%
+#   summarise(min_Ev_biomass.g = min(Ev_biomass.g),
+#             max_Ev_biomass.g = max(Ev_biomass.g),
+#             min_Mv_biomass.g = min(Mv_biomass.g),
+#             max_Mv_biomass.g = max(Mv_biomass.g))  %>%
+#   ungroup() %>%
+#   rowwise() %>%
+#   do(tibble(month = .$month, month_name = .$month_name, site = .$site,
+#                 Ev_biomass.g = c(seq(.$min_Ev_biomass.g, .$max_Ev_biomass.g, length.out = 100), rep(0, 100)),
+#                 Mv_biomass.g = c(rep(0, 100), seq(.$min_Mv_biomass.g, .$max_Mv_biomass.g, length.out = 100)))) %>%
+#   ungroup() %>%
+#   mutate(tmax_pred = predict(tmax_sepb_mod, newdata = .),
+#          tmax_pred_se = predict(tmax_sepb_mod, newdata = ., se.fit = T)$se.fit,
+#          hmin_pred = predict(hmin_sepb_mod, newdata = ., type = "response"),
+#          hmin_pred_se = predict(hmin_sepb_mod, newdata = ., type = "response", se.fit = T)$se.fit,
+#          biomass.g = Ev_biomass.g + Mv_biomass.g,
+#          sp = case_when(Ev_biomass.g > 0 ~ "Ev",
+#                         Mv_biomass.g > 0 ~ "Mv"))
 
-# separate biomass
-sepb_sim_dat <- dat %>%
-  group_by(month, month_name, site) %>%
-  summarise(min_Ev_biomass.g = min(Ev_biomass.g),
-            max_Ev_biomass.g = max(Ev_biomass.g),
-            min_Mv_biomass.g = min(Mv_biomass.g),
-            max_Mv_biomass.g = max(Mv_biomass.g))  %>%
-  ungroup() %>%
-  rowwise() %>%
-  do(tibble(month = .$month, month_name = .$month_name, site = .$site,
-                Ev_biomass.g = c(seq(.$min_Ev_biomass.g, .$max_Ev_biomass.g, length.out = 100), rep(0, 100)),
-                Mv_biomass.g = c(rep(0, 100), seq(.$min_Mv_biomass.g, .$max_Mv_biomass.g, length.out = 100)))) %>%
-  ungroup() %>%
-  mutate(tmax_pred = predict(tmax_sepb_mod, newdata = .),
-         tmax_pred_se = predict(tmax_sepb_mod, newdata = ., se.fit = T)$se.fit,
-         hmin_pred = predict(hmin_sepb_mod, newdata = ., type = "response"),
-         hmin_pred_se = predict(hmin_sepb_mod, newdata = ., type = "response", se.fit = T)$se.fit,
-         hmax_pred = predict(hmax_sepb_mod, newdata = ., type = "response"),
-         hmax_pred_se = predict(hmax_sepb_mod, newdata = ., type = "response", se.fit = T)$se.fit,
-         hdur_pred = predict(hdur_sepb_mod, newdata = ., type = "response"),
-         hdur_pred_se = predict(hdur_sepb_mod, newdata = ., type = "response", se.fit = T)$se.fit,
-         biomass.g = Ev_biomass.g + Mv_biomass.g,
-         sp = case_when(Ev_biomass.g > 0 ~ "Ev",
-                        Mv_biomass.g > 0 ~ "Mv"))
-
-# maximum temperature
-tmax_plot <- ggplot(filter(sepb_sim_dat, sp == "Ev"), aes(x = biomass.g, y = tmax_pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(x = Ev_biomass.g, y = temp_max, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = tmax_pred - tmax_pred_se, ymax = tmax_pred + tmax_pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name, scales = "free") +
-  plot_theme +
-  ylab("Maximum daily temperature (°C)") +
-  xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = "")))
+# # maximum temperature
+# tmax_plot <- ggplot(filter(sepb_sim_dat, sp == "Ev"), aes(x = biomass.g, y = tmax_pred)) +
+#   geom_point(data = dat, alpha = 0.3, aes(x = Ev_biomass.g, y = temp_max, color = site)) +
+#   geom_ribbon(alpha = 0.5, aes(ymin = tmax_pred - tmax_pred_se, ymax = tmax_pred + tmax_pred_se, fill = site)) +
+#   geom_line(aes(color = site)) +
+#   facet_wrap(~month_name, scales = "free") +
+#   plot_theme +
+#   ylab("Maximum daily temperature (°C)") +
+#   xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = "")))
 
 # rounding function
 scale_fun <- function(x){
   y = 100 * x
   sprintf("%.0f", y)
 }
-
-# minimum humidity
-hmin_plot <- ggplot(filter(sepb_sim_dat, sp == "Ev"), aes(x = biomass.g, y = hmin_pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(x = Ev_biomass.g, y = hum_min, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = hmin_pred - hmin_pred_se, ymax = hmin_pred + hmin_pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name, scales = "free") +
-  plot_theme +
-  ylab("Minimum daily relative humidity (%)") +
-  xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
-  scale_y_continuous(labels = scale_fun)
-
-# maximum humidity
-hmax_ev_plot <- ggplot(filter(sepb_sim_dat, sp == "Ev"), aes(x = biomass.g, y = hmax_pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(x = Ev_biomass.g, y = hum_max, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = hmax_pred - hmax_pred_se, ymax = hmax_pred + hmax_pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name) +
-  plot_theme +
-  ylab("Maximum daily relative humidity (%)") +
-  xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
-  scale_y_continuous(labels = scale_fun)
-
-hmax_mv_plot <- ggplot(filter(sepb_sim_dat, sp == "Mv"), aes(x = biomass.g, y = hmax_pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(x = Mv_biomass.g, y = hum_max, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = hmax_pred - hmax_pred_se, ymax = hmax_pred + hmax_pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name) +
-  plot_theme +
-  ylab("Maximum daily relative humidity (%)") +
-  xlab(expression(paste(italic("Microstegium"), " biomass (g ", m^-1, ")", sep = ""))) +
-  scale_y_continuous(labels = scale_fun)
-
-# humidity duration
-hdur_ev_plot <- ggplot(filter(sepb_sim_dat, sp == "Ev"), aes(x = biomass.g, y = hdur_pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(x = Ev_biomass.g, y = hum_dur, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = hdur_pred - hdur_pred_se, ymax = hdur_pred + hdur_pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name) +
-  plot_theme +
-  ylab(expression(paste("100% relative humidity duration (hours ", day^-1, sep = ""))) +
-  xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = "")))
-
-hdur_mv_plot <- ggplot(filter(sepb_sim_dat, sp == "Mv"), aes(x = biomass.g, y = hdur_pred)) +
-  geom_point(data = dat, alpha = 0.3, aes(x = Mv_biomass.g, y = hum_dur, color = site)) +
-  geom_ribbon(alpha = 0.5, aes(ymin = hdur_pred - hdur_pred_se, ymax = hdur_pred + hdur_pred_se, fill = site)) +
-  geom_line(aes(color = site)) +
-  facet_wrap(~month_name) +
-  plot_theme +
-  ylab(expression(paste("100% relative humidity duration (hours ", day^-1, sep = ""))) +
-  xlab(expression(paste(italic("Microstegium"), " biomass (g ", m^-1, ")", sep = "")))
+# 
+# # minimum humidity
+# hmin_plot <- ggplot(filter(sepb_sim_dat, sp == "Ev"), aes(x = biomass.g, y = hmin_pred)) +
+#   geom_point(data = dat, alpha = 0.3, aes(x = Ev_biomass.g, y = hum_min, color = site)) +
+#   geom_ribbon(alpha = 0.5, aes(ymin = hmin_pred - hmin_pred_se, ymax = hmin_pred + hmin_pred_se, fill = site)) +
+#   geom_line(aes(color = site)) +
+#   facet_wrap(~month_name, scales = "free") +
+#   plot_theme +
+#   ylab("Minimum daily relative humidity (%)") +
+#   xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
+#   scale_y_continuous(labels = scale_fun)
 
 # total biomass
 totb_sim_dat <- dat %>%
-  group_by(month, month_name, site) %>%
+  group_by(month_name, site) %>%
   summarise(min_biomass.g = min(total_biomass.g),
             max_biomass.g = max(total_biomass.g))  %>%
   ungroup() %>%
   rowwise() %>%
-  do(tibble(month = .$month, month_name = .$month_name, site = .$site,
+  do(tibble(month_name = .$month_name, site = .$site,
             total_biomass.g = seq(.$min_biomass.g, .$max_biomass.g, length.out = 100))) %>%
   ungroup() %>%
   mutate(havg_pred = predict(havg_totb_mod, newdata = ., type = "response"),
-         havg_pred_se = predict(havg_totb_mod, newdata = ., type = "response", se.fit = T)$se.fit)
+         havg_pred_se = predict(havg_totb_mod, newdata = ., type = "response", se.fit = T)$se.fit,
+         hdur_pred = predict(hdur_totb_mod, newdata = ., type = "response"),
+         hdur_pred_se = predict(hdur_totb_mod, newdata = ., type = "response", se.fit = T)$se.fit)
 
 # average relative humidity
 havg_plot <- ggplot(totb_sim_dat, aes(x = total_biomass.g, y = havg_pred)) +
@@ -559,18 +519,21 @@ havg_plot <- ggplot(totb_sim_dat, aes(x = total_biomass.g, y = havg_pred)) +
   xlab(expression(paste("Total biomass (g ", m^-1, ")", sep = ""))) +
   scale_y_continuous(labels = scale_fun)
 
+# humidity duration
+hdur_plot <- ggplot(filter(totb_sim_dat, month_name == "September"), aes(x = total_biomass.g, y = hdur_pred)) +
+  geom_point(data = dat, alpha = 0.3, aes(x = total_biomass.g, y = hum_dur, color = site)) +
+  geom_ribbon(alpha = 0.5, aes(ymin = hdur_pred - hdur_pred_se, ymax = hdur_pred + hdur_pred_se, fill = site)) +
+  geom_line(aes(color = site)) +
+  facet_wrap(~month_name) +
+  plot_theme +
+  ylab(expression(paste("100% relative humidity duration (hours ", day^-1, ")", sep = ""))) +
+  xlab(expression(paste("Total biomass (g ", m^-1, ")", sep = "")))
 
 #### save figures ####
 pdf("output/temp_humidity_analysis_2019_density_exp.pdf")
 tavg_plot
-tmin_plot
-tmax_plot
 havg_plot
-hmin_plot
-hmax_ev_plot
-hmax_mv_plot
-hdur_ev_plot
-hdur_mv_plot
+hdur_plot
 dev.off()
 
 
