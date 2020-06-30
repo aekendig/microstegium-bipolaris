@@ -2,7 +2,7 @@
 
 # file: leaf_scans_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/25/20
+# date last edited: 6/26/20
 # goal: combine raw 2019 leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm
 
@@ -39,31 +39,6 @@ dt_sep <- read_csv("data/focal_disease_sep_2019_density_exp.csv")
 
 
 #### edit data ####
-
-# # indicate whether images were edited
-# # remove edited from name
-# # remove month from name
-# may <- may %>%
-#   mutate(edited = ifelse(grepl("edited", slice, fixed = T), 1, 0),
-#          slice = gsub("_edited", "", slice) %>% gsub("_May", "", .) %>% gsub("_may", "", .),
-#          month = "May")
-# nrow(may) # 834
-# sum(may$edited) # 153
-
-# # create list of edited scans
-# may_ed <- may %>%
-#   filter(edited == 1) %>%
-#   select(slice)
-# 
-# # check that all are contained in unedited list
-# may_ed %>% filter(!(slice %in% filter(may, edited == 0)$slice))
-# # one sample is not - looked through files and can't figure out why, but it's fine because we have the edited one
-# 
-# # remove unedited scans
-# may <- may %>%
-#   filter(edited == 1 | !(slice %in% may_ed$slice))
-# nrow(may) # 684
-# 834 - 153 + 3
 
 # function for adding columns
 col_fun <- function(dat){
@@ -266,7 +241,7 @@ datw <- dat %>%
   filter(!is.na(part)) %>% # all are missing area values
   rename(count = Count) %>%
   select(-c(Slice)) %>%
-  gather(variable, value, -c(date:field_notes, month:Bp_spots)) %>%
+  gather(variable, value, -c(date:field_notes, month:age)) %>%
   unite(temp, part, variable) %>%
   spread(temp, value) %>%
   rename(leaf_area.pix = leaf_area,

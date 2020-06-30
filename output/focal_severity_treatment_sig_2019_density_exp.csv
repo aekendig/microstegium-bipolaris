@@ -1,0 +1,12 @@
+month,sp,sig,treatment,metric
+may,Ev,*,water,area
+jun,Ev,**,water,area
+jul,Ev,*,fungicide,area
+early_aug,Ev,,NA,area
+late_aug,Ev,**,fungicide,area
+sep,Ev,*,fungicide,area
+jun,Mv,*,water,area
+jul,Mv,,NA,area
+early_aug,Mv,,NA,area
+late_aug,Mv,,NA,area
+sep,Mv,,NA,area
