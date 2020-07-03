@@ -1,7 +1,0 @@
-month,sig,treatment,sp,metric
-may,,NA,Ev,spots
-jun,,NA,Ev,spots
-jul,,NA,Ev,spots
-early_aug,,NA,Ev,spots
-late_aug,*,fungicide,Ev,spots
-sep,*,water,Ev,spots

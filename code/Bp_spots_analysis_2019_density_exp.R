@@ -2,7 +2,7 @@
 
 # file: Bp_spots_analysis_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/26/20
+# date last edited: 7/2/20
 # goal: analyze occurrence of Bp spots
 
 
@@ -147,7 +147,11 @@ dat_fun <- function(dat_in, mth){
            fungicide = case_when(treatment == "water" ~ 0,
                                  TRUE ~ 1),
            exp_plot = paste0(plot, toupper(substr(treatment, 1, 1))),
-           site_exp_plot = paste(site, exp_plot, sep = " ")) %>%
+           site_exp_plot = paste(site, exp_plot, sep = " "),
+           Month = recode(month, early_aug = "Early August", jul = "July", 
+                          jun = "June", late_aug = "Late August", may = "May", sep = "September") %>%
+             fct_relevel("May", "June", "July", "Early August", "Late August", "September"),
+           Treatment = recode(treatment, water = "control (water)")) %>%
     left_join(temp_hum2) %>%
     left_join(edge_dat2) %>%
     left_join(bio) %>%
@@ -165,64 +169,63 @@ eau_ev_dat <- dat_fun(dt_early_aug, "early_aug")
 lau_ev_dat <- dat_fun(dt_late_aug, "late_aug")
 sep_ev_dat <- dat_fun(dt_sep, "sep")
 
+# water analysis
+ev_water_dat <- full_join(eau_ev_dat, lau_ev_dat) %>%
+  filter(treatment == "water")
+
+# June-late August analysis
+jun_lau_ev_dat <- full_join(jun_ev_dat, jul_ev_dat) %>%
+  full_join(eau_ev_dat) %>%
+  full_join(lau_ev_dat)
+
+
+#### visualize ####
+
+ggplot(ev_water_dat, aes(x = total_biomass.g, y = Bp_spots)) +
+  geom_point() +
+  geom_smooth(method = "glm") +
+  facet_wrap(~month)
+
+ggplot(ev_dat, aes(x = total_biomass.g, y = Bp_spots, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "glm") +
+  facet_wrap(~month)
+
 
 #### model selection for water treatment ####
 
 # include humidity data (only available for control plots)
 
 # divide data
-eau_ev_water_dat <- filter(eau_ev_dat, treatment == "water")
-lau_ev_water_dat <- filter(lau_ev_dat, treatment == "water")
 sep_ev_water_dat <- filter(sep_ev_dat, treatment == "water")
 
-## early August ##
-eau_ev_totb_water_mod <- glmmTMB(Bp_spots ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "binomial")
-eau_ev_sepb_water_mod <- glmmTMB(Bp_spots ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "binomial")
-eau_ev_totd_water_mod <- glmmTMB(Bp_spots ~ total_density + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "binomial")
-eau_ev_sepd_water_mod <- glmmTMB(Bp_spots ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "binomial")
-eau_ev_totp_water_mod <- glmmTMB(Bp_spots ~ bg_present + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "binomial")
-eau_ev_sepp_water_mod <- glmmTMB(Bp_spots ~ Ev_present + Mv_present + edge_severity + hum_avg + (1|site/plot), data = eau_ev_water_dat, family = "binomial")
+## early-late August ##
+ev_totb_water_mod <- glmmTMB(Bp_spots ~ Month * (total_biomass.g + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "binomial")
+ev_sepb_water_mod <- glmmTMB(Bp_spots ~ Month * (Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "binomial")
+ev_totd_water_mod <- glmmTMB(Bp_spots ~ Month * (total_density + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "binomial")
+ev_sepd_water_mod <- glmmTMB(Bp_spots ~ Month * (Ev_density + Mv_density + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "binomial")
+ev_totp_water_mod <- glmmTMB(Bp_spots ~ Month * (bg_present + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "binomial")
+ev_sepp_water_mod <- glmmTMB(Bp_spots ~ Month * (Ev_present + Mv_present + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "binomial")
 
 # compare different plant models
-AIC(eau_ev_totb_water_mod, eau_ev_sepb_water_mod, eau_ev_totd_water_mod, eau_ev_sepd_water_mod, eau_ev_totp_water_mod, eau_ev_sepp_water_mod)
-# sep biomass is the lowest
-summary(eau_ev_sepb_water_mod)
-# all significant
-stepAIC(eau_ev_sepb_water_mod)
+AIC(ev_totb_water_mod, ev_sepb_water_mod, ev_totd_water_mod, ev_sepd_water_mod, ev_totp_water_mod, ev_sepp_water_mod)
+# total presence is the lowest
+summary(ev_totp_water_mod)
+# month:bg (*)
+stepAIC(ev_totp_water_mod)
 # keep full model
-plot(simulateResiduals(eau_ev_sepb_water_mod))
-
-
-## late August ##
-lau_ev_totb_water_mod <- glmmTMB(Bp_spots ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "binomial")
-lau_ev_sepb_water_mod <- glmmTMB(Bp_spots ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "binomial")
-lau_ev_totd_water_mod <- glmmTMB(Bp_spots ~ total_density + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "binomial")
-lau_ev_sepd_water_mod <- glmmTMB(Bp_spots ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "binomial")
-lau_ev_totp_water_mod <- glmmTMB(Bp_spots ~ bg_present + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "binomial")
-lau_ev_sepp_water_mod <- glmmTMB(Bp_spots ~ Ev_present + Mv_present + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "binomial")
-
-# compare different plant models
-AIC(lau_ev_totb_water_mod, lau_ev_sepb_water_mod, lau_ev_totd_water_mod, lau_ev_sepd_water_mod, lau_ev_totp_water_mod, lau_ev_sepp_water_mod)
-# tot biomass is the lowest
-summary(lau_ev_totb_water_mod)
-# none significant
-stepAIC(lau_ev_totb_water_mod)
-# keep humidity only
-lau_ev_totb_water_mod2 <- update(lau_ev_totb_water_mod, .~. - total_biomass.g - edge_severity)
-summary(lau_ev_totb_water_mod2)
-# not sig
-plot(simulateResiduals(lau_ev_totb_water_mod2))
-
+plot(simulateResiduals(ev_totp_water_mod))
 
 ## September ##
 sep_ev_totb_water_mod <- glmmTMB(Bp_spots ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = sep_ev_water_dat, family = "binomial")
 # can't converge
-sep_ev_totb_water_mod <- glmmTMB(Bp_spots ~ total_biomass.g + edge_severity + hum_avg + (1|plot), data = sep_ev_water_dat, family = "binomial")
-sep_ev_sepb_water_mod <- glmmTMB(Bp_spots ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|plot), data = sep_ev_water_dat, family = "binomial")
-sep_ev_totd_water_mod <- glmmTMB(Bp_spots ~ total_density + edge_severity + hum_avg + (1|plot), data = sep_ev_water_dat, family = "binomial")
-sep_ev_sepd_water_mod <- glmmTMB(Bp_spots ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|plot), data = sep_ev_water_dat, family = "binomial")
-sep_ev_totp_water_mod <- glmmTMB(Bp_spots ~ bg_present + edge_severity + hum_avg + (1|plot), data = sep_ev_water_dat, family = "binomial")
-sep_ev_sepp_water_mod <- glmmTMB(Bp_spots ~ Ev_present + Mv_present + edge_severity + hum_avg + (1|plot), data = sep_ev_water_dat, family = "binomial")
+summary(sep_ev_totb_water_mod)
+sep_ev_totb_water_mod <- glmmTMB(Bp_spots ~ total_biomass.g + edge_severity + hum_avg + (1|site_exp_plot), data = sep_ev_water_dat, family = "binomial")
+sep_ev_sepb_water_mod <- glmmTMB(Bp_spots ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site_exp_plot), data = sep_ev_water_dat, family = "binomial")
+sep_ev_totd_water_mod <- glmmTMB(Bp_spots ~ total_density + edge_severity + hum_avg + (1|site_exp_plot), data = sep_ev_water_dat, family = "binomial")
+sep_ev_sepd_water_mod <- glmmTMB(Bp_spots ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|site_exp_plot), data = sep_ev_water_dat, family = "binomial")
+sep_ev_totp_water_mod <- glmmTMB(Bp_spots ~ bg_present + edge_severity + hum_avg + (1|site_exp_plot), data = sep_ev_water_dat, family = "binomial")
+sep_ev_sepp_water_mod <- glmmTMB(Bp_spots ~ Ev_present + Mv_present + edge_severity + hum_avg + (1|site_exp_plot), data = sep_ev_water_dat, family = "binomial")
 
 # compare different plant models
 AIC(sep_ev_totb_water_mod, sep_ev_sepb_water_mod, sep_ev_totd_water_mod, sep_ev_sepd_water_mod, sep_ev_totp_water_mod, sep_ev_sepp_water_mod)
@@ -230,11 +233,8 @@ AIC(sep_ev_totb_water_mod, sep_ev_sepb_water_mod, sep_ev_totd_water_mod, sep_ev_
 summary(sep_ev_totb_water_mod)
 # none significant
 stepAIC(sep_ev_totb_water_mod)
-# keep humidity only
-sep_ev_totb_water_mod2 <- update(sep_ev_totb_water_mod, .~. - total_biomass.g - edge_severity)
-summary(sep_ev_totb_water_mod2)
-# not sig
-plot(simulateResiduals(sep_ev_totb_water_mod2))
+# keep full model
+plot(simulateResiduals(sep_ev_totb_water_mod))
 
 
 #### model selection for both treatments ####
@@ -291,79 +291,22 @@ plot(simulateResiduals(may_ev_totd_mod))
 # sig dev
 
 
-## June Ev ##
-jun_ev_totb_mod <- glmmTMB(Bp_spots ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = jun_ev_dat, family = "binomial")
-jun_ev_sepb_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site/exp_plot), data = jun_ev_dat, family = "binomial")
-jun_ev_totd_mod <- glmmTMB(Bp_spots ~ fungicide * (total_density + edge_severity) + (1|site/exp_plot), data = jun_ev_dat, family = "binomial")
-jun_ev_sepd_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site/exp_plot), data = jun_ev_dat, family = "binomial")
-jun_ev_totp_mod <- glmmTMB(Bp_spots ~ fungicide * (bg_present + edge_severity) + (1|site/exp_plot), data = jun_ev_dat, family = "binomial")
-jun_ev_sepp_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_present + Mv_present + edge_severity) + (1|site/exp_plot), data = jun_ev_dat, family = "binomial")
+## June-late August Ev ##
+jun_lau_ev_totb_mod <- glmmTMB(Bp_spots ~ fungicide * (total_biomass.g + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "binomial")
+jun_lau_ev_sepb_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "binomial")
+jun_lau_ev_totd_mod <- glmmTMB(Bp_spots ~ fungicide * (total_density + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "binomial")
+jun_lau_ev_sepd_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_density + Mv_density + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "binomial")
+jun_lau_ev_totp_mod <- glmmTMB(Bp_spots ~ fungicide * (bg_present + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "binomial")
+jun_lau_ev_sepp_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_present + Mv_present + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "binomial")
 
 # compare different plant models
-AIC(jun_ev_totb_mod, jun_ev_sepb_mod, jun_ev_totd_mod, jun_ev_sepd_mod, jun_ev_totp_mod, jun_ev_sepp_mod)
-# total biomass
-summary(jun_ev_totb_mod)
-# none
-stepAIC(jun_ev_totb_mod)
-# remove total biomass
-jun_ev_totb_mod2 <- update(jun_ev_totb_mod, .~. - total_biomass.g - fungicide:total_biomass.g)
-summary(jun_ev_totb_mod2)
-# none
-plot(simulateResiduals(jun_ev_totb_mod2))
-
-
-## July Ev ##
-jul_ev_totb_mod <- glmmTMB(Bp_spots ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "binomial")
-jul_ev_sepb_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "binomial")
-jul_ev_totd_mod <- glmmTMB(Bp_spots ~ fungicide * (total_density + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "binomial")
-jul_ev_sepd_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "binomial")
-jul_ev_totp_mod <- glmmTMB(Bp_spots ~ fungicide * (bg_present + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "binomial")
-jul_ev_sepp_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_present + Mv_present + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "binomial")
-
-# compare different plant models
-AIC(jul_ev_totb_mod, jul_ev_sepb_mod, jul_ev_totd_mod, jul_ev_sepd_mod, jul_ev_totp_mod, jul_ev_sepp_mod)
-# total density
-summary(jul_ev_totd_mod)
-# none
-stepAIC(jul_ev_totd_mod)
-# keep full model
-plot(simulateResiduals(jul_ev_totd_mod))
-
-
-## early Aug Ev ##
-eau_ev_totb_mod <- glmmTMB(Bp_spots ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "binomial")
-eau_ev_sepb_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "binomial")
-eau_ev_totd_mod <- glmmTMB(Bp_spots ~ fungicide * (total_density + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "binomial")
-eau_ev_sepd_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "binomial")
-eau_ev_totp_mod <- glmmTMB(Bp_spots ~ fungicide * (bg_present + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "binomial")
-eau_ev_sepp_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_present + Mv_present + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "binomial")
-
-# compare different plant models
-AIC(eau_ev_totb_mod, eau_ev_sepb_mod, eau_ev_totd_mod, eau_ev_sepd_mod, eau_ev_totp_mod, eau_ev_sepp_mod)
+AIC(jun_lau_ev_totb_mod, jun_lau_ev_sepb_mod, jun_lau_ev_totd_mod, jun_lau_ev_sepd_mod, jun_lau_ev_totp_mod, jun_lau_ev_sepp_mod)
 # total presence
-summary(eau_ev_totp_mod)
-# bg present (*), edge severity (**)
-stepAIC(eau_ev_totp_mod)
+summary(jun_lau_ev_totp_mod)
+# fung:edge:month
+stepAIC(jun_lau_ev_totp_mod)
 # keep full model
-plot(simulateResiduals(eau_ev_totp_mod))
-
-
-## late Aug Ev ##
-lau_ev_totb_mod <- glmmTMB(Bp_spots ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = lau_ev_dat, family = "binomial")
-lau_ev_sepb_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|site/exp_plot), data = lau_ev_dat, family = "binomial")
-lau_ev_totd_mod <- glmmTMB(Bp_spots ~ fungicide * (total_density + edge_severity) + (1|site/exp_plot), data = lau_ev_dat, family = "binomial")
-lau_ev_sepd_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|site/exp_plot), data = lau_ev_dat, family = "binomial")
-lau_ev_totp_mod <- glmmTMB(Bp_spots ~ fungicide * (bg_present + edge_severity) + (1|site/exp_plot), data = lau_ev_dat, family = "binomial")
-lau_ev_sepp_mod <- glmmTMB(Bp_spots ~ fungicide * (Ev_present + Mv_present + edge_severity) + (1|site/exp_plot), data = lau_ev_dat, family = "binomial")
-
-# compare different plant models
-AIC(lau_ev_totb_mod, lau_ev_sepb_mod, lau_ev_totd_mod, lau_ev_sepd_mod, lau_ev_totp_mod, lau_ev_sepp_mod)
-# total density
-summary(lau_ev_totd_mod)
-# fungicide:total density (*) fungicide:edge (*)
-stepAIC(lau_ev_totd_mod)
-# keep full model
-plot(simulateResiduals(lau_ev_totd_mod))
+plot(simulateResiduals(jun_lau_ev_totp_mod))
 
 
 ## September Ev ##
@@ -387,19 +330,78 @@ summary(sep_ev_sepp_mod2)
 plot(simulateResiduals(sep_ev_sepp_mod2))
 
 
-#### treatment by month ####
+#### figures ####
 
-trt_sig_dat = tibble(month = c("may", "jun", "jul", "early_aug", "late_aug", "sep"),
-                     sig = c("", "", "", "", "*", "*"),
-                     treatment = c(NA_character_, NA_character_, NA_character_, NA_character_, "fungicide", "water")) %>%
-  mutate(sp = "Ev",
-         metric = "spots")
+# template theme
+temp_theme <- theme_bw() +
+  theme(axis.text = element_text(size = 8, color="black"),
+        axis.title = element_text(size = 10),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 10),
+        legend.box.margin = margin(-10, -10, -10, -10),
+        legend.position = "bottom", 
+        legend.direction = "horizontal",
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10),
+        strip.placement = "outside",
+        plot.title = element_text(size = 10, hjust = 0.5))
+
+# colors
+col_pal = c("#a6611a", "#018571")
+
+## Edge severity Ev June-late August ##
+jun_lau_ev_edge_sim_dat <- jun_lau_ev_dat %>%
+  filter(!(is.na(edge_severity))) %>%
+  group_by(Month, Treatment, fungicide) %>%
+  summarise(min_edge = min(edge_severity),
+            max_edge = max(edge_severity)) %>%
+  ungroup() %>%
+  rowwise() %>%
+  do(tibble(Month = .$Month, Treatment = .$Treatment, fungicide = .$fungicide,
+            edge_severity = seq(.$min_edge, .$max_edge, length.out = 100))) %>%
+  ungroup() %>%
+  mutate(bg_present = 1,
+         site = NA_character_,
+         exp_plot = NA_character_) %>%
+  mutate(Bp_spots = predict(jun_lau_ev_totp_mod, newdata = ., re.form = NA, type = "response"),
+         Bp_spots_se = predict(jun_lau_ev_totp_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
+
+jun_lau_ev_sum_dat <- jun_lau_ev_dat %>%
+  group_by(Month) %>%
+  mutate(edge_bin = cut_interval(edge_severity, n = 5) %>%
+           as.character()) %>%
+  ungroup() %>%
+  group_by(Month, edge_bin) %>%
+  mutate(min_interval = parse_number(strsplit(edge_bin, ",")[[1]])[1],
+         max_interval = parse_number(strsplit(edge_bin, ",")[[1]])[2],
+         edge_severity = (max_interval + min_interval) / 2) %>%
+  ungroup() %>%
+  group_by(Month, Treatment, edge_severity) %>%
+  summarise(Bp_spots_lower = mean_cl_boot(Bp_spots)$ymin,
+            Bp_spots_upper = mean_cl_boot(Bp_spots)$ymax,
+            Bp_spots = mean_cl_boot(Bp_spots)$y)
+
+jun_lau_edge_ev_fig <- ggplot(jun_lau_ev_edge_sim_dat, aes(x = edge_severity, y = Bp_spots)) +
+  geom_errorbar(data = jun_lau_ev_sum_dat, width = 0, aes(group = Treatment, ymin = Bp_spots_lower, ymax = Bp_spots_upper)) +
+  geom_point(data = jun_lau_ev_sum_dat, size = 3, shape = 21, aes(fill = Treatment)) +
+  geom_ribbon(aes(ymin = Bp_spots - Bp_spots_se, ymax = Bp_spots + Bp_spots_se, fill = Treatment), alpha = 0.5) +
+  geom_line(aes(color = Treatment)) +
+  facet_wrap(~ Month, scales = "free_x") +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  xlab(expression(paste("Proportion edge ", italic("Microstegium"), " leaf area brown", sep = ""))) +
+  ylab(expression(paste("Proportion ", italic("Elymus"), " with ", italic(Bipolaris), "-like lesions", sep = ""))) +
+  temp_theme
 
 
 #### output ####
 
-write_csv(trt_sig_dat, "output/Bp_spots_treatment_sig_2019_density_exp.csv")
-bp_spots_water_mod <- eau_ev_sepb_water_mod
-save(bp_spots_water_mod, file ="output/Bp_spots_water_model_2019_density_exp.rda")
-bp_spots_mod <- eau_ev_totp_mod
-save(bp_spots_mod, file ="output/Bp_spots_model_2019_density_exp.rda")
+pdf("output/Bp_spots_analysis_2019_density_exp.pdf")
+jun_lau_edge_ev_fig
+dev.off()
+
+bp_spots_edge_mod <- jun_lau_ev_totp_mod
+save(bp_spots_edge_mod, file ="output/Bp_spots_ege_model_2019_density_exp.rda")
