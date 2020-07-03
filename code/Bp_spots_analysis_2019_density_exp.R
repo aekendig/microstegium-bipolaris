@@ -404,4 +404,4 @@ jun_lau_edge_ev_fig
 dev.off()
 
 bp_spots_edge_mod <- jun_lau_ev_totp_mod
-save(bp_spots_edge_mod, file ="output/Bp_spots_ege_model_2019_density_exp.rda")
+save(bp_spots_edge_mod, file ="output/Bp_spots_edge_model_2019_density_exp.rda")
