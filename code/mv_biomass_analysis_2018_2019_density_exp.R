@@ -2,7 +2,7 @@
 
 # file: mv_biomass_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/4/20
+# date last edited: 7/6/20
 # goal: evaluate the effects of density treatments and environmental covariates on the biomass of Microstegium
 
 
@@ -22,7 +22,6 @@ bio19 <- read_csv("./data/mv_biomass_seeds_2019_density_exp.csv")
 plots <- read_csv("./data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 covar <- read_csv("./intermediate-data/covariates_2018_density_exp.csv")
 treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
-expt <- read_csv("./data/mv_biomass_seeds_height_jun_2019_fungicide_exp.csv")
 
 
 #### edit data ####
@@ -66,12 +65,12 @@ bio19t <- bio19 %>%
 # sample sizes
 samps_19 <- bio19b %>%
   group_by(site, plot, treatment) %>%
-  count() %>%
+  summarise(n = sum(!is.na(bio.g))) %>%
   mutate(bio.g = max(bio19b$bio.g, na.rm = T) + 1)
 
 samps_18 <- bio18b %>%
   group_by(site, plot, treatment) %>%
-  count() %>%
+  summarise(n = sum(!is.na(bio.g))) %>%
   mutate(bio.g = max(bio18b$bio.g, na.rm = T) + 1)
 
 # visualize
@@ -81,10 +80,12 @@ samp_plot_19 <- ggplot(bio19b, aes(x = plot, y = bio.g)) +
 
 samp_plot_19 +
   geom_text(data = samps_19, aes(label = n), size = 2)
+# 2 plants missing
   
 samp_plot_19 %+%
   bio18b +
   geom_text(data = samps_18, aes(label = n), size = 2)
+# 2 plots missing (no data collected from these)
 
 
 #### visualize treatment effects ####
@@ -134,6 +135,7 @@ plot_grid(temp_fig %+%
             aes(y = log_bio.g) +
             ylab("Year 1 log-biomass (g per plot)"),
           nrow = 2)
+# biomass saturates with Mv seedling density like plot-level Mv biomass collected in 2019
 
 # 2019
 plot_grid(temp_fig %+%
@@ -148,9 +150,11 @@ plot_grid(temp_fig %+%
             aes(y = log_bio.g) +
             ylab("Year d log-biomass (g per plant)"),
           nrow = 2)
+# biomass decreases with increasing density, but not when moving from plot with no background to some background (increases)
 
 dev.off()
 
+# group all background types together
 ggplot(bio19t, aes(x = background_density, y = bio.g, color = background)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, alpha = 0.5, position = position_dodge(dodge_value)) +
   stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(dodge_value)) +
@@ -160,6 +164,19 @@ ggplot(bio19t, aes(x = background_density, y = bio.g, color = background)) +
   xlab("Neighbor density") +
   ylab(expression(paste(italic(Microstegium), " biomass (g ", individual^-1, ")", sep = ""))) +
   theme(strip.text = element_text(size = 12))
+
+# site-specific trends
+ggplot(bio19b, aes(x = background_density, y = bio.g, color = site)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3)) +
+  stat_summary(geom = "line", fun = "mean", position = position_dodge(0.3)) +
+  stat_summary(geom = "point", fun = "mean", size = 2, position = position_dodge(0.3)) +
+  facet_grid(treatment ~ background, scales = "free") +
+  temp_theme
+
+ggplot(bio19b, aes(x = background_density, y = bio.g, color = site)) +
+  geom_point() +
+  facet_grid(treatment ~ background, scales = "free") +
+  temp_theme
 
 
 #### visualize covariate effects ####

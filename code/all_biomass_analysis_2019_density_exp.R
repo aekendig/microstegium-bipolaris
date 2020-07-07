@@ -231,6 +231,36 @@ mv_bio_mod <- update(mv_bio_mod, chains = 3, control = list(adapt_delta = 0.99))
 plot(mv_bio_mod)
 pp_check(mv_bio_mod, nsamples = 100)
 
+# include priors informed by greenhouse fungicide experiment
+
+# values in fungicide_effects_greenhouse_2019.R
+21.05 / 23.80 # fungicide effect = 0.88 * control
+1 - 0.88
+
+mv_bio_fung_mod <- brm(data = mv_dat, family = gaussian,
+                  bf(Mv_biomass.g ~ (asym * fung) * (1 - exp(-exp(lrc) * Mv_density)),
+                     asym ~ fungicide + (1|site),
+                     fung ~ fungicide,
+                     lrc ~ fungicide,
+                     nl = T),
+                  prior <- c(prior(normal(391, 100), nlpar = "asym", coef = "Intercept"),
+                             prior(normal(0, 100), nlpar = "asym", coef = "fungicide"),
+                             prior(cauchy(0, 1), nlpar = "asym", class = sd),
+                             prior(normal(1, 0.001), nlpar = "fung", coef = "Intercept"),
+                             prior(normal(-0.12, 0.001), nlpar = "fung", coef = "fungicide"),
+                             prior(normal(-2.7, 1), nlpar = "lrc", coef = "Intercept"),
+                             prior(normal(0, 1), nlpar = "lrc", coef = "fungicide"),
+                             prior(cauchy(0, 1), class = sigma)),
+                  iter = 6000, warmup = 1000, chains = 1, cores = 1, 
+                  control = list(adapt_delta = 0.99))
+
+# check model and increase chains
+summary(mv_bio_fung_mod)
+prior_summary(mv_bio_fung_mod)
+mv_bio_fung_mod <- update(mv_bio_fung_mod, chains = 3)
+plot(mv_bio_fung_mod)
+pp_check(mv_bio_fung_mod, nsamples = 100)
+
 
 #### Ev biomass model ####
 
@@ -274,6 +304,36 @@ plot(ev_bio_mod)
 pp_check(ev_bio_mod, nsamples = 100)
 
 
+# include priors informed by greenhouse fungicide experiment
+
+# values in fungicide_effects_greenhouse_2019.R
+13.84 / 13.39 # fungicide effect = 1.03 * control
+
+ev_bio_fung_mod <- brm(data = ev_dat, family = gaussian,
+                  bf(Ev_biomass.g ~ (asym * fung) * (1 - exp(-exp(lrc) * Ev_density)),
+                     asym ~ fungicide + (1|site),
+                     fung ~ fungicide,
+                     lrc ~ fungicide,
+                     nl = T),
+                  prior <- c(prior(normal(56, 10), nlpar = "asym", coef = "Intercept"),
+                             prior(normal(0, 10), nlpar = "asym", coef = "fungicide"),
+                             prior(cauchy(0, 1), nlpar = "asym", class = sd),
+                             prior(normal(1, 0.001), nlpar = "fung", coef = "Intercept"),
+                             prior(normal(0.03, 0.001), nlpar = "fung", coef = "fungicide"),
+                             prior(normal(-2.2, 1), nlpar = "lrc", coef = "Intercept"),
+                             prior(normal(0, 1), nlpar = "lrc", coef = "fungicide"),
+                             prior(cauchy(0, 1), class = sigma)),
+                  iter = 6000, warmup = 1000, chains = 1, cores = 1,
+                  control = list(adapt_delta = 0.99))
+
+# check model and increase chains
+summary(ev_bio_fung_mod)
+prior_summary(ev_bio_fung_mod)
+ev_bio_fung_mod <- update(ev_bio_fung_mod, chains = 3)
+plot(ev_bio_fung_mod)
+pp_check(ev_bio_fung_mod, nsamples = 100)
+
+
 #### figures ####
 
 # template theme
@@ -304,6 +364,13 @@ mv_sim_dat <- tibble(Mv_density = rep(seq(0, 67, length.out = 300), 2),
          Mv_biomass_upper = fitted(mv_bio_mod, newdata = ., re_formula = NA)[, "Q97.5"],
          Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) 
 
+mv_fung_sim_dat <- tibble(Mv_density = rep(seq(0, 67, length.out = 300), 2),
+                     fungicide = rep(c(0, 1), each = 300)) %>%
+  mutate(Mv_biomass.g = fitted(mv_bio_fung_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         Mv_biomass_lower = fitted(mv_bio_fung_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         Mv_biomass_upper = fitted(mv_bio_fung_mod, newdata = ., re_formula = NA)[, "Q97.5"],
+         Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) 
+
 ev_sim_dat <- tibble(Ev_density = rep(seq(0, 20, length.out = 300), 2),
                      fungicide = rep(c(0, 1), each = 300)) %>%
   mutate(Ev_biomass.g = fitted(ev_bio_mod, newdata = ., re_formula = NA)[, "Estimate"],
@@ -311,10 +378,71 @@ ev_sim_dat <- tibble(Ev_density = rep(seq(0, 20, length.out = 300), 2),
          Ev_biomass_upper = fitted(ev_bio_mod, newdata = ., re_formula = NA)[, "Q97.5"],
          Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) 
 
+ev_fung_sim_dat <- tibble(Ev_density = rep(seq(0, 20, length.out = 300), 2),
+                     fungicide = rep(c(0, 1), each = 300)) %>%
+  mutate(Ev_biomass.g = fitted(ev_bio_fung_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         Ev_biomass_lower = fitted(ev_bio_fung_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         Ev_biomass_upper = fitted(ev_bio_fung_mod, newdata = ., re_formula = NA)[, "Q97.5"],
+         Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) 
+
+# coefficients
+mv_coef <- fixef(mv_bio_mod)[c(2, 4), ] %>%
+  as_tibble() %>%
+  mutate(Parameter = c("asymptote", "rate"))
+mv_fung_coef <- fixef(mv_bio_fung_mod)[c(2, 6), ] %>%
+  as_tibble() %>%
+  mutate(Parameter = c("asymptote", "rate"))
+ev_coef <- fixef(ev_bio_mod)[c(2, 4), ] %>%
+  as_tibble() %>%
+  mutate(Parameter = c("asymptote", "rate"))
+ev_fung_coef <- fixef(ev_bio_fung_mod)[c(2, 6), ] %>%
+  as_tibble() %>%
+  mutate(Parameter = c("asymptote", "rate"))
+
+# coefficient plots
+mv_coef_fig <- ggplot(mv_coef, aes(x = Parameter, y = Estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_errorbar(aes(ymin = Q2.5, ymax = Q97.5), width = 0.01) +
+  geom_point(size = 2) +
+  ylab("Fungicide effect") +
+  temp_theme
+
+mv_fung_coef_fig <- ggplot(mv_fung_coef, aes(x = Parameter, y = Estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_errorbar(aes(ymin = Q2.5, ymax = Q97.5), width = 0.01) +
+  geom_point(size = 2) +
+  ylab("Fungicide effect") +
+  temp_theme
+
+ev_coef_fig <- ggplot(ev_coef, aes(x = Parameter, y = Estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_errorbar(aes(ymin = Q2.5, ymax = Q97.5), width = 0.01) +
+  geom_point(size = 2) +
+  ylab("Fungicide effect") +
+  temp_theme
+
+ev_fung_coef_fig <- ggplot(ev_fung_coef, aes(x = Parameter, y = Estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_errorbar(aes(ymin = Q2.5, ymax = Q97.5), width = 0.01) +
+  geom_point(size = 2) +
+  ylab("Fungicide effect") +
+  temp_theme
+
 # Mv plot
 mv_fig <- ggplot(mv_dat, aes(x = Mv_density, y = Mv_biomass.g)) + 
   geom_ribbon(data = mv_sim_dat, aes(ymin = Mv_biomass_lower, ymax = Mv_biomass_upper, fill = Treatment), alpha = 0.3) +
   geom_line(data = mv_sim_dat, aes(color = Treatment)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 1, alpha = 0.5, aes(group = Treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  xlab(expression(paste(italic("Microstegiun"), " density (", m^-1, ")", sep = ""))) +
+  ylab(expression(paste(italic("Microstegiun"), " biomass (g ", m^-1, ")", sep = ""))) +
+  temp_theme
+
+mv_fung_fig <- ggplot(mv_dat, aes(x = Mv_density, y = Mv_biomass.g)) + 
+  geom_ribbon(data = mv_fung_sim_dat, aes(ymin = Mv_biomass_lower, ymax = Mv_biomass_upper, fill = Treatment), alpha = 0.3) +
+  geom_line(data = mv_fung_sim_dat, aes(color = Treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 1, alpha = 0.5, aes(group = Treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
   scale_color_manual(values = col_pal) +
@@ -335,11 +463,35 @@ ev_fig <- ggplot(ev_dat, aes(x = Ev_density, y = Ev_biomass.g)) +
   ylab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
   temp_theme
 
+ev_fung_fig <- ggplot(ev_dat, aes(x = Ev_density, y = Ev_biomass.g)) + 
+  geom_ribbon(data = ev_fung_sim_dat, aes(ymin = Ev_biomass_lower, ymax = Ev_biomass_upper, fill = Treatment), alpha = 0.3) +
+  geom_line(data = ev_fung_sim_dat, aes(color = Treatment)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.3, alpha = 0.5, aes(group = Treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  xlab(expression(paste(italic("Elymus"), " density (", m^-1, ")", sep = ""))) +
+  ylab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
+  temp_theme
+
 
 #### output ####
 pdf("output/all_biomass_analysis_2019_density_exp.pdf")
-mv_fig
-ev_fig
+plot_grid(mv_fig, mv_coef_fig,
+          nrow = 1,
+          rel_widths = c(1, 0.4))
+plot_grid(ev_fig, ev_coef_fig,
+          nrow = 1,
+          rel_widths = c(1, 0.4))
+dev.off()
+
+pdf("output/all_biomass_analysis_greenhouse_fungicide_2019_density_exp.pdf")
+plot_grid(mv_fung_fig, mv_fung_coef_fig,
+          nrow = 1,
+          rel_widths = c(1, 0.4))
+plot_grid(ev_fung_fig, ev_fung_coef_fig,
+          nrow = 1,
+          rel_widths = c(1, 0.4))
 dev.off()
 
 mv_all_bio_mod <- mv_bio_mod
