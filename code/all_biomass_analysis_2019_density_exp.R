@@ -323,7 +323,7 @@ ev_bio_fung_mod <- brm(data = ev_dat, family = gaussian,
                              prior(normal(-2.2, 1), nlpar = "lrc", coef = "Intercept"),
                              prior(normal(0, 1), nlpar = "lrc", coef = "fungicide"),
                              prior(cauchy(0, 1), class = sigma)),
-                  iter = 6000, warmup = 1000, chains = 1, cores = 1,
+                  iter = 6000, warmup = 1000, chains = 3, cores = 1,
                   control = list(adapt_delta = 0.99))
 
 # check model and increase chains
@@ -498,3 +498,7 @@ mv_all_bio_mod <- mv_bio_mod
 save(mv_all_bio_mod, file ="output/Mv_all_biomass_model_2019_density_exp.rda")
 ev_all_bio_mod <- ev_bio_mod
 save(ev_all_bio_mod, file ="output/Ev_all_biomass_model_2019_density_exp.rda")
+mv_all_bio_fung_mod <- mv_bio_fung_mod
+save(mv_all_bio_fung_mod, file ="output/Mv_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")
+ev_all_bio_fung_mod <- ev_bio_fung_mod
+save(ev_all_bio_fung_mod, file ="output/Ev_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")

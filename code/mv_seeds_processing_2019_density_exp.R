@@ -2,7 +2,7 @@
 
 # file: mv_seeds_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/6/20
+# date last edited: 7/7/20
 # goal: create a dataset of Mv seeds per plant
 
 
@@ -123,16 +123,18 @@ d310wmv3_flower_seeds <- filter(bag_seeds_plant, site == "D3" & plot == 10 & tre
 
 # plant-level data
 mv_plant_seed_dat <- bio_seeds2 %>%
-  mutate(stem_seeds = case_when(site == "D2" & plot == 2 & treatment == "fungicide" & plant == 2 ~ d22fmv2_stem_seeds,
+  mutate(stem_seeds_adj = case_when(site == "D2" & plot == 2 & treatment == "fungicide" & plant == 2 ~ d22fmv2_stem_seeds,
                                 TRUE ~ stem_seeds),
-         flowers = case_when(site == "D3" & plot == 4 & treatment == "water" & plant == 1 ~ d34wmv1_flowers,
+         flowers_adj = case_when(site == "D3" & plot == 4 & treatment == "water" & plant == 1 ~ d34wmv1_flowers,
                              site == "D2" & plot == 2 & treatment == "fungicide" & plant == 2 ~ 0,
                              TRUE ~ flowers)) %>%
   full_join(bag_seeds_plant %>%
-              mutate(mean_flower_seeds = case_when(site == "D3" & plot == 10 & treatment == "water" & plant == 3 ~ d310wmv3_flower_seeds,
+              mutate(mean_flower_seeds_adj = case_when(site == "D3" & plot == 10 & treatment == "water" & plant == 3 ~ d310wmv3_flower_seeds,
                                                    TRUE ~ mean_flower_seeds))) %>%
   mutate(flower_seeds = flowers * mean_flower_seeds,
-         seeds = flower_seeds + stem_seeds)
+         seeds = flower_seeds + stem_seeds,
+         flower_seeds_adj = flowers_adj * mean_flower_seeds_adj,
+         seeds_adj = flower_seeds_adj + stem_seeds_adj)
 
 # plot-level data
 mv_plot_seed_dat <- bio_seeds2 %>%
