@@ -2,7 +2,7 @@
 
 # file: mv_seed_analysis_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/7/20
+# date last edited: 7/11/20
 # goal: analyze Mv seeds
 
 
@@ -15,15 +15,26 @@ rm(list=ls())
 library(tidyverse)
 library(brms)
 library(cowplot)
+library(glmmTMB)
 
 # import data
 plant_dat <- read_csv("intermediate-data/mv_plant_level_seeds_2019_density_exp.csv")
 plot_dat <- read_csv("intermediate-data/mv_plot_level_seeds_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
+sev19 <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv")
 
 
 #### edit data ####
+
+# severity
+sev19b <- sev19 %>%
+  mutate(plant_severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot)) %>%
+  select(month, site, plot, treatment, sp, ID, plant_severity) %>%
+  pivot_wider(names_from = "month", values_from = "plant_severity", names_glue = "severity_{month}") %>%
+  filter(sp == "Mv") %>%
+  mutate(plant = as.numeric(ID)) %>%
+  select(-ID)
 
 # add density to data for visualization
 plot_dat2 <- left_join(plot_dat, plots)
@@ -38,17 +49,16 @@ plant_dat2 <- left_join(plant_dat, treat) %>%
          ev_seedling_density = case_when(plot %in% c(5:7) ~ background_density + 3,
                                          TRUE ~ 3),
          ev_adult_density = case_when(plot %in% c(8:10) ~ background_density + 1,
-                                         TRUE ~ 1))
+                                         TRUE ~ 1)) %>%
+  left_join(sev19b)
 
-# split by background
-mv_dat <- plant_dat2 %>%
-  filter(background %in% c("none", "Mv seedling"))
+# no background data
+no_back_plant_dat <- filter(plant_dat2, plot == 1)
 
-ev_seedling_dat <- plant_dat2 %>%
-  filter(background %in% c("none", "Ev seedling"))
-
-ev_adult_dat <- plant_dat2 %>%
-  filter(background %in% c("none", "Ev adult"))
+# individual-level seeds and plots
+plant_dat3 <- left_join(plant_dat, plots) %>%
+  mutate(fungicide = recode(treatment, fungicide = "1", water = "0") %>% as.numeric(),
+         Treatment = recode(treatment, water = "control (water)", fungicide = "fungicide"))
 
 
 #### visualize ####
@@ -97,345 +107,264 @@ ggplot(mv_dat, aes(x = mv_density, y = seeds, fill = treatment)) +
   scale_fill_manual(values = c("black", "white"), name = "Treatment") +
   temp_theme
 
+# no background
+mv_dat %>%
+  filter(plot == 1) %>%
+  ggplot(aes(x = Treatment, y = seeds, fill = treatment)) +
+  stat_summary(geom = "bar", fun = "mean") +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.1) +
+  temp_theme
 
-#### Mv background model ####
 
-# Beverton-Holt simulation
+#### direct disease models ####
+
+# control seeds
+filter(no_back_plant_dat, fungicide == 0) %>%
+  summarise(seeds = mean(seeds))
+
+# model
+mv_no_back_seed_mod <- brm(data = no_back_plant_dat, family = gaussian,
+                          seeds ~ fungicide + (1|site),
+                          prior <- c(prior(normal(1200, 100), class = Intercept),
+                                     prior(normal(0, 100), class = b),
+                                     prior(cauchy(0, 1), class = sd),
+                                     prior(cauchy(0, 1), class = sigma)),
+                          iter = 6000, warmup = 1000, chains = 1,
+                          control = list(adapt_delta = 0.99))
+
+# check model and add chains
+summary(mv_no_back_seed_mod)
+prior_summary(mv_no_back_seed_mod)
+mv_no_back_seed_mod <- update(mv_no_back_seed_mod, chains = 3)
+plot(mv_no_back_seed_mod)
+pp_check(mv_no_back_seed_mod, nsamples = 100)
+
+# reduction due to fungicide
+-0.12*1182
+
+# model with direct fungicide effects
+mv_no_back_seed_fung_mod <- brm(data = no_back_plant_dat, family = gaussian,
+                               seeds ~ Treatment + fungicide + (1|site),
+                               prior <- c(prior(normal(1182, 100), class = Intercept),
+                                          prior(normal(0, 100), class = b),
+                                          prior(normal(-142, 0.001), class = b, coef = "Treatmentfungicide"),
+                                          prior(cauchy(0, 1), class = sd),
+                                          prior(cauchy(0, 1), class = sigma)),
+                               iter = 6000, warmup = 1000, chains = 3,
+                               control = list(adapt_delta = 0.99))
+
+# check model
+summary(mv_no_back_seed_fung_mod)
+prior_summary(mv_no_back_seed_fung_mod)
+plot(mv_no_back_seed_fung_mod)
+pp_check(mv_no_back_seed_fung_mod, nsamples = 100)
+
+
+#### disease and density models ####
+
+# split by background
+mv_mv_seed_dat <- plant_dat2 %>%
+  filter(background == "Mv seedling" & !is.na(seeds))
+
+mv_evs_seed_dat <- plant_dat2 %>%
+  filter(background == "Ev seedling")
+
+mv_eva_seed_dat <- plant_dat2 %>%
+  filter(background == "Ev adult" & !is.na(seeds))
+
+# check for complete values
+sum(is.na(mv_mv_seed_dat$seeds))
+sum(is.na(mv_evs_seed_dat$seeds))
+sum(is.na(mv_eva_seed_dat$seeds))
+
+# Beverton-Holt function
 bh_fun <- function(dat_in, a, y0){
   
   # extract values
   xmin = 0
-  xmax = max(dat_in$mv_density)
+  xmax = max(dat_in$background_density)
   
   # create data
   dat <- tibble(x = seq(xmin, xmax, length.out = 100)) %>%
     mutate(y = y0 / (1 + a * x))
   
   # plot
-  print(ggplot(dat_in, aes(x = mv_density, y = seeds)) +
+  print(ggplot(dat_in, aes(x = background_density, y = seeds)) +
           stat_summary(geom = "point", fun = "mean", aes(color = treatment)) +
           stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.1, aes(color = treatment)) +
           geom_line(data = dat, aes(x = x, y = y)))
 }
 
 # try values of a
-bh_fun(mv_dat, 0.05, 1400)
+mean(filter(mv_mv_seed_dat, density_level == "low")$seeds)
+bh_fun(mv_mv_seed_dat, 0.05, 1300)
+mean(filter(mv_evs_seed_dat, density_level == "low")$seeds)
+bh_fun(mv_evs_seed_dat, -0.01, 1000)
+mean(filter(mv_eva_seed_dat, density_level == "low")$seeds)
+bh_fun(mv_eva_seed_dat, 0.1, 2000)
 
 # distributions
 x = 0:10
 y = dexp(x, 0.5)
 plot(x, y, type = "l")
 
-# greenhouse experiment: fungicide reduced seed heads
-30 / 37
-1 - 0.81
-
-# model with greenhouse info
-mv_seed_fung_mod <- brm(data = mv_dat, family = gaussian,
-                        bf(seeds ~ (s0 * fung) / (1 + alpha * mv_density),
-                           s0 ~ fungicide + (1|site/exp_plot),
-                           fung ~ fungicide,
+# Mv background model
+mv_mv_seed_mod <- brm(data = mv_mv_seed_dat, family = gaussian,
+                        bf(seeds ~ y0 / (1 + alpha * background_density),
+                           y0 ~ 0 + Treatment + (1|site),
                            alpha ~ 0 + Treatment,
                            nl = T),
-                        prior <- c(prior(normal(1400, 100), nlpar = "s0", coef = "Intercept"), 
-                                   prior(normal(0, 100), nlpar = "s0", coef = "fungicide"),
-                                   prior(cauchy(0, 1), nlpar = "s0", class = sd),
-                                   prior(normal(1, 0.001), nlpar = "fung", coef = "Intercept"),
-                                   prior(normal(-0.19, 0.001), nlpar = "fung", coef = "fungicide"),
-                                   prior(exponential(0.5), nlpar = "alpha", lb = 0),
-                                   prior(cauchy(0, 1), class = sigma)),
-                        iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                        control = list(adapt_delta = 0.99))
-                   
-# check model and increase chains
-summary(mv_seed_fung_mod)
-prior_summary(mv_seed_fung_mod)
-mv_seed_fung_mod <- update(mv_seed_fung_mod, chains = 3)
-plot(mv_seed_fung_mod)
-pp_check(mv_seed_fung_mod, nsamples = 100)                           
-
-# model without greenhouse info
-mv_seed_mod <- brm(data = mv_dat, family = gaussian,
-                        bf(seeds ~ s0 / (1 + alpha * mv_density),
-                           s0 ~ fungicide + (1|site/exp_plot),
-                           alpha ~ 0 + Treatment,
-                           nl = T),
-                        prior <- c(prior(normal(1400, 100), nlpar = "s0", coef = "Intercept"), 
-                                   prior(normal(0, 100), nlpar = "s0", coef = "fungicide"),
-                                   prior(cauchy(0, 1), nlpar = "s0", class = sd),
-                                   prior(exponential(0.5), nlpar = "alpha", lb = 0),
-                                   prior(cauchy(0, 1), class = sigma)),
-                        iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                        control = list(adapt_delta = 0.99))
+                      prior <- c(prior(normal(1300, 100), nlpar = "y0", class = "b", lb = 0),
+                                 prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                                 prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                                 prior(cauchy(0, 1), class = "sigma")),
+                      iter = 6000, warmup = 1000, chains = 1,
+                      control = list(adapt_delta = 0.99))
 
 # check model and increase chains
-summary(mv_seed_mod)
-prior_summary(mv_seed_mod)
-mv_seed_mod <- update(mv_seed_mod, chains = 3)
-plot(mv_seed_mod)
-pp_check(mv_seed_mod, nsamples = 100)    
+summary(mv_mv_seed_mod)
+prior_summary(mv_mv_seed_mod)
+mv_mv_seed_mod <- update(mv_mv_seed_mod, chains = 3)
+plot(mv_mv_seed_mod)
+pp_check(mv_mv_seed_mod, nsamples = 100)    
 
-
-#### Ev seedling background model ####
-
-# average seeds
-mean(ev_seedling_dat$seeds)
-
-# try values of a (want flat line)
-bh_fun(mv_dat, 0, 1400)
-
-# distributions
-x = 0:10
-y = dexp(x, 100) # reciprocal of the stan rate
-plot(x, y, type = "l")
-
-# model without greenhouse info
-mv_seed_ev_seedling_mod <- brm(data = ev_seedling_dat, family = gaussian,
-                               bf(seeds ~ s0 / (1 + alpha * ev_seedling_density),
-                                  s0 ~ fungicide + (1|site/exp_plot),
-                                  alpha ~ 0 + Treatment,
-                                  nl = T),
-                               prior <- c(prior(normal(1037, 100), nlpar = "s0", coef = "Intercept"), 
-                                          prior(normal(0, 100), nlpar = "s0", coef = "fungicide"),
-                                          prior(cauchy(0, 1), nlpar = "s0", class = sd),
-                                          prior(exponential(0.01), nlpar = "alpha", lb = 0),
-                                          prior(cauchy(0, 1), class = sigma)),
-                               iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                               control = list(adapt_delta = 0.99))
-                                    
-# check model and increase chains
-summary(mv_seed_ev_seedling_mod)
-prior_summary(mv_seed_ev_seedling_mod)
-mv_seed_ev_seedling_mod <- update(mv_seed_ev_seedling_mod, chains = 3)
-plot(mv_seed_ev_seedling_mod)
-pp_check(mv_seed_ev_seedling_mod, nsamples = 100)
-
-# model with greenhouse info
-mv_seed_ev_seedling_fung_mod <- brm(data = ev_seedling_dat, family = gaussian,
-                                    bf(seeds ~ (s0 * fung) / (1 + alpha * ev_seedling_density),
-                                       s0 ~ fungicide + (1|site/exp_plot),
-                                       fung ~ fungicide,
-                                       alpha ~ 0 + Treatment,
-                                       nl = T),
-                                    prior <- c(prior(normal(1037, 100), nlpar = "s0", coef = "Intercept"), 
-                                               prior(normal(0, 100), nlpar = "s0", coef = "fungicide"),
-                                               prior(cauchy(0, 1), nlpar = "s0", class = sd),
-                                               prior(normal(1, 0.001), nlpar = "fung", coef = "Intercept"),
-                                               prior(normal(-0.19, 0.001), nlpar = "fung", coef = "fungicide"),
-                                               prior(exponential(0.01), nlpar = "alpha", lb = 0),
-                                               prior(cauchy(0, 1), class = sigma)),
-                                    iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                                    control = list(adapt_delta = 0.99))
-                        
+# Ev seedling background model
+mv_evs_seed_mod <- brm(data = mv_evs_seed_dat, family = gaussian,
+                      bf(seeds ~ y0 / (1 + alpha * background_density),
+                         y0 ~ 0 + Treatment + (1|site),
+                         alpha ~ 0 + Treatment,
+                         nl = T),
+                      prior <- c(prior(normal(1000, 100), nlpar = "y0", class = "b", lb = 0),
+                                 prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                                 prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                                 prior(cauchy(0, 1), class = "sigma")),
+                      iter = 6000, warmup = 1000, chains = 3,
+                      control = list(adapt_delta = 0.99))
 
 # check model and increase chains
-summary(mv_seed_ev_seedling_fung_mod)
-prior_summary(mv_seed_ev_seedling_fung_mod)
-mv_seed_ev_seedling_fung_mod <- update(mv_seed_ev_seedling_fung_mod, chains = 3)
-plot(mv_seed_ev_seedling_fung_mod)
-pp_check(mv_seed_ev_seedling_fung_mod, nsamples = 100)
+summary(mv_evs_seed_mod)
+prior_summary(mv_evs_seed_mod)
+plot(mv_evs_seed_mod)
+pp_check(mv_evs_seed_mod, nsamples = 100)    
 
-
-#### Ev adult background model ####
-
-# average seeds
-mean(ev_adult_dat$seeds, na.rm = T)
-
-# model with greenhouse info
-mv_seed_ev_adult_fung_mod <- brm(data = ev_adult_dat, family = gaussian,
-                                    bf(seeds ~ (s0 * fung) / (1 + alpha * ev_adult_density),
-                                       s0 ~ fungicide + (1|site/exp_plot),
-                                       fung ~ fungicide,
-                                       alpha ~ 0 + Treatment,
-                                       nl = T),
-                                    prior <- c(prior(normal(1034, 100), nlpar = "s0", coef = "Intercept"), 
-                                               prior(normal(0, 100), nlpar = "s0", coef = "fungicide"),
-                                               prior(cauchy(0, 1), nlpar = "s0", class = sd),
-                                               prior(normal(1, 0.001), nlpar = "fung", coef = "Intercept"),
-                                               prior(normal(-0.19, 0.001), nlpar = "fung", coef = "fungicide"),
-                                               prior(exponential(0.01), nlpar = "alpha", lb = 0),
-                                               prior(cauchy(0, 1), class = sigma)),
-                                    iter = 6000, warmup = 1000, chains = 1, cores = 1,
-                                    control = list(adapt_delta = 0.999))
-
+# Ev adult background model
+mv_eva_seed_mod <- brm(data = mv_eva_seed_dat, family = gaussian,
+                       bf(seeds ~ y0 / (1 + alpha * background_density),
+                          y0 ~ 0 + Treatment + (1|site),
+                          alpha ~ 0 + Treatment,
+                          nl = T),
+                       prior <- c(prior(normal(2000, 100), nlpar = "y0", class = "b", lb = 0),
+                                  prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                                  prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                                  prior(cauchy(0, 1), class = "sigma")),
+                       iter = 8000, warmup = 3000, chains = 1,
+                       control = list(adapt_delta = 0.99999))
 
 # check model and increase chains
-summary(mv_seed_ev_adult_fung_mod)
-mv_seed_ev_adult_fung_mod <- update(mv_seed_ev_adult_fung_mod, chains = 3)
-# model has high R-hat values and lots of divergent transitions
-
-# seeds in control treatment
-mean(filter(ev_adult_dat, treatment == "water")$seeds, na.rm = T)
-
-# linear model for Ev adult without fungicide effect
-# need to do for fungicide effece model
-mv_seed_ev_adult_mod <- brm(data = ev_adult_dat, family = gaussian,
-                            seeds ~ ev_adult_density * fungicide + (1|site/exp_plot),
-                            prior <- c(prior(normal(1236, 100), class = "Intercept"), 
-                                       prior(normal(0, 10), class = "b"),
-                                       prior(cauchy(0, 1), class = "sigma")),
-                            iter = 6000, warmup = 1000, chains = 1, cores = 1)
-
-# check model and increase chains
-summary(mv_seed_ev_adult_mod)
-mv_seed_ev_adult_mod <- update(mv_seed_ev_adult_mod, chains = 3)
-plot(mv_seed_ev_adult_mod)
-pp_check(mv_seed_ev_adult_mod, nsamples = 100)  
-
-# fungicide effect
-1234 * 0.19                                 
-
-# linear model for Ev adult with fungicide effect
-mv_seed_ev_adult_fung_mod <- brm(data = ev_adult_dat, family = gaussian,
-                            seeds ~ fungicide + ev_adult_density * Treatment + (1|site/exp_plot),
-                            prior <- c(prior(normal(1234, 100), class = "Intercept"), 
-                                       prior(normal(0, 10), class = "b"),
-                                       prior(normal(-234, 0.001), coef = "fungicide"),
-                                       prior(cauchy(0, 1), class = "sigma")),
-                            iter = 6000, warmup = 1000, chains = 1, cores = 1)
-
-# check model and increase chains
-summary(mv_seed_ev_adult_fung_mod)
-mv_seed_ev_adult_fung_mod <- update(mv_seed_ev_adult_fung_mod, chains = 3)
-plot(mv_seed_ev_adult_fung_mod)
-pp_check(mv_seed_ev_adult_fung_mod, nsamples = 100)  
+summary(mv_eva_seed_mod)
+mv_eva_seed_mod <- update(mv_eva_seed_mod, chains = 3)
+mv_eva_seed_mod <- update(mv_eva_seed_mod, iter = 10000, warmup = 5000)
+# issue with bulk ESS despite higher chain iterations and r-hat for site is over 1
+# adjust priors for sd
+mv_eva_seed_mod <-brm(data = mv_eva_seed_dat, family = gaussian,
+                      bf(seeds ~ y0 / (1 + alpha * background_density),
+                         y0 ~ 0 + Treatment + (1|site),
+                         alpha ~ 0 + Treatment,
+                         nl = T),
+                      prior <- c(prior(normal(2000, 100), nlpar = "y0", class = "b", lb = 0),
+                                 prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                                 prior(cauchy(0, 10), nlpar = "y0", class = "sd"),
+                                 prior(cauchy(0, 10), class = "sigma")),
+                      iter = 6000, warmup = 1000, chains = 1,
+                      control = list(adapt_delta = 0.99))
+# can accept R-hat values less than 1.05 with 4 chains: https://mc-stan.org/rstan/reference/Rhat.html
+mv_eva_seed_mod <- update(mv_eva_seed_mod, chains = 4)
+plot(mv_eva_seed_mod)
+# site still has two peaks
+pp_check(mv_eva_seed_mod, nsamples = 100)   
 
 
+#### model fit figure ####
 
-#### figures ####
+# model fits over simulated data
+seed_mv_sim_dat <- tibble(background_density = rep(seq(0, 64, length.out = 300), 2),
+                         fungicide = rep(c(0, 1), each = 300)) %>%
+  mutate(site = NA,
+         Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide")) %>%
+  mutate(seeds = fitted(mv_mv_seed_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         seed_lower = fitted(mv_mv_seed_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         seed_upper = fitted(mv_mv_seed_mod, newdata = ., re_formula = NA)[, "Q97.5"])
+
+seed_evs_sim_dat <- tibble(background_density = rep(seq(0, 16, length.out = 100), 2),
+                          fungicide = rep(c(0, 1), each = 100)) %>%
+  mutate(site = NA,
+         Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide")) %>%
+  mutate(seeds = fitted(mv_evs_seed_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         seed_lower = fitted(mv_evs_seed_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         seed_upper = fitted(mv_evs_seed_mod, newdata = ., re_formula = NA)[, "Q97.5"])
+
+seed_eva_sim_dat <- tibble(background_density = rep(seq(0, 8, length.out = 100), 2),
+                          fungicide = rep(c(0, 1), each = 100)) %>%
+  mutate(site = NA,
+         Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide")) %>%
+  mutate(seeds = fitted(mv_eva_seed_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         seed_lower = fitted(mv_eva_seed_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         seed_upper = fitted(mv_eva_seed_mod, newdata = ., re_formula = NA)[, "Q97.5"])
+
+# combine simulated data
+seed_sim_dat <- seed_mv_sim_dat %>%
+  mutate(background = "Mv seedling") %>%
+  full_join(seed_evs_sim_dat %>%
+              mutate(background = "Ev seedling")) %>%
+  full_join(seed_eva_sim_dat %>%
+              mutate(background = "Ev adult"))
 
 # colors
 col_pal = c("#a6611a", "#018571")
 
-# simulate data
-mv_sim_dat <- tibble(mv_density = rep(seq(0, 67, length.out = 300), 2),
-                     fungicide = rep(c(0, 1), each = 300)) %>%
-  mutate(Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) %>%
-  mutate(seeds = fitted(mv_seed_mod, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mv_seed_mod, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mv_seed_mod, newdata = ., re_formula = NA)[, "Q97.5"])
-
-mv_fung_sim_dat <- tibble(mv_density = rep(seq(0, 67, length.out = 300), 2),
-                          fungicide = rep(c(0, 1), each = 300)) %>%
-  mutate(Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) %>%
-  mutate(seeds = fitted(mv_seed_fung_mod, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mv_seed_fung_mod, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mv_seed_fung_mod, newdata = ., re_formula = NA)[, "Q97.5"])
-
-mv_ev_seedling_sim_dat <- tibble(ev_seedling_density = rep(seq(0, 19, length.out = 300), 2),
-                                      fungicide = rep(c(0, 1), each = 300)) %>%
-  mutate(Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) %>%
-  mutate(seeds = fitted(mv_seed_ev_seedling_mod, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mv_seed_ev_seedling_mod, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mv_seed_ev_seedling_mod, newdata = ., re_formula = NA)[, "Q97.5"])
-
-mv_ev_seedling_fung_sim_dat <- tibble(ev_seedling_density = rep(seq(0, 19, length.out = 300), 2),
-                          fungicide = rep(c(0, 1), each = 300)) %>%
-  mutate(Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) %>%
-  mutate(seeds = fitted(mv_seed_ev_seedling_fung_mod, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mv_seed_ev_seedling_fung_mod, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mv_seed_ev_seedling_fung_mod, newdata = ., re_formula = NA)[, "Q97.5"])
-
-mv_ev_adult_sim_dat <- tibble(ev_adult_density = rep(seq(0, 9, length.out = 300), 2),
-                                   fungicide = rep(c(0, 1), each = 300)) %>%
-  mutate(Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) %>%
-  mutate(seeds = fitted(mv_seed_ev_adult_mod, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mv_seed_ev_adult_mod, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mv_seed_ev_adult_mod, newdata = ., re_formula = NA)[, "Q97.5"])
-
-mv_ev_adult_fung_sim_dat <- tibble(ev_adult_density = rep(seq(0, 9, length.out = 300), 2),
-                                      fungicide = rep(c(0, 1), each = 300)) %>%
-  mutate(Treatment = recode(fungicide, "0" = "control (water)", "1" = "fungicide")) %>%
-  mutate(seeds = fitted(mv_seed_ev_adult_fung_mod, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mv_seed_ev_adult_fung_mod, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mv_seed_ev_adult_fung_mod, newdata = ., re_formula = NA)[, "Q97.5"])
-
-# Mv plot
-mv_fig <- ggplot(mv_dat, aes(x = mv_density, y = seeds)) + 
-  geom_ribbon(data = mv_sim_dat, aes(ymin = seeds_lower, ymax = seeds_upper, fill = Treatment), alpha = 0.3) +
-  geom_line(data = mv_sim_dat, aes(color = Treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, alpha = 0.5, aes(group = Treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
+# figure
+pdf("output/mv_seed_analysis_model_fits_2019_density_exp.pdf")
+ggplot(plant_dat3, aes(x = background_density, y = seeds)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3), aes(group = Treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3), aes(fill = Treatment)) +
+  geom_ribbon(data = seed_sim_dat, alpha = 0.5, aes(ymin = seed_lower, ymax = seed_upper, fill = Treatment)) +
+  geom_line(data = seed_sim_dat, aes(color = Treatment)) +
+  facet_wrap(~ background, scales = "free_x", strip.position = "bottom") +
+  xlab("Background density") +
+  ylab(expression(paste(italic(Microstegium), " seedmass (g ", m^-1, ")", sep = ""))) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Microstegiun"), " density (", m^-1, ")", sep = ""))) +
-  ylab(expression(paste(italic("Microstegiun"), " seeds (", plant^-1, ")", sep = ""))) +
   temp_theme
+dev.off()
 
-mv_fung_fig <- ggplot(mv_dat, aes(x = mv_density, y = seeds)) + 
-  geom_ribbon(data = mv_fung_sim_dat, aes(ymin = seeds_lower, ymax = seeds_upper, fill = Treatment), alpha = 0.3) +
-  geom_line(data = mv_fung_sim_dat, aes(color = Treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, alpha = 0.5, aes(group = Treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Microstegiun"), " density (", m^-1, ")", sep = ""))) +
-  ylab(expression(paste(italic("Microstegiun"), " seeds (", plant^-1, ")", sep = ""))) +
-  temp_theme
 
-# Ev seedling plot
-ev_seedling_fig <- ggplot(ev_seedling_dat, aes(x = ev_seedling_density, y = seeds)) + 
-  geom_ribbon(data = mv_ev_seedling_sim_dat, aes(ymin = seeds_lower, ymax = seeds_upper, fill = Treatment), alpha = 0.3) +
-  geom_line(data = mv_ev_seedling_sim_dat, aes(color = Treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, alpha = 0.5, aes(group = Treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Elymus"), " seedling density (", m^-1, ")", sep = ""))) +
-  ylab(expression(paste(italic("Microstegiun"), " seeds (", plant^-1, ")", sep = ""))) +
-  temp_theme
+#### severity and biomass ####
 
-ev_seedling_fung_fig <- ggplot(ev_seedling_dat, aes(x = ev_seedling_density, y = seeds)) + 
-  geom_ribbon(data = mv_ev_seedling_fung_sim_dat, aes(ymin = seeds_lower, ymax = seeds_upper, fill = Treatment), alpha = 0.3) +
-  geom_line(data = mv_ev_seedling_fung_sim_dat, aes(color = Treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, alpha = 0.5, aes(group = Treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Elymus"), " seedling density (", m^-1, ")", sep = ""))) +
-  ylab(expression(paste(italic("Microstegiun"), " seeds (", plant^-1, ")", sep = ""))) +
-  temp_theme
+# water treatment
+mv_sev_dat <- filter(plant_dat2, treatment == "water") %>%
+  as.data.frame()
 
-# Ev adult plot
-ev_adult_fig <- ggplot(ev_adult_dat, aes(x = ev_adult_density, y = seeds)) + 
-  geom_ribbon(data = mv_ev_adult_sim_dat, aes(ymin = seeds_lower, ymax = seeds_upper, fill = Treatment), alpha = 0.3) +
-  geom_line(data = mv_ev_adult_sim_dat, aes(color = Treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, alpha = 0.5, aes(group = Treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Elymus"), " adult density (", m^-1, ")", sep = ""))) +
-  ylab(expression(paste(italic("Microstegiun"), " seeds (", plant^-1, ")", sep = ""))) +
-  temp_theme
+# check for density-severity correlations
+for(i in 33:37){
+  mv_sev_dat$severity = mv_sev_dat[,i]
+  print(cor.test(mv_sev_dat$background_density, mv_sev_dat$severity))
+}
+# none significantly correlated
 
-ev_adult_fung_fig <- ggplot(ev_adult_dat, aes(x = ev_adult_density, y = seeds)) + 
-  geom_ribbon(data = mv_ev_adult_fung_sim_dat, aes(ymin = seeds_lower, ymax = seeds_upper, fill = Treatment), alpha = 0.3) +
-  geom_line(data = mv_ev_adult_fung_sim_dat, aes(color = Treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, alpha = 0.5, aes(group = Treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Elymus"), " adult density (", m^-1, ")", sep = ""))) +
-  ylab(expression(paste(italic("Microstegiun"), " seeds (", plant^-1, ")", sep = ""))) +
-  temp_theme
+# seed-severity relationships
+mv_seed_sev_jun_19_mod <- glmmTMB(seeds ~ severity_jun + (1|site/plot), family = gaussian, data = mv_sev_dat)
+summary(mv_seed_sev_jun_19_mod) # not sig
+mv_seed_sev_jul_19_mod <- glmmTMB(seeds ~ severity_jul + (1|site/plot), family = gaussian, data = mv_sev_dat)
+summary(mv_seed_sev_jul_19_mod) # not sig
+mv_seed_sev_eau_19_mod <- glmmTMB(seeds ~ severity_early_aug + (1|site/plot), family = gaussian, data = mv_sev_dat)
+summary(mv_seed_sev_eau_19_mod) # not sig
+mv_seed_sev_lau_19_mod <- glmmTMB(seeds ~ severity_late_aug + (1|site/plot), family = gaussian, data = mv_sev_dat)
+summary(mv_seed_sev_lau_19_mod) # not sig
 
 
 #### output ####
-pdf("output/mv_seed_analysis_2019_density_exp.pdf")
-mv_fig
-ev_seedling_fig
-ev_adult_fig
-dev.off()
-
-pdf("output/mv_seed_analysis_greenhouse_fungicide_2019_density_exp.pdf")
-mv_fung_fig
-ev_seedling_fung_fig
-ev_adult_fung_fig
-dev.off()
-
-save(mv_seed_mod, file ="output/Mv_seed_model_mv_background_2019_density_exp.rda")
-save(mv_seed_ev_seedling_mod, file ="output/Mv_seed_model_ev_seedling_background_2019_density_exp.rda")
-save(mv_seed_ev_adult_mod, file ="output/Mv_seed_model_ev_adult_background_2019_density_exp.rda")
-save(mv_seed_fung_mod, file ="output/Mv_seed_model_mv_background_greenhouse_fungicide_2019_density_exp.rda")
-save(mv_seed_ev_seedling_fung_mod, file ="output/Mv_seed_model_ev_seedling_background_greenhouse_fungicide_2019_density_exp.rda")
-save(mv_seed_ev_adult_fung_mod, file ="output/Mv_seed_model_ev_adult_background_greenhouse_fungicide_2019_density_exp.rda")
+save(mv_no_back_seed_mod, file = "output/mv_seeds_no_background_model_2019_density_exp.rda")
+save(mv_no_back_seed_fung_mod, file = "output/mv_seeds_no_background_model_greenhouse_fungicide_2019_density_exp.rda")
+save(mv_mv_seed_mod, file = "output/mv_seeds_mv_background_model_2019_density_exp.rda")
+save(mv_evs_seed_mod, file = "output/mv_seeds_ev_seedling_background_model_2019_density_exp.rda")
+save(mv_eva_seed_mod, file = "output/mv_seeds_ev_adult_background_model_2019_density_exp.rda")

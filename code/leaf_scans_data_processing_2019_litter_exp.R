@@ -4,7 +4,7 @@
 # author: Amy Kendig
 # date last edited: 1/26/20
 # goal: process raw 2019 Microstegium leaf scan data
-# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm
+# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm, ev_leaf_damage_severity.ijm
 
 
 #### set up ####
