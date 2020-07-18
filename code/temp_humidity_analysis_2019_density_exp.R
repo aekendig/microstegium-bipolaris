@@ -552,3 +552,7 @@ day_dat <- hr_dat %>%
 
 write_csv(day_dat, "./intermediate-data/temp_humidity_daily_2019_density_exp.csv")
 
+
+#### output ####
+save(havg_totb_mod, file = "output/average_humidity_total_biomass_model_2019_density_exp.rda")
+write_csv(dat, "intermediate-data/average_humidity_total_biomass_2019_density_exp.csv")

@@ -338,23 +338,23 @@ pp_check(ev_bio_fung_mod, nsamples = 100)
 
 # template theme
 temp_theme <- theme_bw() +
-  theme(axis.text = element_text(size = 8, color="black"),
-        axis.title = element_text(size = 10),
+  theme(axis.text = element_text(size = 6, color="black"),
+        axis.title = element_text(size = 7),
         panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        legend.text = element_text(size = 8),
-        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 7),
         legend.box.margin = margin(-10, -10, -10, -10),
         legend.position = "bottom", 
         legend.direction = "horizontal",
         strip.background = element_blank(),
-        strip.text = element_text(size = 10),
+        strip.text = element_text(size = 7),
         strip.placement = "outside",
-        plot.title = element_text(size = 10, hjust = 0.5))
+        plot.title = element_text(size = 7, hjust = 0.5))
 
 # colors
-col_pal = c("#a6611a", "#018571")
+col_pal = c("#440154FF", "#21908CFF")
 
 # simulate data
 mv_sim_dat <- tibble(Mv_density = rep(seq(0, 67, length.out = 300), 2),
@@ -474,6 +474,38 @@ ev_fung_fig <- ggplot(ev_dat, aes(x = Ev_density, y = Ev_biomass.g)) +
   ylab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
   temp_theme
 
+# data for figure at high densities
+max_dens_dat <- dat %>%
+  filter(Mv_density == 67) %>%
+  select(Treatment, Mv_biomass.g) %>%
+  rename(biomass.g = Mv_biomass.g) %>%
+  mutate(plant_sp = "M. vimineum") %>%
+  full_join(dat %>%
+              filter(Ev_density == 20) %>%
+              select(Treatment, Ev_biomass.g) %>%
+              rename(biomass.g = Ev_biomass.g) %>%
+              mutate(plant_sp = "E. virginicus")) %>%
+  mutate(plant_sp = fct_relevel(plant_sp, "M. vimineum"))
+
+# values
+max_dens_dat %>%
+  group_by(plant_sp, Treatment) %>%
+  summarise(mean_bio = mean(biomass.g)) %>%
+  pivot_wider(names_from = Treatment, values_from = mean_bio) %>%
+  rename(control = 'control (water)') %>%
+  mutate(fung_diff = fungicide - control,
+         fung_prop = fungicide / control)
+
+# figure at high densities
+high_dens_fig <- ggplot(max_dens_dat, aes(x = Treatment, y = biomass.g)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.1) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, aes(fill = Treatment)) +
+  facet_wrap(~plant_sp, scale = "free", ncol = 1) +
+  scale_fill_manual(values = col_pal, guide = F) +
+  ylab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  temp_theme +
+  theme(strip.text = element_text(size = 7, face = "italic"))
+
 
 #### output ####
 pdf("output/all_biomass_analysis_2019_density_exp.pdf")
@@ -492,6 +524,10 @@ plot_grid(mv_fung_fig, mv_fung_coef_fig,
 plot_grid(ev_fung_fig, ev_fung_coef_fig,
           nrow = 1,
           rel_widths = c(1, 0.4))
+dev.off()
+
+pdf("output/high_density_fungicide_biomass_2019_density_exp.pdf", width = 2, height = 4)
+high_dens_fig
 dev.off()
 
 mv_all_bio_mod <- mv_bio_mod

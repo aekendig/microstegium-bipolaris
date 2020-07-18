@@ -956,13 +956,16 @@ dev.off()
 
 mv_severity_humidity_mod <- sep_mv_totp_water_mod2
 save(mv_severity_humidity_mod, file ="output/Mv_severity_humidity_model_2019_density_exp.rda")
+write_csv(sep_mv_water_dat, "intermediate-data/Mv_severity_water_treatment_sep_2019_density_exp.csv")
 mv_severity_biomass_edge_mod <- mv_totb_mod
 save(mv_severity_biomass_edge_mod, file ="output/Mv_severity_biomass_edge_model_2019_density_exp.rda")
+write_csv(jun_lau_mv_dat, "intermediate-data/Mv_severity_june_late_aug_2019_density_exp.csv")
 mv_severity_september_mod <- sep_mv_totb_mod2
 save(mv_severity_september_mod, file ="output/Mv_severity_september_model_2019_density_exp.rda")
 ev_severity_may_mod <- may_ev_sepp_mod2
 save(ev_severity_may_mod, file = "output/Ev_severity_may_model_2019_density_exp.rda")
 ev_severity_biomass_edge_mod <- ev_sepb_mod
 save(ev_severity_biomass_edge_mod, file ="output/Ev_severity_biomass_edge_model_2019_density_exp.rda")
+write_csv(jun_lau_ev_dat, "intermediate-data/Ev_severity_june_late_aug_2019_density_exp.csv")
 ev_severity_september_mod <- sep_ev_sepb_mod
 save(ev_severity_september_mod, file ="output/Ev_severity_september_model_2019_density_exp.rda")

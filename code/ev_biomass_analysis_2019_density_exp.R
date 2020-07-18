@@ -2,7 +2,7 @@
 
 # file: ev_biomass_analysis_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/13/20
+# date last edited: 7/15/20
 # goal: evaluate the effects of density treatments and environmental covariates on the seed production of Elymus
 
 
@@ -560,3 +560,4 @@ save(eva_mv_bio_mod, file = "output/ev_adult_biomass_mv_background_model_2019_de
 save(eva_evs_bio_mod, file = "output/ev_adult_biomass_ev_seedling_background_model_2019_density_exp.rda")
 save(eva_eva_bio_mod, file = "output/ev_adult_biomass_ev_adult_background_model_2019_density_exp.rda")
 save(evs_bio_sev_jul_19_mod, file = "output/ev_seedling_biomass_severity_model_jul_2019_density_exp.rda")
+write_csv(evs_sev_dat, "intermediate-data/ev_seedling_biomass_severity_data_2019_dens_exp.csv")

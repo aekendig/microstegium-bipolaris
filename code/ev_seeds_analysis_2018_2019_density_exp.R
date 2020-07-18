@@ -2,7 +2,7 @@
 
 # file: ev_seeds_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/13/20
+# date last edited: 7/15/20
 # goal: evaluate the effects of density treatments and environmental covariates on the seed production of Elymus
 
 
@@ -448,26 +448,6 @@ evs_no_back_seed_mod <- update(evs_no_back_seed_mod, chains = 3)
 plot(evs_no_back_seed_mod)
 pp_check(evs_no_back_seed_mod, nsamples = 100)
 
-# increase due to fungicide
-0.03*7.8
-
-# model with direct fungicide effects
-evs_no_back_seed_fung_mod <- brm(data = evs_no_back_plant_dat, family = gaussian,
-                                seeds ~ Treatment + fungicide + (1|site) + (1|yearf),
-                                prior <- c(prior(normal(7.8, 10), class = Intercept),
-                                           prior(normal(0, 10), class = b),
-                                           prior(normal(0.2, 0.001), class = b, coef = "Treatmentfungicide"),
-                                           prior(cauchy(0, 1), class = sd),
-                                           prior(cauchy(0, 1), class = sigma)),
-                                iter = 6000, warmup = 1000, chains = 3,
-                                control = list(adapt_delta = 0.999999))
-
-# check model
-summary(evs_no_back_seed_fung_mod)
-prior_summary(evs_no_back_seed_fung_mod)
-plot(evs_no_back_seed_fung_mod)
-pp_check(evs_no_back_seed_fung_mod, nsamples = 100)
-
 # Ev adult model
 eva_no_back_seed_mod <- brm(data = eva_no_back_plant_dat, family = gaussian,
                            seeds ~ fungicide + (1|site) + (1|yearf),
@@ -484,26 +464,6 @@ prior_summary(eva_no_back_seed_mod)
 eva_no_back_seed_mod <- update(eva_no_back_seed_mod, chains = 3)
 plot(eva_no_back_seed_mod)
 pp_check(eva_no_back_seed_mod, nsamples = 100)
-
-# increase due to fungicide
-0.03*59.88
-
-# model with direct fungicide effects
-eva_no_back_seed_fung_mod <- brm(data = eva_no_back_plant_dat, family = gaussian,
-                                seeds ~ Treatment + fungicide + (1|site) + (1|yearf),
-                                prior <- c(prior(normal(60, 10), class = Intercept),
-                                           prior(normal(0, 10), class = b),
-                                           prior(normal(1.8, 0.001), class = b, coef = "Treatmentfungicide"),
-                                           prior(cauchy(0, 1), class = sd),
-                                           prior(cauchy(0, 1), class = sigma)),
-                                iter = 6000, warmup = 1000, chains = 3,
-                                control = list(adapt_delta = 0.9999))
-
-# check model
-summary(eva_no_back_seed_fung_mod)
-prior_summary(eva_no_back_seed_fung_mod)
-plot(eva_no_back_seed_fung_mod)
-pp_check(eva_no_back_seed_fung_mod, nsamples = 100)
 
 
 #### Ev seedling disease and density models ####
@@ -834,9 +794,7 @@ summary(eva_seed_sev_lau_19_mod) # not sig
 #### output ####
 
 save(evs_no_back_seed_mod, file = "output/ev_seedling_seeds_no_background_model_2018_2019_density_exp.rda")
-save(evs_no_back_seed_fung_mod, file = "output/ev_seedling_seeds_no_background_model_greenhouse_fungicide_2018_2019_density_exp.rda")
 save(eva_no_back_seed_mod, file = "output/ev_adult_seeds_no_background_model_2018_2019_density_exp.rda")
-save(eva_no_back_seed_fung_mod, file = "output/ev_adult_seeds_no_background_model_greenhouse_fungicide_2018_2019_density_exp.rda")
 save(evs_mv_seed_mod, file = "output/ev_seedling_seeds_mv_background_model_2019_density_exp.rda")
 save(evs_evs_seed_mod, file = "output/ev_seedling_seeds_ev_seedling_background_model_2019_density_exp.rda")
 save(evs_eva_seed_mod, file = "output/ev_seedling_seeds_ev_adult_background_model_2019_density_exp.rda")

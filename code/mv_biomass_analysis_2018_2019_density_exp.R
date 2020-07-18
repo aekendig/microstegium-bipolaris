@@ -398,6 +398,7 @@ plot(mv_no_back_bio_mod)
 pp_check(mv_no_back_bio_mod, nsamples = 100)
 
 # reduction due to fungicide
+1-(21.05/23.80)
 -0.12*13.4
 
 # model with direct fungicide effects

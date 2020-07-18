@@ -2,7 +2,7 @@
 
 # file: mv_seed_analysis_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/11/20
+# date last edited: 7/15/20
 # goal: analyze Mv seeds
 
 
@@ -140,14 +140,15 @@ plot(mv_no_back_seed_mod)
 pp_check(mv_no_back_seed_mod, nsamples = 100)
 
 # reduction due to fungicide
--0.12*1182
+1-(30/37)
+-0.19*1182
 
 # model with direct fungicide effects
 mv_no_back_seed_fung_mod <- brm(data = no_back_plant_dat, family = gaussian,
                                seeds ~ Treatment + fungicide + (1|site),
                                prior <- c(prior(normal(1182, 100), class = Intercept),
                                           prior(normal(0, 100), class = b),
-                                          prior(normal(-142, 0.001), class = b, coef = "Treatmentfungicide"),
+                                          prior(normal(-225, 0.001), class = b, coef = "Treatmentfungicide"),
                                           prior(cauchy(0, 1), class = sd),
                                           prior(cauchy(0, 1), class = sigma)),
                                iter = 6000, warmup = 1000, chains = 3,
