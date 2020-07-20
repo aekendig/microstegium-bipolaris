@@ -1,9 +1,9 @@
 ##### info ####
 
-# file: temp_humidity_analysis_2019_dens_exp
+# file: temp_humidity_week_lag_analysis_2019_dens_exp
 # author: Amy Kendig
-# date last edited: 7/20/20
-# goal: evaluate the effects of density on temperature and humidity
+# date last edited: 7/d0/20
+# goal: evaluate the effects of density on temperature and humidity with one week of data (prior to sampling time)
 
 
 #### set up ####
@@ -122,30 +122,10 @@ dens_dat <- plots_simple %>%
 # threhsold at or near 1
 
 
-#### monthly summaries ####
+#### temperature and humidity data ####
 
-# from hourly data
-mo_hr_dat <- hr_dat %>%
-  mutate(month = case_when(day < as.Date("2019-07-29") ~ "early_aug",
-                           day >= as.Date("2019-07-29") & day < as.Date("2019-08-28") ~ "late_aug",
-                           day >= as.Date("2019-08-28") & day < as.Date("2019-09-24") ~ "sep",
-                           TRUE ~ "oct") %>%
-           fct_relevel("early_aug", "late_aug", "sep", "oct")) %>%
-  group_by(site, plot, treatment, month) %>%
-  summarise(temp_avg = mean(temp),
-            temp_min = min(temp),
-            temp_max = max(temp),
-            hum_avg = mean(hum_prop),
-            hum_min = min(hum_prop),
-            hum_max = max(hum_prop),
-            temp_avg_se = sd(temp)/sqrt(length(temp)),
-            hum_avg_se = sd(hum_prop)/sqrt(length(hum_prop)),
-            hum_dur = sum(hum_prop == 1)) %>%
-  ungroup() %>%
-  mutate(time = "hourly")
-
-# from daily calculations
-mo_dy_dat <- hr_dat %>%
+# week before sampling date
+wk_dat <- hr_dat %>%
   group_by(site, plot, treatment, day) %>%
   summarise(temp_avg = mean(temp),
             temp_min = min(temp),
@@ -155,11 +135,11 @@ mo_dy_dat <- hr_dat %>%
             hum_max = max(hum_prop),
             hum_dur = sum(hum_prop == 1)) %>%
   ungroup() %>%
-  mutate(month = case_when(day < as.Date("2019-07-29") ~ "early_aug",
-                           day >= as.Date("2019-07-29") & day < as.Date("2019-08-28") ~ "late_aug",
-                           day >= as.Date("2019-08-28") & day < as.Date("2019-09-24") ~ "sep",
-                           TRUE ~ "oct") %>%
-           fct_relevel("early_aug", "late_aug", "sep", "oct")) %>%
+  mutate(month = case_when(day >= as.Date("2019-07-22") & day < as.Date("2019-07-29") ~ "early_aug",
+                           day >= as.Date("2019-08-21") & day < as.Date("2019-08-28") ~ "late_aug",
+                           day >= as.Date("2019-09-17") & day < as.Date("2019-09-24") ~ "sep",
+                           TRUE ~ "none") %>%
+           fct_relevel("early_aug", "late_aug", "sep", "none")) %>%
   group_by(site, plot, treatment, month) %>%
   summarise(temp_avg_se = sd(temp_avg)/sqrt(length(temp_avg)),
             temp_min_se = sd(temp_min)/sqrt(length(temp_min)),
@@ -175,14 +155,17 @@ mo_dy_dat <- hr_dat %>%
             hum_max = mean(hum_max),
             hum_dur = mean(hum_dur)) %>%
   ungroup() %>%
-  mutate(time = "daily")
+  filter(month != "none")
 
-# combine dataframes
-mo_dat <- full_join(mo_hr_dat, mo_dy_dat) %>%
+wk_dat_plot <- wk_dat %>%
   left_join(plots)
 
+dat <- left_join(wk_dat, bio) %>%
+  left_join(dens_dat) %>%
+  mutate(month_name = recode(month, "early_aug" = "Early August", "late_aug" = "Late August", "sep" = "September"))
 
-#### visualizations to compare monthly and daily ####
+
+#### visualizations ####
 
 # save theme
 plot_theme <- theme_bw() +
@@ -200,61 +183,25 @@ plot_theme <- theme_bw() +
         strip.text = element_text(size = 10),
         strip.placement = "outside")
 
-# average temperature
-avgt_plot <- ggplot(mo_dat, aes(x = background_density, 
+# average temp
+avgt_plot <- ggplot(wk_dat_plot, aes(x = background_density,
                                 y = temp_avg,
                                 ymin = temp_avg - temp_avg_se,
-                                ymax = temp_avg + temp_avg_se, 
-                                fill = time)) +
-  geom_point(size = 2, shape = 21, position = position_dodge(0.3)) +
-  geom_errorbar(width = 0.1, position = position_dodge(0.3)) +
+                                ymax = temp_avg + temp_avg_se,
+                                color = site)) +
+  geom_point(size = 2, position = position_dodge(0.3), alpha = 0.4) +
+  geom_errorbar(width = 0.1, position = position_dodge(0.3), alpha = 0.4) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, color = "black") +
+  stat_summary(geom = "point", fun = "mean", color ="black", size = 3) +
   facet_grid(month ~ background, scales = "free_x", switch = "both") +
-  scale_fill_manual(values = c("black", "white")) +
   plot_theme
-
-avgt_plot
-# equivalent
-
-# min temperature
-avgt_plot %+%
-  aes(y = temp_min,
-      ymin = temp_min - temp_min_se,
-      ymax = temp_min + temp_min_se)
-# hourly is lower
-
-# humidity duration
-ggplot(mo_dat, aes(x = background_density, 
-                   y = hum_dur,
-                   fill = time)) +
-  geom_point(size = 2, shape = 21, position = position_dodge(0.3)) +
-  facet_grid(month ~ background, scales = "free_x", switch = "both") +
-  scale_fill_manual(values = c("black", "white")) +
-  plot_theme
-# daily makes more sense
-
-
-#### monthly averages ####
-
-mo_dy_dat %>%
-  filter(plot == 1) %>%
-  group_by(month) %>%
-  summarise(average_temp = mean(temp_avg),
-            min_temp = mean(temp_min),
-            max_temp = mean(temp_max),
-            hum_dur = mean(hum_dur))
-
-
-#### edit daily data ####
-
-dat <- left_join(mo_dy_dat, bio) %>%
-  left_join(dens_dat) %>%
-  mutate(month_name = recode(month, "early_aug" = "Early August", "late_aug" = "Late August", "sep" = "September", "oct" = "October"),
-         Mv_pc_biomass = Mv_biomass.g / Mv_density,
-         Ev_pc_biomass = Ev_biomass.g / Ev_density,
-         total_pc_biomass = total_biomass.g / total_density)
 
 
 #### average temperature stats ####
+
+# figure
+avgt_plot
+# presence of Mv reduces
 
 # models
 tavg_totb_mod <- glmmTMB(temp_avg ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
@@ -266,16 +213,26 @@ tavg_sepp_mod <- glmmTMB(temp_avg ~ (Ev_present + Mv_present) * month_name + (1|
 
 # model comparison
 AIC(tavg_totb_mod, tavg_sepb_mod, tavg_totd_mod, tavg_sepd_mod, tavg_totp_mod, tavg_sepp_mod)
-# sep present
+# sep present (or total biomass)
 summary(tavg_sepp_mod)
 # Mv reduces temperature
 stepAIC(tavg_sepp_mod)
 # keep full model
 plot(simulateResiduals(tavg_sepp_mod))
-# adding month to fixed effects instead of random improved this
+
+# density
+summary(tavg_sepd_mod)
+# no density effect
 
 
 #### min temperature stats ####
+
+# figure
+avgt_plot %+%
+  aes(y = temp_min,
+      ymin = temp_min - temp_min_se,
+      ymax = temp_min + temp_min_se)
+# no change
 
 # models
 tmin_totb_mod <- glmmTMB(temp_min ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
@@ -287,16 +244,26 @@ tmin_sepp_mod <- glmmTMB(temp_min ~ (Ev_present + Mv_present) * month_name + (1|
 
 # model comparison
 AIC(tmin_totb_mod, tmin_sepb_mod, tmin_totd_mod, tmin_sepd_mod, tmin_totp_mod, tmin_sepp_mod)
-# total density
+# total density (or total biomass)
 summary(tmin_totd_mod)
-# not sig
+# increases
 stepAIC(tmin_totd_mod)
 # keep full model
 plot(simulateResiduals(tmin_totd_mod))
-# sig deviation
+
+# density
+summary(tmin_sepd_mod)
+# Mv density slightly increases (same magnitude as total)
 
 
 #### max temperature stats ####
+
+# figure
+avgt_plot %+%
+  aes(y = temp_max,
+      yin = temp_max - temp_max_se,
+      ymax = temp_max + temp_max_se)
+# non-linear reduction with Mv density
 
 # models
 tmax_totb_mod <- glmmTMB(temp_max ~ total_biomass.g * month_name + (1|site), data = dat, family = "gaussian")
@@ -315,8 +282,19 @@ stepAIC(tmax_sepb_mod)
 # keep full model
 plot(simulateResiduals(tmax_sepb_mod))
 
+# density
+summary(tmax_sepd_mod)
+# none sig
+
 
 #### average humidity stats ####
+
+# figure
+avgt_plot %+%
+  aes(y = hum_avg,
+      ymin = hum_avg - hum_avg_se,
+      ymax = hum_avg + hum_avg_se)
+# non-linear increase with Mv density
 
 # models
 havg_totb_mod <- glmmTMB(hum_avg ~ total_biomass.g * month_name + (1|site), data = dat, family = "beta_family")
@@ -335,6 +313,16 @@ summary(havg_totb_mod)
 stepAIC(havg_totb_mod)
 # keep full model
 plot(simulateResiduals(havg_totb_mod))
+
+# density
+summary(havg_sepd_mod)
+# none sig
+
+# presence
+summary(havg_sepp_mod)
+# Mv presence sig increase
+
+#### start here: add presence to each above and then run below ####
 
 
 #### min humidity stats ####
@@ -401,33 +389,6 @@ stepAIC(hdur_totb_mod)
 plot(simulateResiduals(hdur_sepb_mod))
 
 
-#### per capita biomass stats ####
-
-cor.test(~ hum_avg + total_pc_biomass, data = dat)$p.value
-
-# correlations by plot treatment
-dat %>%
-  group_by(month_name, plot) %>%
-  summarise(correlation = cor.test(~ hum_avg + total_pc_biomass)$estimate,
-            p_value = cor.test(~ hum_avg + total_pc_biomass)$p.value) %>%
-  filter(p_value < 0.05)
-
-# figures
-dat %>%
-  filter(plot == 6) %>%
-  ggplot(aes(hum_avg, total_pc_biomass, color = site)) +
-  geom_point() +
-  facet_wrap(~ month_name)
-# per capita biomass decreases with increasing humidity
-
-dat %>%
-  filter(plot == 9) %>%
-  ggplot(aes(hum_avg, total_pc_biomass, color = site)) +
-  geom_point() +
-  facet_wrap(~ month_name)
-# per capita biomass increases with increasing humidity
-
-
 #### figures ####
 
 # presence/absence data
@@ -444,8 +405,8 @@ pres_sim_dat <- expand_grid(month_name = c("Early August", "Late August", "Septe
 # edit raw data
 dat_pres <- dat %>%
   mutate(background = case_when(Ev_present == 0 & Mv_present == 0 ~ "none",
-                                Ev_present == 1 & Mv_present == 0 ~ "Ev",
-                                Ev_present == 0 & Mv_present == 1 ~ "Mv") %>%
+                                          Ev_present == 1 & Mv_present == 0 ~ "Ev",
+                                          Ev_present == 0 & Mv_present == 1 ~ "Mv") %>%
            fct_relevel("none", "Ev", "Mv"))
 
 # average temperature

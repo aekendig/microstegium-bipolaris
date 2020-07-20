@@ -343,6 +343,7 @@ filter(cov_dat, treatment == "water" & month == "late_aug") %>%
     stat_summary(fun = "mean", geom = "point") +
     facet_grid(sp ~ Month, scales = "free_x"))
 # maybe most positive for Mv in early August (makes sense)
+# don't use June: the May edge leaf scans are way over estimated because of dark spots from the scanning process
 
 edge_viz %+%
   filter(foc_dat2, !is.na(plant_severity) & !is.na(edge_severity)) %+%
@@ -456,22 +457,22 @@ sep_mv_water_dat <- filter(foc_dat2, sp == "Mv" &  treatment == "water" & month 
 
 
 ## early and late August Ev ##
-ev_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (total_biomass.g + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "beta_family")
+ev_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = ev_water_dat, family = "beta_family")
 # can ignore warning "NA/NaN function evaluation" if model converges
-ev_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "beta_family")
-ev_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (total_density + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "beta_family")
-ev_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (Ev_density + Mv_density + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "beta_family")
-ev_totp_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (bg_present + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "beta_family")
-ev_sepp_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (Ev_present + Mv_present + edge_severity + hum_avg) + (1|site/plot), data = ev_water_dat, family = "beta_family")
+ev_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = ev_water_dat, family = "beta_family")
+ev_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = ev_water_dat, family = "beta_family")
+ev_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = ev_water_dat, family = "beta_family")
+ev_totp_water_mod <- glmmTMB(plant_severity_adjusted ~ bg_present + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = ev_water_dat, family = "beta_family")
+ev_sepp_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_present + Mv_present + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = ev_water_dat, family = "beta_family")
 
 # compare different plant models
 AIC(ev_totb_water_mod, ev_sepb_water_mod, ev_totd_water_mod, ev_sepd_water_mod, ev_totp_water_mod, ev_sepp_water_mod)
-# total density is the lowest
-summary(ev_totd_water_mod)
+# total present is the lowest
+summary(ev_totp_water_mod)
 # none significant
-stepAIC(ev_totd_water_mod)
+stepAIC(ev_totp_water_mod)
 # keep full model
-plot(simulateResiduals(ev_totd_water_mod))
+plot(simulateResiduals(ev_totp_water_mod))
 # sig deviation
 
 
@@ -500,12 +501,12 @@ plot(simulateResiduals(sep_ev_totd_water_mod2))
 
 
 ## early and late August Mv ##
-mv_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (total_biomass.g + edge_severity + hum_avg) + (1|site/plot), data = mv_water_dat, family = "beta_family")
-mv_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg) + (1|site/plot), data = mv_water_dat, family = "beta_family")
-mv_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (total_density + edge_severity + hum_avg) + (1|site/plot), data = mv_water_dat, family = "beta_family")
-mv_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (Ev_density + Mv_density + edge_severity + hum_avg) + (1|site/plot), data = mv_water_dat, family = "beta_family")
-mv_totp_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (bg_present + edge_severity + hum_avg) + (1|site/plot), data = mv_water_dat, family = "beta_family")
-mv_sepp_water_mod <- glmmTMB(plant_severity_adjusted ~ Month * (Ev_present + Mv_present + edge_severity + hum_avg) + (1|site/plot), data = mv_water_dat, family = "beta_family")
+mv_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = mv_water_dat, family = "beta_family")
+mv_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = mv_water_dat, family = "beta_family")
+mv_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = mv_water_dat, family = "beta_family")
+mv_sepd_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_density + Mv_density + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = mv_water_dat, family = "beta_family")
+mv_totp_water_mod <- glmmTMB(plant_severity_adjusted ~ bg_present + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = mv_water_dat, family = "beta_family")
+mv_sepp_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_present + Mv_present + edge_severity + hum_avg + (1|Month) + (1|site/plot), data = mv_water_dat, family = "beta_family")
 
 # compare different plant models
 AIC(mv_totb_water_mod, mv_sepb_water_mod, mv_totd_water_mod, mv_sepd_water_mod, mv_totp_water_mod, mv_sepp_water_mod)
@@ -538,17 +539,22 @@ summary(sep_mv_totp_water_mod2)
 # humidity (***)
 plot(simulateResiduals(sep_mv_totp_water_mod2))
 
+# check total biomass model (best when both treatments included, below)
+summary(sep_mv_totb_water_mod)
+stepAIC(sep_mv_totb_water_mod)
+# remove everything except humidity
+
 
 #### model selection for both treatments ####
 
 # edge severity is not significantly different between fungicide and water plots (edge_severity_analysis_2019_density_exp.R)
 
 # split data by month
-jun_lau_ev_dat <- filter(foc_dat2, sp == "Ev" & month %in% c("jun", "jul", "early_aug", "late_aug"))
+jul_lau_ev_dat <- filter(foc_dat2, sp == "Ev" & month %in% c("jul", "early_aug", "late_aug"))
 may_ev_dat <- filter(foc_dat2, sp == "Ev" & month == "may")
 sep_ev_dat <- filter(foc_dat2, sp == "Ev" & month == "sep")
 
-jun_lau_mv_dat <- filter(foc_dat2, sp == "Mv" & month %in% c("jun", "jul", "early_aug", "late_aug"))
+jul_lau_mv_dat <- filter(foc_dat2, sp == "Mv" & month %in% c("jul", "early_aug", "late_aug"))
 may_mv_dat <- filter(foc_dat2, sp == "Mv" & month == "may")
 sep_mv_dat <- filter(foc_dat2, sp == "Mv" & month == "sep")
 
@@ -595,45 +601,41 @@ summary(may_ev_sepp_mod2)
 plot(simulateResiduals(may_ev_sepb_mod2))
 
 
-## June-Late August Ev ##
-ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "beta_family")
-ev_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "beta_family")
-ev_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "beta_family")
-ev_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "beta_family")
-ev_totp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (bg_present + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "beta_family")
-ev_sepp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_present + Mv_present + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_ev_dat, family = "beta_family")
+## July-Late August Ev ##
+ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_ev_dat, family = "beta_family")
+ev_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_ev_dat, family = "beta_family")
+ev_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_ev_dat, family = "beta_family")
+ev_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_ev_dat, family = "beta_family")
+ev_totp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (bg_present + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_ev_dat, family = "beta_family")
+ev_sepp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_present + Mv_present + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_ev_dat, family = "beta_family")
 
 # compare different plant models
 AIC(ev_totb_mod, ev_sepb_mod, ev_totd_mod, ev_sepd_mod, ev_totp_mod, ev_sepp_mod)
 # sep biomass
 summary(ev_sepb_mod)
-# fungicide:edge severity:month (***)
-# Mv biomass:month (*)
-# Ev biomass:month (*)
-# fungicide:Ev biomass (**)
+# edge severity (***)
 stepAIC(ev_sepb_mod)
 # keep full model
 plot(simulateResiduals(ev_sepb_mod))
 # sig deviance
 
 
-## June-late August Mv ##
-mv_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_mv_dat, family = "beta_family")
-mv_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_mv_dat, family = "beta_family")
-mv_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_mv_dat, family = "beta_family")
-mv_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_mv_dat, family = "beta_family")
-mv_totp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (bg_present + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_mv_dat, family = "beta_family")
-mv_sepp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_present + Mv_present + edge_severity) * Month + (1|site/exp_plot), data = jun_lau_mv_dat, family = "beta_family")
+## July-late August Mv ##
+mv_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_mv_dat, family = "beta_family")
+mv_sepb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_biomass.g + Mv_biomass.g + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_mv_dat, family = "beta_family")
+mv_totd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_density + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_mv_dat, family = "beta_family")
+mv_sepd_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_density + Mv_density + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_mv_dat, family = "beta_family")
+mv_totp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (bg_present + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_mv_dat, family = "beta_family")
+mv_sepp_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (Ev_present + Mv_present + edge_severity) + (1|Month) + (1|site/exp_plot), data = jul_lau_mv_dat, family = "beta_family")
 
 # compare different plant models
 AIC(mv_totb_mod, mv_sepb_mod, mv_totd_mod, mv_sepd_mod, mv_totp_mod, mv_sepp_mod)
-# total biomass
-summary(mv_totb_mod)
-# fungicide:edge severity:month
-# total biomass:month
-stepAIC(mv_totb_mod)
+# separate biomass
+summary(mv_sepb_mod)
+# edge severity (***)
+stepAIC(mv_sepb_mod)
 # keep full model
-plot(simulateResiduals(mv_totb_mod))
+plot(simulateResiduals(mv_sepb_mod))
 # sig deviance
 
 
@@ -696,7 +698,7 @@ temp_theme <- theme_bw() +
         plot.title = element_text(size = 10, hjust = 0.5))
 
 # colors
-col_pal = c("#a6611a", "#018571")
+col_pal = c("#C0A76D", "#55A48B")
 
 
 ## Humidity Mv September ##
@@ -742,61 +744,9 @@ may_ev_fig <- ggplot(may_ev_dat_sim, aes(x = background, y = plant_severity_adju
   temp_theme
 
 
-## Separate biomass Ev June-late August ##
-jun_lau_ev_biomass_sim_dat <- foc_dat2 %>%
-  filter(sp == "Ev" & !(month %in% c("may", "sep"))) %>%
-  group_by(Month, Treatment, fungicide) %>%
-  summarise(min_ev_biomass = min(Ev_biomass.g),
-            max_ev_biomass = max(Ev_biomass.g),
-            min_mv_biomass = min(Mv_biomass.g),
-            max_mv_biomass = max(Mv_biomass.g)) %>%
-  ungroup() %>%
-  rowwise() %>%
-  do(tibble(Month = .$Month, Treatment = .$Treatment, fungicide = .$fungicide,
-            Ev_biomass.g = c(seq(.$min_ev_biomass, .$max_ev_biomass, length.out = 100), rep(0, 100)),
-            Mv_biomass.g = c(rep(0, 100), seq(.$min_mv_biomass, .$max_mv_biomass, length.out = 100)))) %>%
-  ungroup() %>%
-  mutate(edge_severity = 0,
-         site = NA_character_,
-         exp_plot = NA_character_) %>%
-  mutate(plant_severity_adjusted = predict(ev_sepb_mod, newdata = ., re.form = NA, type = "response"),
-         plant_severity_adjusted_se = predict(ev_sepb_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
-
-jun_lau_ev_bio_ev_fig <- ggplot(filter(jun_lau_ev_biomass_sim_dat, Ev_biomass.g > 0), aes(x = Ev_biomass.g, y = plant_severity_adjusted)) +
-  geom_point(data = jun_lau_ev_dat, aes(color = Treatment), alpha = 0.5) +
-  geom_ribbon(aes(ymin = plant_severity_adjusted - plant_severity_adjusted_se, ymax = plant_severity_adjusted + plant_severity_adjusted_se, fill = Treatment), alpha = 0.5) +
-  geom_line(aes(color = Treatment)) +
-  facet_wrap(~ Month) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Elymus"), " biomass (g ", m^-1, ")", sep = ""))) +
-  ylab(expression(paste("Proportion ", italic("Elymus"), " leaf area brown", sep = ""))) +
-  temp_theme
-
-# look at high Ev biomass plants
-filter(jun_lau_ev_dat, Ev_biomass.g > 150)
-late_aug_foc_dat <- read_csv("data/focal_disease_late_aug_2019_density_exp.csv")
-filter(late_aug_foc_dat, site == "D3" & plot == 10 & treatment == "fungicide")
-# too few green leaves to collect from these plants
-filter(ev_bio, site == "D3" & plot == 10 & treatment == "fungicide")
-filter(bg_bio, site == "D3" & plot == 10 & treatment == "fungicide")
-# checked emailed sheet and it seems fine, could ask Quynh for the paper copy (probably in lab though)
-
-jun_lau_mv_bio_ev_fig <- ggplot(filter(jun_lau_ev_biomass_sim_dat, Mv_biomass.g > 0), aes(x = Mv_biomass.g, y = plant_severity_adjusted)) +
-  geom_point(data = jun_lau_ev_dat, aes(color = Treatment), alpha = 0.5) +
-  geom_ribbon(aes(ymin = plant_severity_adjusted - plant_severity_adjusted_se, ymax = plant_severity_adjusted + plant_severity_adjusted_se, fill = Treatment), alpha = 0.5) +
-  geom_line(aes(color = Treatment)) +
-  facet_wrap(~ Month) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste(italic("Microstegium"), " biomass (g ", m^-1, ")", sep = ""))) +
-  ylab(expression(paste("Proportion ", italic("Elymus"), " leaf area brown", sep = ""))) +
-  temp_theme
-
-
-## Edge severity Ev June-late August ##
-jun_lau_ev_edge_sim_dat <- foc_dat2 %>%
-  filter(sp == "Ev" & !(month %in% c("may", "sep")) & !(is.na(edge_severity))) %>%
+## Edge severity Ev July-late August ##
+jul_lau_ev_edge_sim_dat <- foc_dat2 %>%
+  filter(sp == "Ev" & !(month %in% c("may", "jun", "sep")) & !(is.na(edge_severity))) %>%
   group_by(Month, Treatment, fungicide) %>%
   summarise(min_edge = min(edge_severity),
             max_edge = max(edge_severity)) %>%
@@ -812,8 +762,8 @@ jun_lau_ev_edge_sim_dat <- foc_dat2 %>%
   mutate(plant_severity_adjusted = predict(ev_sepb_mod, newdata = ., re.form = NA, type = "response"),
          plant_severity_adjusted_se = predict(ev_sepb_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
 
-jun_lau_edge_ev_fig <- ggplot(jun_lau_ev_edge_sim_dat, aes(x = edge_severity, y = plant_severity_adjusted)) +
-  geom_point(data = jun_lau_ev_dat, aes(color = Treatment), alpha = 0.5) +
+jul_lau_edge_ev_fig <- ggplot(jul_lau_ev_edge_sim_dat, aes(x = edge_severity, y = plant_severity_adjusted)) +
+  geom_point(data = jul_lau_ev_dat, aes(color = Treatment), alpha = 0.5) +
   geom_ribbon(aes(ymin = plant_severity_adjusted - plant_severity_adjusted_se, ymax = plant_severity_adjusted + plant_severity_adjusted_se, fill = Treatment), alpha = 0.5) +
   geom_line(aes(color = Treatment)) +
   facet_wrap(~ Month, scales = "free_x") +
@@ -824,38 +774,9 @@ jun_lau_edge_ev_fig <- ggplot(jun_lau_ev_edge_sim_dat, aes(x = edge_severity, y 
   temp_theme
 
 
-## Total biomass Mv June-late August ##
-jun_lau_mv_biomass_sim_dat <- foc_dat2 %>%
-  filter(sp == "Mv" & !(month %in% c("may", "sep"))) %>%
-  group_by(Month, Treatment, fungicide) %>%
-  summarise(min_tot_biomass = min(total_biomass.g),
-            max_tot_biomass = max(total_biomass.g)) %>%
-  ungroup() %>%
-  rowwise() %>%
-  do(tibble(Month = .$Month, Treatment = .$Treatment, fungicide = .$fungicide,
-            total_biomass.g = seq(.$min_tot_biomass, .$max_tot_biomass, length.out = 100))) %>%
-  ungroup() %>%
-  mutate(edge_severity = 0,
-         site = NA_character_,
-         exp_plot = NA_character_) %>%
-  mutate(plant_severity_adjusted = predict(mv_totb_mod, newdata = ., re.form = NA, type = "response"),
-         plant_severity_adjusted_se = predict(mv_totb_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
-
-jun_lau_tot_bio_mv_fig <- ggplot(jun_lau_mv_biomass_sim_dat, aes(x = total_biomass.g, y = plant_severity_adjusted)) +
-  geom_point(data = jun_lau_mv_dat, aes(color = Treatment), alpha = 0.5) +
-  geom_ribbon(aes(ymin = plant_severity_adjusted - plant_severity_adjusted_se, ymax = plant_severity_adjusted + plant_severity_adjusted_se, fill = Treatment), alpha = 0.5) +
-  geom_line(aes(color = Treatment)) +
-  facet_wrap(~ Month) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  xlab(expression(paste("Total biomass (g ", m^-1, ")", sep = ""))) +
-  ylab(expression(paste("Proportion ", italic("Microstegium"), " leaf area brown", sep = ""))) +
-  temp_theme
-
-
-## Edge severity Mv June-late August ##
-jun_lau_mv_edge_sim_dat <- foc_dat2 %>%
-  filter(sp == "Mv" & !(month %in% c("may", "sep")) & !(is.na(edge_severity))) %>%
+## Edge severity Mv July-late August ##
+jul_lau_mv_edge_sim_dat <- foc_dat2 %>%
+  filter(sp == "Mv" & !(month %in% c("may", "jun", "sep")) & !(is.na(edge_severity))) %>%
   group_by(Month, Treatment, fungicide) %>%
   summarise(min_edge = min(edge_severity),
             max_edge = max(edge_severity)) %>%
@@ -864,14 +785,15 @@ jun_lau_mv_edge_sim_dat <- foc_dat2 %>%
   do(tibble(Month = .$Month, Treatment = .$Treatment, fungicide = .$fungicide,
             edge_severity = seq(.$min_edge, .$max_edge, length.out = 100))) %>%
   ungroup() %>%
-  mutate(total_biomass.g = 0,
+  mutate(Mv_biomass.g = 0,
+         Ev_biomass.g = 0,
          site = NA_character_,
          exp_plot = NA_character_) %>%
-  mutate(plant_severity_adjusted = predict(mv_totb_mod, newdata = ., re.form = NA, type = "response"),
-         plant_severity_adjusted_se = predict(mv_totb_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
+  mutate(plant_severity_adjusted = predict(mv_sepb_mod, newdata = ., re.form = NA, type = "response"),
+         plant_severity_adjusted_se = predict(mv_sepb_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
 
-jun_lau_edge_mv_fig <- ggplot(jun_lau_mv_edge_sim_dat, aes(x = edge_severity, y = plant_severity_adjusted)) +
-  geom_point(data = jun_lau_mv_dat, aes(color = Treatment), alpha = 0.5) +
+jul_lau_edge_mv_fig <- ggplot(jul_lau_mv_edge_sim_dat, aes(x = edge_severity, y = plant_severity_adjusted)) +
+  geom_point(data = jul_lau_mv_dat, aes(color = Treatment), alpha = 0.5) +
   geom_ribbon(aes(ymin = plant_severity_adjusted - plant_severity_adjusted_se, ymax = plant_severity_adjusted + plant_severity_adjusted_se, fill = Treatment), alpha = 0.5) +
   geom_line(aes(color = Treatment)) +
   facet_wrap(~ Month, scales = "free_x") +
@@ -944,28 +866,25 @@ sep_mv_fig <- ggplot(sep_mv_biomass_sim_dat, aes(x = total_biomass.g, y = plant_
 #### output ####
 pdf("output/focal_severity_analysis_2019_density_exp.pdf")
 may_ev_fig
-jun_lau_ev_bio_ev_fig
-jun_lau_mv_bio_ev_fig
-jun_lau_edge_ev_fig
+jul_lau_edge_ev_fig
 sep_ev_fig
 hum_mv_fig
-jun_lau_tot_bio_mv_fig
-jun_lau_edge_mv_fig
+jul_lau_edge_mv_fig
 sep_mv_fig
 dev.off()
 
 mv_severity_humidity_mod <- sep_mv_totp_water_mod2
 save(mv_severity_humidity_mod, file ="output/Mv_severity_humidity_model_2019_density_exp.rda")
 write_csv(sep_mv_water_dat, "intermediate-data/Mv_severity_water_treatment_sep_2019_density_exp.csv")
-mv_severity_biomass_edge_mod <- mv_totb_mod
+mv_severity_biomass_edge_mod <- mv_sepb_mod
 save(mv_severity_biomass_edge_mod, file ="output/Mv_severity_biomass_edge_model_2019_density_exp.rda")
-write_csv(jun_lau_mv_dat, "intermediate-data/Mv_severity_june_late_aug_2019_density_exp.csv")
+write_csv(jul_lau_mv_dat, "intermediate-data/Mv_severity_july_late_aug_2019_density_exp.csv")
 mv_severity_september_mod <- sep_mv_totb_mod2
 save(mv_severity_september_mod, file ="output/Mv_severity_september_model_2019_density_exp.rda")
 ev_severity_may_mod <- may_ev_sepp_mod2
 save(ev_severity_may_mod, file = "output/Ev_severity_may_model_2019_density_exp.rda")
 ev_severity_biomass_edge_mod <- ev_sepb_mod
 save(ev_severity_biomass_edge_mod, file ="output/Ev_severity_biomass_edge_model_2019_density_exp.rda")
-write_csv(jun_lau_ev_dat, "intermediate-data/Ev_severity_june_late_aug_2019_density_exp.csv")
+write_csv(jul_lau_ev_dat, "intermediate-data/Ev_severity_july_late_aug_2019_density_exp.csv")
 ev_severity_september_mod <- sep_ev_sepb_mod
 save(ev_severity_september_mod, file ="output/Ev_severity_september_model_2019_density_exp.rda")
