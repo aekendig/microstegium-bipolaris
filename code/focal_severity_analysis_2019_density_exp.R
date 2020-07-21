@@ -661,6 +661,11 @@ summary(may_ev_sepp_mod2)
 # fungicide (*) and Mv presence (**)
 plot(simulateResiduals(may_ev_sepp_mod2))
 
+# separate density
+summary(may_ev_sepd_mod)
+# none sig
+stepAIC(may_ev_sepd_mod)
+# fungicide and Ev density
 
 ## June Ev ##
 jun_ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * total_biomass.g + (1|site/exp_plot), data = jun_ev_dat, family = "beta_family")
@@ -680,6 +685,11 @@ stepAIC(jun_ev_totd_mod)
 plot(simulateResiduals(jun_ev_totd_mod))
 # sig deviance
 
+# separate density
+summary(jun_ev_sepd_mod)
+# none sig
+stepAIC(jun_ev_sepd_mod)
+# full model
 
 ## July Ev ##
 jul_ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = jul_ev_dat, family = "beta_family")
@@ -702,6 +712,12 @@ summary(jul_ev_totb_mod2)
 plot(simulateResiduals(jul_ev_totb_mod2))
 # sig deviance
 
+# separate density
+summary(jul_ev_sepd_mod)
+# same as above
+stepAIC(jul_ev_sepd_mod)
+# full model
+
 
 ## early August Ev ##
 eau_ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = eau_ev_dat, family = "beta_family")
@@ -720,6 +736,12 @@ stepAIC(eau_ev_sepb_mod)
 # keep full model
 plot(simulateResiduals(eau_ev_sepb_mod))
 # sig deviance
+
+# separate density
+summary(eau_ev_sepd_mod)
+# none sig
+stepAIC(eau_ev_sepd_mod)
+# full model
 
 
 ## late August Ev ##
@@ -740,6 +762,12 @@ stepAIC(lau_ev_totb_mod)
 plot(simulateResiduals(lau_ev_totb_mod))
 # sig deviance
 
+# separate density
+summary(lau_ev_sepd_mod)
+# same as above + fungicide:edge sev
+stepAIC(lau_ev_sepd_mod)
+# full model
+
 
 ## September Ev ##
 sep_ev_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity), data = sep_ev_dat, family = "beta_family")
@@ -757,6 +785,12 @@ summary(sep_ev_sepb_mod)
 stepAIC(sep_ev_sepb_mod)
 # keep full model
 plot(simulateResiduals(sep_ev_sepb_mod))
+
+# separate density
+summary(sep_ev_sepd_mod)
+# none sig
+stepAIC(sep_ev_sepd_mod)
+# fungicide:Mv density
 
 
 ## June Mv ##
@@ -780,6 +814,12 @@ summary(jun_mv_totb_mod2)
 plot(simulateResiduals(jun_mv_totb_mod2))
 # sig deviance
 
+# separate density
+summary(jun_mv_sepd_mod)
+# none sig
+stepAIC(jun_mv_sepd_mod)
+# just fungicide
+
 
 ## July Mv ##
 jul_mv_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = jul_mv_dat, family = "beta_family")
@@ -802,6 +842,15 @@ summary(jul_mv_totd_mod2)
 plot(simulateResiduals(jul_mv_totd_mod2))
 # sig deviance
 
+# separate density
+summary(jul_mv_sepd_mod)
+# none sig
+stepAIC(jul_mv_sepd_mod)
+# Mv density + edge severity
+jul_mv_sepd_mod2 <-  glmmTMB(plant_severity_adjusted ~ Mv_density + edge_severity + (1|site/exp_plot), data = jul_mv_dat, family = "beta_family")
+summary(jul_mv_sepd_mod2)
+# small reduction due to Mv density, just like total density model
+
 
 ## early August Mv ##
 eau_mv_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = eau_mv_dat, family = "beta_family")
@@ -821,6 +870,12 @@ stepAIC(eau_mv_totp_mod)
 plot(simulateResiduals(eau_mv_totp_mod))
 # sig deviance
 
+# separate density
+summary(eau_mv_sepd_mod)
+# none sig
+stepAIC(eau_mv_sepd_mod)
+# keep full model
+
 
 ## late August Mv ##
 lau_mv_totb_mod <- glmmTMB(plant_severity_adjusted ~ fungicide * (total_biomass.g + edge_severity) + (1|site/exp_plot), data = lau_mv_dat, family = "beta_family")
@@ -838,6 +893,12 @@ summary(lau_mv_sepb_mod)
 stepAIC(lau_mv_sepb_mod)
 # keep full model
 plot(simulateResiduals(lau_mv_sepb_mod))
+
+# separate density
+summary(lau_mv_sepd_mod)
+# same as above
+stepAIC(lau_mv_sepd_mod)
+# full model
 
 
 ## September Mv ##
@@ -859,6 +920,12 @@ sep_mv_totb_mod2 <- update(sep_mv_totb_mod, .~. - fugicide:edge_severity)
 summary(sep_mv_totb_mod2)
 # total biomass (**)
 plot(simulateResiduals(sep_mv_totb_mod2))
+
+# separate density
+summary(sep_mv_sepd_mod)
+# Mv density
+stepAIC(sep_mv_sepd_mod)
+# full model
 
 
 #### figures ####

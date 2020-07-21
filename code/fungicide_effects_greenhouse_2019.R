@@ -106,6 +106,16 @@ mv_dat2 %>%
   temp_theme
 # no effect of fungicide on height
 
+# biomass/seeds
+
+mv_dat2 %>%
+  ggplot(aes(x = weight.g, y = seed_heads, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab(expression(paste(italic(Microstegium), " aboveground biomass (g)", sep = ""))) +
+  ylab(expression(paste(italic(Microstegium), " seed heads", sep = ""))) +
+  temp_theme
+
 # close pdf
 dev.off()
 
@@ -137,4 +147,11 @@ mv_fung_height_mod <- t.test(height.in ~ fungicide, data = mv_dat2)
 mv_fung_height_mod
 # fungicide mean: 42.2
 # water mean: 41.2
+# no significant effect of fungicide
+
+# Seeds by biomass
+mv_seed_bio_mod <- lm(seed_heads ~ weight.g * fungicide, data = mv_dat2)
+summary(mv_seed_bio_mod)
+# water slope: 0.64
+# fungicide slope: 0.82
 # no significant effect of fungicide
