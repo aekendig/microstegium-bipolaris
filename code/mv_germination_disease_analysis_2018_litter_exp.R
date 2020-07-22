@@ -14,6 +14,7 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(cowplot)
+library(brms)
 
 # import data
 dat_jun <- read_csv("./data/both_germination_disease_jun_2018_litter_exp.csv")
@@ -66,9 +67,13 @@ micro <- full_join(dat_jun_planted, select(dat_jun_bg, -plot)) %>%
          mv_prop_infec_jun = mv_infec_jun / mv_germ_planted_bg_jun,
          mv_prop_infec_jul = mv_infec_jul / mv_germ_planted_bg_jul) %>%
   mutate(mv_germ_planted_cor_jun = case_when(mv_germ_planted_jun < 0 ~ 0,
+                                             mv_germ_planted_jun > 200 ~ 200,
                                          TRUE ~ mv_germ_planted_jun),
          mv_germ_planted_cor_jul = case_when(mv_germ_planted_jul < 0 ~ 0,
-                                         TRUE ~ mv_germ_planted_jul)) %>%
+                                             mv_germ_planted_jul > 200 ~ 200,
+                                         TRUE ~ mv_germ_planted_jul),
+         prop_germ_jun = mv_germ_planted_cor_jun/200,
+         prop_germ_jul = mv_germ_planted_cor_jul/200) %>%
   left_join(cov_plot)
 
 # to combine background data with covariates, use the original plot number (removed above)
@@ -272,5 +277,108 @@ plot_grid(fig_bp_jn_soil, fig_bp_jl_soil, fig_bp_jn_can, fig_bp_jl_can,
 dev.off()
 
 
-#### output intermediate data ####
+#### statistical model ####
+
+# Beverton-Holt function
+bh_fun <- function(dat_in, a, y0){
+  
+  # extract values
+  xmin = 0
+  xmax = max(dat_in$litter_weight.g)
+  
+  # create data
+  dat <- tibble(x = seq(xmin, xmax, length.out = 100)) %>%
+    mutate(y = y0 / (1 + a * x))
+  
+  # plot
+  print(ggplot(dat_in, aes(x = litter_weight.g, y = mv_germ_planted_cor_jul)) +
+          stat_summary(geom = "point", fun = "mean", aes(color = litter_microbes)) +
+          stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.1, aes(color = litter_microbes)) +
+          geom_line(data = dat, aes(x = x, y = y)))
+}
+
+# try values
+mean(filter(micro, litter_weight.g == 0)$mv_germ_planted_cor_jul)
+bh_fun(micro, 0.03, 109)
+
+# model
+mv_germ_litter_mod <- brm(data = micro, family = gaussian,
+                      bf(mv_germ_planted_cor_jul ~ y0 / (1 + alpha * litter_weight.g),
+                         y0 ~ 0 + litter_microbes + (1|site),
+                         alpha ~ 0 + litter_microbes,
+                         nl = T),
+                      prior <- c(prior(normal(109, 100), nlpar = "y0", class = "b", lb = 0, ub = 200),
+                                 prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                                 prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                                 prior(cauchy(0, 1), class = "sigma")),
+                      iter = 6000, warmup = 1000, chains = 1,
+                      control = list(adapt_delta = 0.999))
+
+# check model and increase chains
+summary(mv_germ_litter_mod)
+prior_summary(mv_germ_litter_mod)
+mv_germ_litter_mod <- update(mv_germ_litter_mod, chains = 3)
+plot(mv_germ_litter_mod)
+pp_check(mv_germ_litter_mod, nsamples = 100)
+
+
+#### model fit figure ####
+
+# template theme
+temp_theme <- theme_bw() +
+  theme(axis.text = element_text(size = 10, color="black"),
+        axis.title = element_text(size = 12),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12),
+        legend.position = "bottom", 
+        legend.direction = "horizontal",
+        legend.box.margin = margin(-10, -10, -10, -10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10),
+        strip.placement = "outside")
+
+# colors
+col_pal = c("#a6611a", "#018571")
+
+# simulate data
+sim_dat <- tibble(litter_weight.g = rep(0:200, 2),
+                  litter_microbes = rep(c("absent", "present"), each = 201)) %>%
+  mutate(mv_germ_planted_cor_jul = fitted(mv_germ_litter_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         germ_lower = fitted(mv_germ_litter_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         germ_upper = fitted(mv_germ_litter_mod, newdata = ., re_formula = NA)[, "Q97.5"],
+         prop_germ_jul = mv_germ_planted_cor_jul / 200,
+         prop_lower = germ_lower / 200,
+         prop_upper = germ_upper / 200)
+
+# figure
+
+pdf("output/mv_germinant_analysis_model_fits_2018_litter_exp.pdf")
+ggplot(micro, aes(x = litter_weight.g, y = mv_germ_planted_cor_jul)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3), aes(group = litter_microbes)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3), aes(fill = litter_microbes)) +
+  geom_ribbon(data = sim_dat, alpha = 0.5, aes(ymin = germ_lower, ymax = germ_upper, fill = litter_microbes)) +
+  geom_line(data = sim_dat, aes(color = litter_microbes)) +
+  xlab("Litter weight (g)") +
+  ylab("Planted germinants (out of 200)") +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  temp_theme
+
+ggplot(micro, aes(x = litter_weight.g, y = prop_germ_jul)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3), aes(group = litter_microbes)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3), aes(fill = litter_microbes)) +
+  geom_ribbon(data = sim_dat, alpha = 0.5, aes(ymin = prop_lower, ymax = prop_upper, fill = litter_microbes)) +
+  geom_line(data = sim_dat, aes(color = litter_microbes)) +
+  xlab("Litter weight (g)") +
+  ylab("Proportion of plants that germinated") +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  temp_theme
+dev.off()
+
+#### output ####
 write_csv(micro, "intermediate-data/mv_germination_covariates_2018_litter_exp.csv")
+save(mv_germ_litter_mod, file = "output/mv_germination_litter_model_2018_litter_exp.rda")

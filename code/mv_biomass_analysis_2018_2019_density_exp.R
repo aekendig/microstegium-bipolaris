@@ -525,8 +525,38 @@ mv_eva_bio_mod <- update(mv_eva_bio_mod, chains = 3)
 plot(mv_eva_bio_mod)
 pp_check(mv_eva_bio_mod, nsamples = 100)
 
+# all data combined
+mv_bio_dat <- bio19t %>%
+  filter(!is.na(bio.g) & background != "none") %>%
+  mutate(back_trt = paste(background, treatment, sep = "_"))
+unique(mv_bio_dat$back_trt)
 
-#### model fit figure ####
+# initial value
+filter(mv_bio_dat, background == "Ev adult" & density_level == "low" & treatment == "fungicide") %>%
+  summarise(bio = mean(bio.g))
+
+# all background model
+mv_bio_mod <- brm(data = mv_bio_dat, family = gaussian,
+                     bf(bio.g ~ y0 / (1 + alpha * background_density),
+                        y0 ~ 0 + treatment + (1|site),
+                        alpha ~ 0 + back_trt,
+                        nl = T),
+                     prior <- c(prior(normal(40, 10), nlpar = "y0", class = "b", lb = 0),
+                                prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                                prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                                prior(cauchy(0, 1), class = "sigma")),
+                     iter = 6000, warmup = 1000, chains = 1,
+                     control = list(adapt_delta = 0.999))
+
+# check model and increase chains
+summary(mv_bio_mod)
+prior_summary(mv_bio_mod)
+mv_bio_mod <- update(mv_bio_mod, chains = 3)
+plot(mv_bio_mod)
+pp_check(mv_bio_mod, nsamples = 100)
+
+
+#### model fit figures ####
 
 # model fits over simulated data
 bio_mv_sim_dat <- tibble(background_density = rep(seq(0, 64, length.out = 300), 2),
@@ -576,6 +606,35 @@ ggplot(bio19b, aes(x = background_density, y = bio.g)) +
   temp_theme
 dev.off()
 
+# full data model
+bio_all_sim_dat <- tibble(background_density = c(rep(seq(0, 64, length.out = 100), 2),
+                                                 rep(seq(0, 16, length.out = 100), 2),
+                                                 rep(seq(0, 8, length.out = 100), 2)),
+                          fungicide = rep(rep(c(0, 1), each = 100), 3),
+                          background = rep(c("Mv seedling", "Ev seedling", "Ev adult"), each = 200)) %>%
+  mutate(site = NA,
+         Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide"),
+         treatment = recode(Treatment, "control (water)" = "water"),
+         back_trt = paste(background, treatment, sep = "_")) %>%
+  mutate(bio.g = fitted(mv_bio_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         bio_lower = fitted(mv_bio_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         bio_upper = fitted(mv_bio_mod, newdata = ., re_formula = NA)[, "Q97.5"])
+
+# figure
+pdf("output/mv_biomass_analysis_combined_model_fit_2019_density_exp.pdf")
+ggplot(bio19b, aes(x = background_density, y = bio.g)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3), aes(group = Treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3), aes(fill = Treatment)) +
+  geom_ribbon(data = bio_all_sim_dat, alpha = 0.5, aes(ymin = bio_lower, ymax = bio_upper, fill = Treatment)) +
+  geom_line(data = bio_all_sim_dat, aes(color = Treatment)) +
+  facet_wrap(~ background, scales = "free_x", strip.position = "bottom") +
+  xlab("Background density") +
+  ylab(expression(paste(italic(Microstegium), " biomass (g ", plant^-1, ")", sep = ""))) +
+  scale_color_manual(values = col_pal2) +
+  scale_fill_manual(values = col_pal2) +
+  temp_theme
+dev.off()
+
 
 #### severity and biomass ####
 
@@ -606,3 +665,4 @@ save(mv_no_back_bio_fung_mod, file = "output/mv_biomass_no_background_model_gree
 save(mv_mv_bio_mod, file = "output/mv_biomass_mv_background_model_2019_density_exp.rda")
 save(mv_evs_bio_mod, file = "output/mv_biomass_ev_seedling_background_model_2019_density_exp.rda")
 save(mv_eva_bio_mod, file = "output/mv_biomass_ev_adult_background_model_2019_density_exp.rda")
+save(mv_bio_mod, file = "output/mv_biomass_combined_background_model_2019_density_exp.rda")

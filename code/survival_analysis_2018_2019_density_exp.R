@@ -83,6 +83,15 @@ winy1 <- daty1_1 %>%
   left_join(sevy1_1) %>%
   left_join(sevy1_bgev_1)
 
+# winter survival without extra data
+winter_surv_dat <- daty1_1 %>%
+  filter(month == "April" | month == "September") %>%
+  select(-field_notes) %>%
+  spread(month, survival) %>%
+  filter(September == 1 & !is.na(April) & !(sp == "Mv" & focal == 0)) %>%
+  select(-September) %>%
+  rename(survival = April)
+
 # add IDs to 2019 background plants
 # remove unnecessary columns
 daty2_2 <- daty2_1 %>%
@@ -143,6 +152,14 @@ sumy2 <- daty2_2 %>%
          fungicide = recode(treatment, water = 0, fungicide = 1),
          sp = substr(plant_type, 1, 2)) %>%
   left_join(sevy2_1)
+
+# summer survival without extra data
+summer_surv_dat <- daty2_2 %>%
+  select(-replace_date) %>%
+  unique() %>%
+  mutate(survival = 0) %>%
+  full_join(allid) %>%
+  mutate(survival = replace_na(survival, 1))
 
 # process focal Ev biomass for direct disease effects (plot 1)
 # check for missing data
@@ -822,3 +839,5 @@ save(evs_surv_sev_jul_19_mod, file = "output/ev_seedling_survival_severity_model
 write_csv(evs_sev_2019_dat, "intermediate-data/ev_seedling_survival_severity_data_2019_dens_exp.csv")
 save(eva_surv_sev_eau_19_mod, file = "output/ev_seedling_survival_severity_model_early_aug_2019_density_exp.rda")
 write_csv(eva_sev_2019_dat, "intermediate-data/ev_adult_survival_severity_data_2019_dens_exp.csv")
+write_csv(winter_surv_dat, "intermediate-data/winter_survival_data_2018_2019_dens_exp.csv")
+write_csv(summer_surv_dat, "intermediate-data/summer_survival_data_2019_dens_exp.csv")

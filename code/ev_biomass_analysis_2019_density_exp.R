@@ -352,6 +352,37 @@ evs_eva_bio_mod <- update(evs_eva_bio_mod, chains = 3)
 plot(evs_eva_bio_mod)
 pp_check(evs_eva_bio_mod, nsamples = 100)
 
+# all data combined
+evs_bio_dat <- bio2 %>%
+  filter(!is.na(veg_weight.g) & background != "none" & age == "seedling") %>%
+  mutate(back_trt = paste(background, treatment, sep = "_"))
+unique(evs_bio_dat$back_trt)
+
+# initial value
+filter(evs_bio_dat, background == "Ev adult" & density_level == "low" & treatment == "fungicide") %>%
+  summarise(bio = mean(veg_weight.g))
+
+# all background model
+evs_bio_mod <- brm(data = evs_bio_dat, family = gaussian,
+                  bf(veg_weight.g ~ y0 / (1 + alpha * background_density),
+                     y0 ~ 0 + treatment + (1|site),
+                     alpha ~ 0 + back_trt,
+                     nl = T),
+                  prior <- c(prior(normal(3, 10), nlpar = "y0", class = "b", lb = 0),
+                             prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                             prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                             prior(cauchy(0, 1), class = "sigma")),
+                  iter = 6000, warmup = 1000, chains = 1,
+                  control = list(adapt_delta = 0.999))
+
+# check model and increase chains
+summary(evs_bio_mod)
+prior_summary(evs_bio_mod)
+evs_bio_mod <- update(evs_bio_mod, chains = 3,
+                      control = list(adapt_delta = 0.999, max_treedepth = 15))
+plot(evs_bio_mod)
+pp_check(evs_bio_mod, nsamples = 100)
+
 
 #### Ev adult disease and density models ####
 
@@ -436,6 +467,36 @@ eva_eva_bio_mod <- update(eva_eva_bio_mod, chains = 3)
 plot(eva_eva_bio_mod)
 pp_check(eva_eva_bio_mod, nsamples = 100)
 
+# all data combined
+eva_bio_dat <- bio2 %>%
+  filter(!is.na(veg_weight.g) & background != "none" & age == "adult") %>%
+  mutate(back_trt = paste(background, treatment, sep = "_"))
+unique(eva_bio_dat$back_trt)
+
+# initial value
+filter(eva_bio_dat, background == "Ev seedling" & density_level == "low" & treatment == "water") %>%
+  summarise(bio = mean(veg_weight.g))
+
+# all background model
+eva_bio_mod <- brm(data = eva_bio_dat, family = gaussian,
+                   bf(veg_weight.g ~ y0 / (1 + alpha * background_density),
+                      y0 ~ 0 + treatment + (1|site),
+                      alpha ~ 0 + back_trt,
+                      nl = T),
+                   prior <- c(prior(normal(8, 10), nlpar = "y0", class = "b", lb = 0),
+                              prior(exponential(0.5), nlpar = "alpha", lb = 0),
+                              prior(cauchy(0, 1), nlpar = "y0", class = "sd"),
+                              prior(cauchy(0, 1), class = "sigma")),
+                   iter = 6000, warmup = 1000, chains = 1,
+                   control = list(adapt_delta = 0.999))
+
+# check model and increase chains
+summary(eva_bio_mod)
+prior_summary(eva_bio_mod)
+eva_bio_mod <- update(eva_bio_mod, chains = 3)
+plot(eva_bio_mod)
+pp_check(eva_bio_mod, nsamples = 100)
+
 
 #### model fit figure ####
 
@@ -502,6 +563,46 @@ ggplot(bio2, aes(x = background_density, y = veg_weight.g)) +
   temp_theme
 dev.off()
 
+# full data model
+temp_bio_all_sim_dat <- tibble(background_density = c(rep(seq(0, 64, length.out = 100), 2),
+                                                 rep(seq(0, 16, length.out = 100), 2),
+                                                 rep(seq(0, 8, length.out = 100), 2)),
+                          fungicide = rep(rep(c(0, 1), each = 100), 3),
+                          background = rep(c("Mv seedling", "Ev seedling", "Ev adult"), each = 200)) %>%
+  mutate(site = NA,
+         treatment = recode(fungicide, "0" = "water", "1" = "fungicide"),
+         back_trt = paste(background, treatment, sep = "_"))
+
+evs_bio_all_sim_dat <- temp_bio_all_sim_dat %>%
+  mutate(veg_weight.g = fitted(evs_bio_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         bio_lower = fitted(evs_bio_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         bio_upper = fitted(evs_bio_mod, newdata = ., re_formula = NA)[, "Q97.5"],
+         age = "seedling")
+
+eva_bio_all_sim_dat <- temp_bio_all_sim_dat %>%
+  mutate(veg_weight.g = fitted(eva_bio_mod, newdata = ., re_formula = NA)[, "Estimate"],
+         bio_lower = fitted(eva_bio_mod, newdata = ., re_formula = NA)[, "Q2.5"],
+         bio_upper = fitted(eva_bio_mod, newdata = ., re_formula = NA)[, "Q97.5"],
+         age = "adult")
+
+bio_all_sim_dat <- full_join(evs_bio_all_sim_dat, eva_bio_all_sim_dat) %>%
+  mutate(Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide"))
+
+# figure
+pdf("output/ev_biomass_analysis_combined_model_fit_2019_density_exp.pdf")
+ggplot(bio2, aes(x = background_density, y = veg_weight.g)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1, position = position_dodge(0.3), aes(group = Treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, shape = 21, position = position_dodge(0.3), aes(fill = Treatment)) +
+  geom_ribbon(data = bio_all_sim_dat, alpha = 0.5, aes(ymin = bio_lower, ymax = bio_upper, fill = Treatment)) +
+  geom_line(data = bio_all_sim_dat, aes(color = Treatment)) +
+  facet_grid(age ~ background, scales = "free", switch = "both") +
+  xlab("Background density") +
+  ylab(expression(paste(italic(Elymus), " biomass (g ", plant^-1, ")", sep = ""))) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  temp_theme
+dev.off()
+
 
 #### severity and biomass ####
 
@@ -561,3 +662,5 @@ save(eva_evs_bio_mod, file = "output/ev_adult_biomass_ev_seedling_background_mod
 save(eva_eva_bio_mod, file = "output/ev_adult_biomass_ev_adult_background_model_2019_density_exp.rda")
 save(evs_bio_sev_jul_19_mod, file = "output/ev_seedling_biomass_severity_model_jul_2019_density_exp.rda")
 write_csv(evs_sev_dat, "intermediate-data/ev_seedling_biomass_severity_data_2019_dens_exp.csv")
+save(evs_bio_mod, file = "output/ev_seedling_biomass_combined_background_model_2019_density_exp.rda")
+save(eva_bio_mod, file = "output/ev_adult_biomass_combined_background_model_2019_density_exp.rda")
