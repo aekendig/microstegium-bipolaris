@@ -49,11 +49,16 @@ plant_dat2 <- left_join(plant_dat, treat) %>%
          ev_seedling_density = case_when(plot %in% c(5:7) ~ background_density + 3,
                                          TRUE ~ 3),
          ev_adult_density = case_when(plot %in% c(8:10) ~ background_density + 1,
-                                         TRUE ~ 1)) %>%
+                                         TRUE ~ 1),
+         log_seeds = log(seeds)) %>%
   left_join(sev19b)
 
 # no background data
 no_back_plant_dat <- filter(plant_dat2, plot == 1)
+
+# high Mv data
+hi_mv_plant_dat <- filter(plant_dat2, plot == 4) %>%
+  filter(!is.na(seeds))
 
 # individual-level seeds and plots
 plant_dat3 <- left_join(plant_dat, plots) %>%
@@ -120,12 +125,12 @@ mv_dat %>%
 
 # control seeds
 filter(no_back_plant_dat, fungicide == 0) %>%
-  summarise(seeds = mean(seeds))
+  summarise(seeds = mean(log_seeds))
 
 # model
 mv_no_back_seed_mod <- brm(data = no_back_plant_dat, family = gaussian,
-                          seeds ~ fungicide + (1|site),
-                          prior <- c(prior(normal(1200, 100), class = Intercept),
+                          log_seeds ~ fungicide + (1|site),
+                          prior <- c(prior(normal(6.4, 100), class = Intercept),
                                      prior(normal(0, 100), class = b),
                                      prior(cauchy(0, 1), class = sd),
                                      prior(cauchy(0, 1), class = sigma)),
@@ -140,25 +145,63 @@ plot(mv_no_back_seed_mod)
 pp_check(mv_no_back_seed_mod, nsamples = 100)
 
 # reduction due to fungicide
-1-(30/37)
--0.19*1182
+log(30/37)
 
 # model with direct fungicide effects
 mv_no_back_seed_fung_mod <- brm(data = no_back_plant_dat, family = gaussian,
-                               seeds ~ Treatment + fungicide + (1|site),
-                               prior <- c(prior(normal(1182, 100), class = Intercept),
+                               log_seeds ~ Treatment + fungicide + (1|site),
+                               prior <- c(prior(normal(6.4, 100), class = Intercept),
                                           prior(normal(0, 100), class = b),
-                                          prior(normal(-225, 0.001), class = b, coef = "Treatmentfungicide"),
+                                          prior(normal(-0.21, 0.001), class = b, coef = "Treatmentfungicide"),
                                           prior(cauchy(0, 1), class = sd),
                                           prior(cauchy(0, 1), class = sigma)),
                                iter = 6000, warmup = 1000, chains = 3,
-                               control = list(adapt_delta = 0.99))
+                               control = list(adapt_delta = 0.9999))
 
 # check model
 summary(mv_no_back_seed_fung_mod)
 prior_summary(mv_no_back_seed_fung_mod)
 plot(mv_no_back_seed_fung_mod)
 pp_check(mv_no_back_seed_fung_mod, nsamples = 100)
+
+## high Mv model ##
+
+# control seeds
+filter(hi_mv_plant_dat, fungicide == 0) %>%
+  summarise(seeds = mean(log_seeds))
+
+# model
+mv_hi_mv_seed_mod <- brm(data = hi_mv_plant_dat, family = gaussian,
+                           log_seeds ~ fungicide + (1|site),
+                           prior <- c(prior(normal(5.75, 100), class = Intercept),
+                                      prior(normal(0, 100), class = b),
+                                      prior(cauchy(0, 1), class = sd),
+                                      prior(cauchy(0, 1), class = sigma)),
+                           iter = 6000, warmup = 1000, chains = 1,
+                           control = list(adapt_delta = 0.9999))
+
+# check model and add chains
+summary(mv_hi_mv_seed_mod)
+mv_hi_mv_seed_mod <- update(mv_hi_mv_seed_mod, chains = 3)
+plot(mv_hi_mv_seed_mod)
+pp_check(mv_hi_mv_seed_mod, nsamples = 100)
+
+# model with direct fungicide effects
+mv_hi_mv_seed_fung_mod <- brm(data = hi_mv_plant_dat, family = gaussian,
+                              log_seeds ~ Treatment + fungicide + (1|site),
+                                prior <- c(prior(normal(5.75, 100), class = Intercept),
+                                           prior(normal(0, 100), class = b),
+                                           prior(normal(-0.21, 0.001), class = b, coef = "Treatmentfungicide"),
+                                           prior(cauchy(0, 1), class = sd),
+                                           prior(cauchy(0, 1), class = sigma)),
+                                iter = 6000, warmup = 1000, chains = 3,
+                                control = list(adapt_delta = 0.9999))
+
+# check model
+summary(mv_hi_mv_seed_fung_mod)
+prior_summary(mv_hi_mv_seed_fung_mod)
+plot(mv_hi_mv_seed_fung_mod)
+pp_check(mv_hi_mv_seed_fung_mod, nsamples = 100)
 
 
 #### disease and density models ####
@@ -366,6 +409,8 @@ summary(mv_seed_sev_lau_19_mod) # not sig
 #### output ####
 save(mv_no_back_seed_mod, file = "output/mv_seeds_no_background_model_2019_density_exp.rda")
 save(mv_no_back_seed_fung_mod, file = "output/mv_seeds_no_background_model_greenhouse_fungicide_2019_density_exp.rda")
+save(mv_hi_mv_seed_mod, file = "output/mv_seeds_high_mv_model_2019_density_exp.rda")
+save(mv_hi_mv_seed_fung_mod, file = "output/mv_seeds_high_mv_model_greenhouse_fungicide_2019_density_exp.rda")
 save(mv_mv_seed_mod, file = "output/mv_seeds_mv_background_model_2019_density_exp.rda")
 save(mv_evs_seed_mod, file = "output/mv_seeds_ev_seedling_background_model_2019_density_exp.rda")
 save(mv_eva_seed_mod, file = "output/mv_seeds_ev_adult_background_model_2019_density_exp.rda")

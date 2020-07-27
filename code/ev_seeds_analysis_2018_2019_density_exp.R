@@ -23,6 +23,7 @@ spike19 <- read_csv("./intermediate-data/ev_processed_seeds_both_year_conversion
 surv18 <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
 bgbio <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
+treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 covar <- read_csv("intermediate-data/covariates_2018_density_exp.csv")
 sevy1_0 <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
 sevy1_bgev_0 <- read_csv("intermediate-data/ev_background_leaf_scans_2018_density_exp.csv")
@@ -60,6 +61,8 @@ foc19 <- tibble(site = rep(c("D1", "D2", "D3", "D4"), each = 4),
          focal = 1) %>%
   merge(plots, all = T) %>%
   as_tibble()
+
+24*4*4
 
 # 2018 plants
 plants18 <- surv18 %>%
@@ -133,12 +136,12 @@ seed19 <- spike19 %>%
 seed <- fseed18 %>%
   mutate(yearf = "Year 1") %>%
   full_join(seed19 %>%
-              mutate(yearf = "Year 2"))
+              mutate(yearf = "Year 2")) %>%
+  mutate(log_seeds = log(seeds))
 
 # remove repeating 0 plots
 seed2 <- seed %>%
   filter(plot > 1 | (plot == 1 & background == "Mv seedling"))
-
 
 
 #### check datasets ####
@@ -422,19 +425,22 @@ dev.off()
 no_back_plant_dat = filter(seed2, plot == 1)
 
 # divide by age
-evs_no_back_plant_dat = filter(no_back_plant_dat, age == "seedling")
-eva_no_back_plant_dat = filter(no_back_plant_dat, age == "adult")
+evs_no_back_plant_dat = filter(no_back_plant_dat, age == "seedling") %>%
+  mutate(log_seeds_one = log(seeds + 1),
+         year_site = paste(yearf, site, sep = "_"))
+eva_no_back_plant_dat = filter(no_back_plant_dat, age == "adult") %>%
+  mutate(log_seeds_one = log(seeds + 1))
 
 # control seeds
 filter(evs_no_back_plant_dat, fungicide == 0) %>%
-  summarise(bio = mean(seeds))
+  summarise(seeds = mean(log_seeds_one))
 filter(eva_no_back_plant_dat, fungicide == 0) %>%
-  summarise(bio = mean(seeds))
+  summarise(seeds = mean(log_seeds_one))
 
 # Ev seedling model
 evs_no_back_seed_mod <- brm(data = evs_no_back_plant_dat, family = gaussian,
-                           seeds ~ fungicide + (1|site) + (1|yearf),
-                           prior <- c(prior(normal(6.6, 10), class = Intercept),
+                            log_seeds_one ~ fungicide + (1|site) + (1|yearf),
+                           prior <- c(prior(normal(1.3, 10), class = Intercept),
                                       prior(normal(0, 10), class = b),
                                       prior(cauchy(0, 1), class = sd),
                                       prior(cauchy(0, 1), class = sigma)),
@@ -444,26 +450,117 @@ evs_no_back_seed_mod <- brm(data = evs_no_back_plant_dat, family = gaussian,
 # check model and add chains
 summary(evs_no_back_seed_mod)
 prior_summary(evs_no_back_seed_mod)
-evs_no_back_seed_mod <- update(evs_no_back_seed_mod, chains = 3)
+evs_no_back_seed_mod <- update(evs_no_back_seed_mod, chains = 3,
+                               control = list(adapt_delta = 0.9999999999))
+# can't get this to converge
+pairs(evs_no_back_seed_mod)
+evs_no_back_plant_dat %>%
+  group_by(yearf, site) %>%
+  count()
+# only 1 D4 in year 1 and no D3's
+evs_no_back_seed_mod <- brm(data = evs_no_back_plant_dat, family = gaussian,
+                            log_seeds_one ~ fungicide + (1|year_site),
+                            prior <- c(prior(normal(1.3, 10), class = Intercept),
+                                       prior(normal(0, 10), class = b),
+                                       prior(cauchy(0, 1), class = sd),
+                                       prior(cauchy(0, 1), class = sigma)),
+                            iter = 6000, warmup = 1000, chains = 3,
+                            control = list(adapt_delta = 0.9999))
 plot(evs_no_back_seed_mod)
 pp_check(evs_no_back_seed_mod, nsamples = 100)
 
 # Ev adult model
+eva_no_back_plant_dat %>%
+  group_by(yearf, site) %>%
+  count()
+# only one or two by site
+
 eva_no_back_seed_mod <- brm(data = eva_no_back_plant_dat, family = gaussian,
-                           seeds ~ fungicide + (1|site) + (1|yearf),
-                           prior <- c(prior(normal(57.7, 10), class = Intercept),
+                           log_seeds_one ~ fungicide + (1|yearf),
+                           prior <- c(prior(normal(3.6, 10), class = Intercept),
                                       prior(normal(0, 10), class = b),
                                       prior(cauchy(0, 1), class = sd),
                                       prior(cauchy(0, 1), class = sigma)),
                            iter = 6000, warmup = 1000, chains = 1,
-                           control = list(adapt_delta = 0.9999))
+                           control = list(adapt_delta = 0.999999))
 
 # check model and add chains
 summary(eva_no_back_seed_mod)
 prior_summary(eva_no_back_seed_mod)
-eva_no_back_seed_mod <- update(eva_no_back_seed_mod, chains = 3)
+eva_no_back_seed_mod <- update(eva_no_back_seed_mod, chains = 3,
+                               control = list(adapt_delta = 0.999999999))
+# can't get this to converge
+pairs(eva_no_back_seed_mod)
 plot(eva_no_back_seed_mod)
 pp_check(eva_no_back_seed_mod, nsamples = 100)
+
+## high Mv model ##
+
+# high Mv plots
+hi_mv_plant_dat = filter(seed2, plot == 4)
+
+# check samples
+hi_mv_plant_dat %>%
+  group_by(age, yearf) %>%
+  count()
+
+# divide by age
+evs_hi_mv_plant_dat = filter(hi_mv_plant_dat, age == "seedling") %>%
+  mutate(log_seeds_one = log(seeds + 1),
+         year_site = paste(yearf, site, sep = "_"))
+eva_hi_mv_plant_dat = filter(hi_mv_plant_dat, age == "adult") %>%
+  mutate(log_seeds_one = log(seeds + 1),
+         year_site = paste(yearf, site, sep = "_"))
+
+# sample sizes for random effects
+evs_hi_mv_plant_dat %>%
+  group_by(yearf, site) %>%
+  count()
+# use year_site
+
+eva_hi_mv_plant_dat %>%
+  group_by(yearf, site) %>%
+  count()
+
+# control seeds
+filter(evs_hi_mv_plant_dat, fungicide == 0) %>%
+  summarise(bio = mean(log_seeds_one))
+filter(eva_hi_mv_plant_dat, fungicide == 0) %>%
+  summarise(bio = mean(log_seeds_one))
+
+# Ev seedling model
+evs_hi_mv_seed_mod <- brm(data = evs_hi_mv_plant_dat, family = gaussian,
+                          log_seeds_one ~ fungicide + (1|year_site),
+                            prior <- c(prior(normal(1.19, 10), class = Intercept),
+                                       prior(normal(0, 10), class = b),
+                                       prior(cauchy(0, 1), class = sd),
+                                       prior(cauchy(0, 1), class = sigma)),
+                            iter = 6000, warmup = 1000, chains = 1,
+                            control = list(adapt_delta = 0.9999))
+
+# check model and add chains
+summary(evs_hi_mv_seed_mod)
+evs_hi_mv_seed_mod <- update(evs_hi_mv_seed_mod, chains = 3)
+plot(evs_hi_mv_seed_mod)
+pp_check(evs_hi_mv_seed_mod, nsamples = 100)
+
+# Ev adult model
+eva_hi_mv_seed_mod <- brm(data = eva_hi_mv_plant_dat, family = gaussian,
+                          log_seeds_one ~ fungicide + (1|year_site),
+                            prior <- c(prior(normal(3.3, 10), class = Intercept),
+                                       prior(normal(0, 10), class = b),
+                                       prior(cauchy(0, 1), class = sd),
+                                       prior(cauchy(0, 1), class = sigma)),
+                            iter = 6000, warmup = 1000, chains = 1,
+                            control = list(adapt_delta = 0.9999999))
+
+# check model and add chains
+summary(eva_hi_mv_seed_mod)
+eva_hi_mv_seed_mod <- update(eva_hi_mv_seed_mod, chains = 3,
+                             control = list(adapt_delta = 0.999999999))
+pairs(eva_hi_mv_seed_mod)
+plot(eva_hi_mv_seed_mod)
+pp_check(eva_hi_mv_seed_mod, nsamples = 100)
 
 
 #### Ev seedling disease and density models ####
@@ -795,6 +892,8 @@ summary(eva_seed_sev_lau_19_mod) # not sig
 
 save(evs_no_back_seed_mod, file = "output/ev_seedling_seeds_no_background_model_2018_2019_density_exp.rda")
 save(eva_no_back_seed_mod, file = "output/ev_adult_seeds_no_background_model_2018_2019_density_exp.rda")
+save(evs_hi_mv_seed_mod, file = "output/ev_seedling_seeds_high_mv_model_2018_2019_density_exp.rda")
+save(eva_hi_mv_seed_mod, file = "output/ev_adult_seeds_high_mv_model_2018_2019_density_exp.rda")
 save(evs_mv_seed_mod, file = "output/ev_seedling_seeds_mv_background_model_2019_density_exp.rda")
 save(evs_evs_seed_mod, file = "output/ev_seedling_seeds_ev_seedling_background_model_2019_density_exp.rda")
 save(evs_eva_seed_mod, file = "output/ev_seedling_seeds_ev_adult_background_model_2019_density_exp.rda")

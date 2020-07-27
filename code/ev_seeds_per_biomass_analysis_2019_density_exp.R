@@ -39,7 +39,10 @@ dat <- bio %>%
                      seeds = replace_na(seeds, 0),
                      seeds_per_biomass = seeds / biomass_weight.g,
                      fungicide = case_when(treatment == "water" ~ 0,
-                                           TRUE ~ 1))
+                                           TRUE ~ 1),
+                     log_seeds = log(seeds + 1),
+                     log_biomass = log(biomass_weight.g),
+                     plot_trt = paste(plot, substr(treatment, 1, 1) %>% toupper(), sep = ""))
 
 # combine with plot data
 dat_plot <- dat %>%
@@ -55,7 +58,12 @@ ggplot(dat, aes(biomass_weight.g, seeds, color = treatment)) +
   geom_point() +
   geom_smooth(method = "lm") +
   facet_wrap(~ age, scales = "free")
-# only related on the individual-scale
+
+# log-transformed seeds and biomass relationships
+ggplot(dat, aes(log_biomass, log_seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ age, scales = "free")
 
 # seeds per biomass across density
 ggplot(dat_plot, aes(background_density, seeds_per_biomass)) +
@@ -79,11 +87,16 @@ ggplot(dat_plot, aes(background_density, seeds)) +
 
 #### seeds per biomass regression ####
 
-ev_seed_bio_mod <- glmmTMB(seeds ~ age * fungicide * biomass_weight.g + (1|site), data = dat, family = gaussian)
+ev_seed_bio_mod <- glmmTMB(log_seeds ~ age * fungicide * log_biomass + (1|site/plot), data = dat, family = gaussian)
 summary(ev_seed_bio_mod)
 stepAIC(ev_seed_bio_mod)
 # keep full model
 
+# remove treatment effect because mean values cause fluctuations in Elymus seedling population that make simulations difficult to interpret
+ev_seed_bio_no_treat_mod <- glmmTMB(log_seeds ~ age * log_biomass + (1|site/plot_trt), data = dat, family = gaussian)
+summary(ev_seed_bio_no_treat_mod)
+stepAIC(ev_seed_bio_no_treat_mod)
 
 #### output ####
 save(ev_seed_bio_mod, file = "output/ev_seeds_per_biomass_model_2019_density_exp.rda")
+save(ev_seed_bio_no_treat_mod, file = "output/ev_seeds_per_biomass_no_treatment_model_2019_density_exp.rda")

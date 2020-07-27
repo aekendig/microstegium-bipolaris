@@ -144,8 +144,6 @@ ggplot(dat_plots, aes(x = background_density, y = light.prop)) +
 # filter data
 no_back_plant_dat <- filter(dat_treat, plot == 1)
 
-### start here: structure model like the chimp one since trial numbers are known ####
-
 # model
 mv_no_back_germ_mod <- brm(data = no_back_plant_dat, family = binomial,
                            germination_final | trials(seeds) ~ fungicide + (1|site/plot),
@@ -162,6 +160,45 @@ mv_no_back_germ_mod <- update(mv_no_back_germ_mod, chains = 3,
                               control = list(adapt_delta = 0.9999))
 plot(mv_no_back_germ_mod)
 pp_check(mv_no_back_germ_mod, nsamples = 100)
+
+
+## high Mv model ##
+
+# filter data
+hi_mv_plant_dat <- filter(dat_treat, plot == 4)
+
+# model
+mv_hi_mv_germ_mod <- brm(data = hi_mv_plant_dat, family = binomial,
+                           germination_final | trials(seeds) ~ fungicide + (1|site/plot),
+                           prior <- c(prior(normal(0, 10), class = Intercept),
+                                      prior(normal(0, 10), class = b),
+                                      prior(cauchy(0, 1), class = sd)),
+                           iter = 6000, warmup = 1000, chains = 1, 
+                           control = list(adapt_delta = 0.99))
+
+# check model and add chains
+summary(mv_hi_mv_germ_mod)
+mv_hi_mv_germ_mod <- update(mv_hi_mv_germ_mod, chains = 3)
+plot(mv_hi_mv_germ_mod)
+pp_check(mv_hi_mv_germ_mod, nsamples = 100)
+
+
+# model with all data (assume density of source plot doesn't affect germination)
+mv_germ_mod <- brm(data = dat_treat, family = binomial,
+                           germination_final | trials(seeds) ~ fungicide + (1|site/plot),
+                           prior <- c(prior(normal(0, 10), class = Intercept),
+                                      prior(normal(0, 10), class = b),
+                                      prior(cauchy(0, 1), class = sd)),
+                           iter = 6000, warmup = 1000, chains = 1, 
+                           control = list(adapt_delta = 0.99))
+
+# check model and add chains
+summary(mv_germ_mod)
+prior_summary(mv_germ_mod)
+mv_germ_mod <- update(mv_germ_mod, chains = 3,
+                      control = list(adapt_delta = 0.9999))
+plot(mv_germ_mod)
+pp_check(mv_germ_mod, nsamples = 100)
 
 
 #### severity and germination ####
@@ -189,3 +226,5 @@ summary(mv_germ_sev_sep_18_mod) # not sig
 
 #### output ####
 save(mv_no_back_germ_mod, file = "output/mv_germination_no_background_model_2018_density_exp.rda")
+save(mv_hi_mv_germ_mod, file = "output/mv_germination_high_mv_model_2018_density_exp.rda")
+save(mv_germ_mod, file = "output/mv_germination_all_data_model_2018_density_exp.rda")

@@ -583,6 +583,53 @@ day_dat <- hr_dat %>%
 write_csv(day_dat, "./intermediate-data/temp_humidity_daily_2019_density_exp.csv")
 
 
+#### presentation figure ####
+
+# colors
+col_pal = c("#C0A76D", "#55A48B")
+
+# add background info
+dat2 <- dat %>%
+  mutate(mv_background = case_when(plot > 1 & plot <= 4 ~ "Mv",
+                                   TRUE ~ "not Mv"))
+
+# biomass values by background
+dat2 %>%
+  filter(month_name == "September")  %>%
+  group_by(mv_background) %>%
+  summarise(min_bio = min(total_biomass.g),
+            max_bio = max(total_biomass.g))
+
+# total biomass
+totb_fix_sim_dat <- dat %>%
+  filter(month_name == "September") %>%
+  summarise(min_biomass.g = min(total_biomass.g),
+            max_biomass.g = max(total_biomass.g)) %>%
+  rowwise() %>%
+  do(tibble(month_name = "September", 
+            site = NA,
+            total_biomass.g = seq(.$min_biomass.g, .$max_biomass.g, length.out = 100))) %>%
+  ungroup() %>%
+  mutate(havg_pred = predict(havg_totb_mod, newdata = ., re.form = NA, type = "response"),
+         havg_pred_se = predict(havg_totb_mod, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
+
+# average relative humidity
+havg_pres_plot <- ggplot(totb_fix_sim_dat, aes(x = total_biomass.g, y = havg_pred)) +
+  geom_point(data = filter(dat2, month_name == "September"), alpha = 0.3, color = col_pal[1], aes(x = total_biomass.g, y = hum_avg, shape = mv_background)) +
+  geom_ribbon(alpha = 0.5, fill = col_pal[1], aes(ymin = havg_pred - havg_pred_se, ymax = havg_pred + havg_pred_se, fill = site)) +
+  geom_line(color = col_pal[1]) +
+  scale_shape_manual(values = c(15, 16), guide = F) +
+  ylab("Average daily relative humidity (%)") +
+  xlab(expression(paste("Total biomass (g ", m^-1, ")", sep = ""))) +
+  scale_y_continuous(labels = scale_fun) +
+  plot_theme
+
+# save figure
+pdf("output/average_humidity_total_biomass_figure_2019_density_exp.pdf", width = 3.5, height = 3.5)
+havg_pres_plot
+dev.off()
+
+
 #### output ####
 save(havg_totb_mod, file = "output/average_humidity_total_biomass_model_2019_density_exp.rda")
 write_csv(dat, "intermediate-data/average_humidity_total_biomass_2019_density_exp.csv")

@@ -1211,6 +1211,25 @@ sep_mv_fig <- ggplot(sep_mv_sim_dat, aes(x = total_biomass.g, y = plant_severity
   temp_theme
 
 
+#### figure for presentation ####
+pdf("output/mv_severity_average_humidity_figure_2019_density_exp.pdf", width = 3.5, height = 3.5)
+ggplot(sep_mv_water_sim_dat, aes(x = hum_avg*100, y = plant_severity_adjusted*100)) +
+  geom_point(alpha = 0.3, aes(color = Treatment)) +
+  geom_ribbon(alpha = 0.5, aes(fill = Treatment, ymin = (pred - pred_se)*100, ymax = (pred + pred_se)*100)) +
+  geom_line(aes(y = pred*100, color = Treatment)) +
+  scale_color_manual(values = col_pal, guide = F) +
+  scale_fill_manual(values = col_pal, guide = F) +
+  xlab("Average daily relative humidity (%)") +
+  ylab(expression(paste("% ", italic("Microstegium"), " leaf area diseased", sep = ""))) +
+  scale_x_continuous(breaks = c(80, 85, 90)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 10, color="black"),
+        axis.title = element_text(size = 12),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+dev.off()
+
 #### output ####
 pdf("output/focal_severity_analysis_2019_density_exp.pdf")
 may_ev_fig

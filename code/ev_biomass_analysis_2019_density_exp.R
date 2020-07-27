@@ -49,7 +49,8 @@ bio2 <- bio %>%
                          TRUE ~ "seedling"),
          plant_type = paste(sp, age, sep = " "),
          fungicide = recode(treatment, water = 0, fungicide = 1),
-         Treatment = recode(treatment, water = "control (water)")) %>%
+         Treatment = recode(treatment, water = "control (water)"),
+         log_bio.g = log(weight)) %>%
   rename(veg_weight.g = weight) %>%
   left_join(spike2) %>%
   mutate(spikelet_weight.g = replace_na(spikelet_weight.g, 0),
@@ -61,6 +62,12 @@ bio2 <- bio %>%
 # no background data
 no_back_plant_dat <- bio2 %>%
   filter(plot == 1 & background == "Mv seedling") %>%
+  mutate(adj_bio.g = case_when(treatment == "fungicide" ~ veg_weight.g / 1.03,
+                               TRUE ~ veg_weight.g))
+
+# high background data
+hi_mv_plant_dat <- bio2 %>%
+  filter(plot == 4 & background == "Mv seedling") %>%
   mutate(adj_bio.g = case_when(treatment == "fungicide" ~ veg_weight.g / 1.03,
                                TRUE ~ veg_weight.g))
 
@@ -163,16 +170,19 @@ dev.off()
 evs_no_back_plant_dat = filter(no_back_plant_dat, age == "seedling")
 eva_no_back_plant_dat = filter(no_back_plant_dat, age == "adult")
 
+evs_hi_mv_plant_dat = filter(hi_mv_plant_dat, age == "seedling")
+eva_hi_mv_plant_dat = filter(hi_mv_plant_dat, age == "adult")
+
 # control biomass
 filter(evs_no_back_plant_dat, fungicide == 0) %>%
-  summarise(bio = mean(veg_weight.g))
+  summarise(bio = mean(log_bio.g))
 filter(eva_no_back_plant_dat, fungicide == 0) %>%
-  summarise(bio = mean(veg_weight.g))
+  summarise(bio = mean(log_bio.g))
 
 # Ev seedling model
 evs_no_back_bio_mod <- brm(data = evs_no_back_plant_dat, family = gaussian,
-                          veg_weight.g ~ fungicide + (1|site),
-                          prior <- c(prior(normal(0.9, 10), class = Intercept),
+                          log_bio.g ~ fungicide + (1|site),
+                          prior <- c(prior(normal(-0.5, 10), class = Intercept),
                                      prior(normal(0, 10), class = b),
                                      prior(cauchy(0, 1), class = sd),
                                      prior(cauchy(0, 1), class = sigma)),
@@ -187,12 +197,12 @@ plot(evs_no_back_bio_mod)
 pp_check(evs_no_back_bio_mod, nsamples = 100)
 
 # increase due to fungicide
-0.03*0.91
+log(13.84/13.39)
 
 # model with direct fungicide effects
 evs_no_back_bio_fung_mod <- brm(data = evs_no_back_plant_dat, family = gaussian,
-                               veg_weight.g ~ Treatment + fungicide + (1|site),
-                               prior <- c(prior(normal(0.91, 10), class = Intercept),
+                               log_bio.g ~ Treatment + fungicide + (1|site),
+                               prior <- c(prior(normal(-0.46, 10), class = Intercept),
                                           prior(normal(0, 10), class = b),
                                           prior(normal(0.03, 0.001), class = b, coef = "Treatmentfungicide"),
                                           prior(cauchy(0, 1), class = sd),
@@ -208,8 +218,8 @@ pp_check(evs_no_back_bio_fung_mod, nsamples = 100)
 
 # Ev adult model
 eva_no_back_bio_mod <- brm(data = eva_no_back_plant_dat, family = gaussian,
-                           veg_weight.g ~ fungicide + (1|site),
-                           prior <- c(prior(normal(4.5, 10), class = Intercept),
+                           log_bio.g ~ fungicide + (1|site),
+                           prior <- c(prior(normal(1.4, 10), class = Intercept),
                                       prior(normal(0, 10), class = b),
                                       prior(cauchy(0, 1), class = sd),
                                       prior(cauchy(0, 1), class = sigma)),
@@ -219,29 +229,101 @@ eva_no_back_bio_mod <- brm(data = eva_no_back_plant_dat, family = gaussian,
 # check model and add chains
 summary(eva_no_back_bio_mod)
 prior_summary(eva_no_back_bio_mod)
-eva_no_back_bio_mod <- update(eva_no_back_bio_mod, chains = 3)
+eva_no_back_bio_mod <- update(eva_no_back_bio_mod, chains = 3,
+                              control = list(adapt_delta = 0.9999))
 plot(eva_no_back_bio_mod)
 pp_check(eva_no_back_bio_mod, nsamples = 100)
 
-# increase due to fungicide
-0.03*4.53
-
 # model with direct fungicide effects
 eva_no_back_bio_fung_mod <- brm(data = eva_no_back_plant_dat, family = gaussian,
-                                veg_weight.g ~ Treatment + fungicide + (1|site),
-                                prior <- c(prior(normal(4.53, 10), class = Intercept),
+                                log_bio.g ~ Treatment + fungicide + (1|site),
+                                prior <- c(prior(normal(1.44, 10), class = Intercept),
                                            prior(normal(0, 10), class = b),
-                                           prior(normal(0.14, 0.001), class = b, coef = "Treatmentfungicide"),
+                                           prior(normal(0.03, 0.001), class = b, coef = "Treatmentfungicide"),
                                            prior(cauchy(0, 1), class = sd),
                                            prior(cauchy(0, 1), class = sigma)),
                                 iter = 6000, warmup = 1000, chains = 3,
-                                control = list(adapt_delta = 0.99))
+                                control = list(adapt_delta = 0.9999))
 
 # check model
 summary(eva_no_back_bio_fung_mod)
 prior_summary(eva_no_back_bio_fung_mod)
 plot(eva_no_back_bio_fung_mod)
 pp_check(eva_no_back_bio_fung_mod, nsamples = 100)
+
+## high Mv model ##
+
+# control biomass
+filter(evs_hi_mv_plant_dat, fungicide == 0) %>%
+  summarise(bio = mean(log_bio.g))
+filter(eva_hi_mv_plant_dat, fungicide == 0) %>%
+  summarise(bio = mean(log_bio.g))
+
+# Ev seedling model
+evs_hi_mv_bio_mod <- brm(data = evs_hi_mv_plant_dat, family = gaussian,
+                           log_bio.g ~ fungicide + (1|site),
+                           prior <- c(prior(normal(-0.2, 10), class = Intercept),
+                                      prior(normal(0, 10), class = b),
+                                      prior(cauchy(0, 1), class = sd),
+                                      prior(cauchy(0, 1), class = sigma)),
+                           iter = 6000, warmup = 1000, chains = 1,
+                           control = list(adapt_delta = 0.99))
+
+# check model and add chains
+summary(evs_hi_mv_bio_mod)
+evs_hi_mv_bio_mod <- update(evs_hi_mv_bio_mod, chains = 3,
+                            control = list(adapt_delta = 0.9999))
+plot(evs_hi_mv_bio_mod)
+pp_check(evs_hi_mv_bio_mod, nsamples = 100)
+
+# model with direct fungicide effects
+evs_hi_mv_bio_fung_mod <- brm(data = evs_hi_mv_plant_dat, family = gaussian,
+                                log_bio.g ~ Treatment + fungicide + (1|site),
+                                prior <- c(prior(normal(-0.16, 10), class = Intercept),
+                                           prior(normal(0, 10), class = b),
+                                           prior(normal(0.03, 0.001), class = b, coef = "Treatmentfungicide"),
+                                           prior(cauchy(0, 1), class = sd),
+                                           prior(cauchy(0, 1), class = sigma)),
+                                iter = 6000, warmup = 1000, chains = 3,
+                                control = list(adapt_delta = 0.99))
+
+# check model
+summary(evs_hi_mv_bio_fung_mod)
+plot(evs_hi_mv_bio_fung_mod)
+pp_check(evs_hi_mv_bio_fung_mod, nsamples = 100)
+
+# Ev adult model
+eva_hi_mv_bio_mod <- brm(data = eva_hi_mv_plant_dat, family = gaussian,
+                           log_bio.g ~ fungicide + (1|site),
+                           prior <- c(prior(normal(1, 10), class = Intercept),
+                                      prior(normal(0, 10), class = b),
+                                      prior(cauchy(0, 1), class = sd),
+                                      prior(cauchy(0, 1), class = sigma)),
+                           iter = 6000, warmup = 1000, chains = 1,
+                           control = list(adapt_delta = 0.99))
+
+# check model and add chains
+summary(eva_hi_mv_bio_mod)
+eva_hi_mv_bio_mod <- update(eva_hi_mv_bio_mod, chains = 3,
+                            control = list(adapt_delta = 0.999999))
+plot(eva_hi_mv_bio_mod)
+pp_check(eva_hi_mv_bio_mod, nsamples = 100)
+
+# model with direct fungicide effects
+eva_hi_mv_bio_fung_mod <- brm(data = eva_hi_mv_plant_dat, family = gaussian,
+                                log_bio.g ~ Treatment + fungicide + (1|site),
+                                prior <- c(prior(normal(1.12, 10), class = Intercept),
+                                           prior(normal(0, 10), class = b),
+                                           prior(normal(0.03, 0.001), class = b, coef = "Treatmentfungicide"),
+                                           prior(cauchy(0, 1), class = sd),
+                                           prior(cauchy(0, 1), class = sigma)),
+                                iter = 6000, warmup = 1000, chains = 3,
+                                control = list(adapt_delta = 0.9999))
+
+# check model
+summary(eva_hi_mv_bio_fung_mod)
+plot(eva_hi_mv_bio_fung_mod)
+pp_check(eva_hi_mv_bio_fung_mod, nsamples = 100)
 
 
 #### Ev seedling disease and density models ####
@@ -654,6 +736,10 @@ save(evs_no_back_bio_mod, file = "output/ev_seedling_biomass_no_background_model
 save(evs_no_back_bio_fung_mod, file = "output/ev_seedling_biomass_no_background_model_greenhouse_fungicide_2019_density_exp.rda")
 save(eva_no_back_bio_mod, file = "output/ev_adult_biomass_no_background_model_2019_density_exp.rda")
 save(eva_no_back_bio_fung_mod, file = "output/ev_adult_biomass_no_background_model_greenhouse_fungicide_2019_density_exp.rda")
+save(evs_hi_mv_bio_mod, file = "output/ev_seedling_biomass_high_mv_model_2019_density_exp.rda")
+save(evs_hi_mv_bio_fung_mod, file = "output/ev_seedling_biomass_high_mv_model_greenhouse_fungicide_2019_density_exp.rda")
+save(eva_hi_mv_bio_mod, file = "output/ev_adult_biomass_high_mv_model_2019_density_exp.rda")
+save(eva_hi_mv_bio_fung_mod, file = "output/ev_adult_biomass_high_mv_model_greenhouse_fungicide_2019_density_exp.rda")
 save(evs_mv_bio_mod, file = "output/ev_seedling_biomass_mv_background_model_2019_density_exp.rda")
 save(evs_evs_bio_mod, file = "output/ev_seedling_biomass_ev_seedling_background_model_2019_density_exp.rda")
 save(evs_eva_bio_mod, file = "output/ev_seedling_biomass_ev_adult_background_model_2019_density_exp.rda")

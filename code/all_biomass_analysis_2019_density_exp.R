@@ -261,6 +261,53 @@ mv_bio_fung_mod <- update(mv_bio_fung_mod, chains = 3)
 plot(mv_bio_fung_mod)
 pp_check(mv_bio_fung_mod, nsamples = 100)
 
+# test within each density level
+
+# make plot a factor
+mv_dat2 <- mv_dat %>%
+  mutate(plotf = as.factor(plot))
+
+# mean
+mean(filter(mv_dat2, fungicide == 0)$Mv_biomass.g)
+
+# model
+mv_plotf_bio_mod <- brm(data = mv_dat2, family = gaussian,
+                       Mv_biomass.g ~ fungicide * plotf + (1|site),
+                       prior <- c(prior(normal(200, 100), class = Intercept),
+                                  prior(normal(0, 10), class = b),
+                                  prior(cauchy(0, 1), class = sd),
+                                  prior(cauchy(0, 1), class = sigma)),
+                       iter = 6000, warmup = 1000, chains = 1, cores = 1, 
+                       control = list(adapt_delta = 0.99))
+
+# check model and increase chains
+summary(mv_plotf_bio_mod)
+prior_summary(mv_plotf_bio_mod)
+mv_plotf_bio_mod <- update(mv_plotf_bio_mod, chains = 3)
+plot(mv_plotf_bio_mod)
+pp_check(mv_plotf_bio_mod, nsamples = 100)
+
+# adjust due to fungicide effect
+212 - (21.05 / 23.80) * 212
+                            
+# model
+mv_plotf_bio_fung_mod <- brm(data = mv_dat2, family = gaussian,
+                            Mv_biomass.g ~ Treatment + fungicide * plotf + (1|site),
+                            prior <- c(prior(normal(212, 100), class = Intercept),
+                                       prior(normal(0, 10), class = b),
+                                       prior(normal(24, 0.001), class = b, coef = "Treatmentfungicide"),
+                                       prior(cauchy(0, 1), class = sd),
+                                       prior(cauchy(0, 1), class = sigma)),
+                       iter = 6000, warmup = 1000, chains = 1, cores = 1, 
+                       control = list(adapt_delta = 0.99))
+
+# check model and increase chains
+summary(mv_plotf_bio_fung_mod)
+prior_summary(mv_plotf_bio_fung_mod)
+mv_plotf_bio_fung_mod <- update(mv_plotf_bio_fung_mod, chains = 3)
+plot(mv_plotf_bio_fung_mod)
+pp_check(mv_plotf_bio_fung_mod, nsamples = 100)
+
 
 #### Ev biomass model ####
 
@@ -354,7 +401,7 @@ temp_theme <- theme_bw() +
         plot.title = element_text(size = 7, hjust = 0.5))
 
 # colors
-col_pal = c("#440154FF", "#21908CFF")
+col_pal = c("#C0A76D", "#55A48B")
 
 # simulate data
 mv_sim_dat <- tibble(Mv_density = rep(seq(0, 67, length.out = 300), 2),
@@ -507,6 +554,31 @@ high_dens_fig <- ggplot(max_dens_dat, aes(x = Treatment, y = biomass.g)) +
   theme(strip.text = element_text(size = 7, face = "italic"))
 
 
+#### presentation figure ####
+
+# extract legend
+fig_leg <- get_legend(mv_fung_fig + theme(legend.text = element_text(size = 10),
+                                          legend.title = element_text(size = 10)))
+
+# new theme
+pres_theme <- theme(axis.text = element_text(size = 10, color="black"),
+                    axis.title = element_text(size = 12),
+                    strip.text = element_text(size = 12),
+                    legend.position = "none")
+
+# combine species figures
+top_fig <- plot_grid(mv_fung_fig + pres_theme, 
+                     ev_fung_fig + pres_theme,
+                     nrow = 1)
+
+# combine figures with legend and save
+pdf("output/all_biomass_figure_greenhouse_fungicide_2019_density_exp.pdf", width = 6, height = 4)
+plot_grid(top_fig, fig_leg,
+          nrow = 2,
+          rel_heights = c(1, 0.08))
+dev.off()
+
+
 #### output ####
 pdf("output/all_biomass_analysis_2019_density_exp.pdf")
 plot_grid(mv_fig, mv_coef_fig,
@@ -538,3 +610,5 @@ mv_all_bio_fung_mod <- mv_bio_fung_mod
 save(mv_all_bio_fung_mod, file ="output/Mv_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")
 ev_all_bio_fung_mod <- ev_bio_fung_mod
 save(ev_all_bio_fung_mod, file ="output/Ev_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")
+save(mv_plotf_bio_mod, file = "output/Mv_all_biomass_by_plot_model_2019_density_exp.rda")
+save(mv_plotf_bio_fung_mod, file = "output/Mv_all_biomass_by_plot_model_greenhouse_fungicide_2019_density_exp.rda")

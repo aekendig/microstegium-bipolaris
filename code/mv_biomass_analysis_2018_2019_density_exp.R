@@ -53,11 +53,13 @@ sev19b <- sev19 %>%
   select(-ID)
 
 # 2018
+# make biomass per m^2
 bio18b <- bio18 %>%
   mutate(site = case_when(processing_notes == "duplicate - one is D2, probably this one because the other was sorted with other D1 bags; Quynh guessed on which seeds go with which biomass (see email)" ~ "D2", 
                           TRUE ~ site),
          treatment = case_when(processing_notes == "duplicate - one is 7F, ID = A (not dated), probably this one" ~ "fungicide",
                                TRUE ~ treatment),
+         bio.g = bio.g,
          log_bio.g = log(bio.g),
          fungicide = recode(treatment, water = 0, fungicide = 1),
          Treatment = recode(treatment, water = "control (water)", fungicide = "fungicide")) %>%
@@ -104,6 +106,10 @@ no_back_plot_dat <- bio18b %>%
                                TRUE ~ bio.g))
 
 no_back_plant_dat <- filter(bio19t, plot == 1) %>%
+  mutate(adj_bio.g = case_when(treatment == "fungicide" ~ bio.g / 0.88,
+                               TRUE ~ bio.g))
+
+hi_mv_plant_dat <- filter(bio19t, plot == 4) %>%
   mutate(adj_bio.g = case_when(treatment == "fungicide" ~ bio.g / 0.88,
                                TRUE ~ bio.g))
 
@@ -156,7 +162,7 @@ temp_theme <- theme_bw() +
 
 # settings
 col_pal = c("black", "#0072B2", "#56B4E9", "#D55E00")
-col_pal2 = c("#a6611a", "#018571")
+col_pal2 = c("#C0A76D", "#55A48B")
 dodge_value = 1
 
 # template figure
@@ -233,7 +239,7 @@ ggplot(no_back_plot_dat, aes(x = Treatment, y = bio.g, fill = Treatment)) +
   stat_summary(geom = "bar", fun = "mean", aes(fill = Treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1) +
   scale_fill_manual(values = col_pal2, guide = F) +
-  ylab("Plot-level biomass (g)") +
+  ylab("3-plant biomass (g)") +
   ggtitle("Mv seedling") +
   temp_theme +
   theme(plot.title = element_text(size = 12, hjust = 0.5))
@@ -242,7 +248,7 @@ ggplot(no_back_plot_dat, aes(x = Treatment, y = adj_bio.g, fill = Treatment)) +
   stat_summary(geom = "bar", fun = "mean", aes(fill = Treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1) +
   scale_fill_manual(values = col_pal2, guide = F) +
-  ylab("Adjusted plot-level biomass (g)") +
+  ylab("Adjusted 3-plant biomass (g)") +
   ggtitle("Mv seedling") +
   temp_theme +
   theme(plot.title = element_text(size = 12, hjust = 0.5))
@@ -252,7 +258,7 @@ ggplot(no_back_plot_dat, aes(x = Treatment, y = adj_bio.g, fill = Treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0.1) +
   facet_wrap(~yearf) +
   scale_fill_manual(values = col_pal2, guide = F) +
-  ylab("Adjusted plot-level biomass (g)") +
+  ylab("Adjusted 3-plant biomass (g)") +
   ggtitle("Mv seedling") +
   temp_theme +
   theme(plot.title = element_text(size = 12, hjust = 0.5))
@@ -378,12 +384,12 @@ dev.off()
 
 # control biomass
 filter(no_back_plant_dat, fungicide == 0) %>%
-  summarise(bio = mean(bio.g))
+  summarise(bio = mean(log_bio.g))
 
 # model
 mv_no_back_bio_mod <- brm(data = no_back_plant_dat, family = gaussian,
-                          bio.g ~ fungicide + (1|site),
-                          prior <- c(prior(normal(13.4, 10), class = Intercept),
+                          log_bio.g ~ fungicide + (1|site),
+                          prior <- c(prior(normal(2, 10), class = Intercept),
                                      prior(normal(0, 10), class = b),
                                      prior(cauchy(0, 1), class = sd),
                                      prior(cauchy(0, 1), class = sigma)),
@@ -398,25 +404,62 @@ plot(mv_no_back_bio_mod)
 pp_check(mv_no_back_bio_mod, nsamples = 100)
 
 # reduction due to fungicide
-1-(21.05/23.80)
--0.12*13.4
+log(21.05/23.80)
 
 # model with direct fungicide effects
 mv_no_back_bio_fung_mod <- brm(data = no_back_plant_dat, family = gaussian,
-                               bio.g ~ Treatment + fungicide + (1|site),
-                               prior <- c(prior(normal(13.4, 10), class = Intercept),
+                               log_bio.g ~ Treatment + fungicide + (1|site),
+                               prior <- c(prior(normal(2.04, 10), class = Intercept),
                                           prior(normal(0, 10), class = b),
-                                          prior(normal(-1.6, 0.001), class = b, coef = "Treatmentfungicide"),
+                                          prior(normal(-0.12, 0.001), class = b, coef = "Treatmentfungicide"),
                                           prior(cauchy(0, 1), class = sd),
                                           prior(cauchy(0, 1), class = sigma)),
                           iter = 6000, warmup = 1000, chains = 3,
-                          control = list(adapt_delta = 0.99))
+                          control = list(adapt_delta = 0.9999))
 
 # check model
 summary(mv_no_back_bio_fung_mod)
 prior_summary(mv_no_back_bio_fung_mod)
 plot(mv_no_back_bio_fung_mod)
 pp_check(mv_no_back_bio_fung_mod, nsamples = 100)
+
+
+## high background model ##
+
+# control biomass
+filter(hi_mv_plant_dat, fungicide == 0) %>%
+  summarise(bio = mean(log_bio.g))
+
+# model
+mv_hi_mv_bio_mod <- brm(data = hi_mv_plant_dat, family = gaussian,
+                          log_bio.g ~ fungicide + (1|site),
+                          prior <- c(prior(normal(2, 10), class = Intercept),
+                                     prior(normal(0, 10), class = b),
+                                     prior(cauchy(0, 1), class = sd),
+                                     prior(cauchy(0, 1), class = sigma)),
+                          iter = 6000, warmup = 1000, chains = 3,
+                          control = list(adapt_delta = 0.9999))
+
+# check model and add chains
+summary(mv_hi_mv_bio_mod)
+plot(mv_hi_mv_bio_mod)
+pp_check(mv_hi_mv_bio_mod, nsamples = 100)
+
+# model with direct fungicide effects
+mv_hi_mv_bio_fung_mod <- brm(data = hi_mv_plant_dat, family = gaussian,
+                               log_bio.g ~ Treatment + fungicide + (1|site),
+                               prior <- c(prior(normal(1.93, 10), class = Intercept),
+                                          prior(normal(0, 10), class = b),
+                                          prior(normal(-0.12, 0.001), class = b, coef = "Treatmentfungicide"),
+                                          prior(cauchy(0, 1), class = sd),
+                                          prior(cauchy(0, 1), class = sigma)),
+                               iter = 6000, warmup = 1000, chains = 3,
+                               control = list(adapt_delta = 0.999999))
+
+# check model
+summary(mv_hi_mv_bio_fung_mod)
+plot(mv_hi_mv_bio_fung_mod)
+pp_check(mv_hi_mv_bio_fung_mod, nsamples = 100)
 
 
 #### disease and density models ####
@@ -662,6 +705,8 @@ summary(mv_bio_sev_lau_19_mod) # not sig
 #### output ####
 save(mv_no_back_bio_mod, file = "output/mv_biomass_no_background_model_2019_density_exp.rda")
 save(mv_no_back_bio_fung_mod, file = "output/mv_biomass_no_background_model_greenhouse_fungicide_2019_density_exp.rda")
+save(mv_hi_mv_bio_mod, file = "output/mv_biomass_high_mv_model_2019_density_exp.rda")
+save(mv_hi_mv_bio_fung_mod, file = "output/mv_biomass_high_mv_model_greenhouse_fungicide_2019_density_exp.rda")
 save(mv_mv_bio_mod, file = "output/mv_biomass_mv_background_model_2019_density_exp.rda")
 save(mv_evs_bio_mod, file = "output/mv_biomass_ev_seedling_background_model_2019_density_exp.rda")
 save(mv_eva_bio_mod, file = "output/mv_biomass_ev_adult_background_model_2019_density_exp.rda")

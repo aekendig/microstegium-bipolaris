@@ -15,10 +15,12 @@
 rm(list=ls())
 
 # load packages
+library(MASS)
 library(tidyverse)
 library(brms)
 library(cowplot)
 library(glmmTMB)
+
 
 # import data
 seeds18 <- read_csv("./intermediate-data/mv_processed_seeds_2018_density_exp.csv")
@@ -51,9 +53,19 @@ dat <- seeds19 %>%
                           rename(biomass_weight.g = bio.g)) %>%
               mutate(sp = "Mv",
                      yearf = "Year 1")) %>%
-  mutate(seeds_per_biomass = seeds / biomass_weight.g,
+  mutate(seeds_fung = case_when(treatment == "fungicide" ~ seeds * 37 / 30,
+                                TRUE ~ seeds),
+         biomass_fung = case_when(treatment == "fungicide" ~ biomass_weight.g * 23.80 / 21.05,
+                                  TRUE ~ biomass_weight.g),
+         seeds_per_biomass = seeds / biomass_weight.g,
+         seeds_per_biomass_fung = seeds_fung / biomass_fung,
          fungicide = case_when(treatment == "water" ~ 0,
-                               TRUE ~ 1))
+                               TRUE ~ 1),
+         log_seeds = log(seeds),
+         log_seeds_fung = log(seeds_fung),
+         log_biomass = log(biomass_weight.g),
+         log_biomass_fung = log(biomass_fung),
+         plot_trt = paste(plot, substr(treatment, 1, 1) %>% toupper(), sep = ""))
 
 # combine with plot data
 dat_plot <- dat %>%
@@ -68,6 +80,36 @@ ggplot(dat, aes(biomass_weight.g, seeds, color = treatment)) +
   geom_smooth(method = "lm") +
   facet_wrap(~ yearf, scales = "free")
 # only related on the individual-scale
+
+ggplot(dat, aes(biomass_fung, seeds_fung, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ yearf, scales = "free")
+
+# log_transformed seeds and biomass relationships
+ggplot(dat, aes(biomass_weight.g, log_seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ yearf, scales = "free")
+# only related on the individual-scale
+
+ggplot(dat, aes(biomass_fung, log_seeds_fung, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ yearf, scales = "free")
+
+# log_transformed seeds and log-transformed biomass relationships
+ggplot(dat, aes(log_biomass, log_seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ yearf, scales = "free")
+# only related on the individual-scale
+
+ggplot(dat, aes(log_biomass_fung, log_seeds_fung, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ yearf, scales = "free")
+
 
 # seeds per biomass across density
 ggplot(dat_plot, aes(background_density, seeds_per_biomass)) +
@@ -92,11 +134,36 @@ ggplot(dat_plot, aes(background_density, seeds)) +
 
 #### seeds per biomass regression ####
 
-mv_seed_bio_mod <- glmmTMB(seeds ~ yearf * fungicide * biomass_weight.g + (1|site), data = dat, family = gaussian)
+mv_seed_bio_mod <- glmmTMB(log_seeds ~ yearf * fungicide * log_biomass + (1|site/plot), data = dat, family = gaussian)
 summary(mv_seed_bio_mod)
 stepAIC(mv_seed_bio_mod)
 # keep full model
 
+mv_seed_bio_fung_mod <- glmmTMB(log_seeds_fung ~ yearf * fungicide * log_biomass_fung + (1|site/plot), data = dat, family = gaussian)
+summary(mv_seed_bio_fung_mod) # the estimates are basically identical to the non-fungicide-adjusted model
+stepAIC(mv_seed_bio_fung_mod)
+# keep full model
+
+# remove treatment effect because mean values cause fluctuations in Elymus seedling population that make simulations difficult to interpret
+mv_seed_bio_no_treat_mod <- glmmTMB(log_seeds ~ yearf * log_biomass + (1|site/plot_trt), data = dat, family = gaussian)
+summary(mv_seed_bio_no_treat_mod)
+stepAIC(mv_seed_bio_no_treat_mod)
+# keep full model
+
+# test model
+test_dat <- tibble(biomass = 42.23,
+                   fungicide = 1,
+                   yearf = "Year 2",
+                   site = NA) %>%
+  mutate(log_biomass = log(biomass))
+
+predict(mv_seed_bio_mod, newdata = test_dat, re.form = NA) %>%
+  exp()
+
+exp(6.7122-2.4670+0.6588-0.4820)*42.23^(0.2794+0.6556-0.1896+0.0880)
+exp((6.7122-2.4670+0.6588-0.4820)+(0.2794+0.6556-0.1896+0.0880)*log(42.23))
 
 #### output ####
 save(mv_seed_bio_mod, file = "output/mv_seeds_per_biomass_model_2018_2019_density_exp.rda")
+save(mv_seed_bio_fung_mod, file = "output/mv_seeds_per_biomass_model_greenhouse_fungicide_2018_2019_density_exp.rda")
+save(mv_seed_bio_no_treat_mod, file = "output/mv_seeds_per_biomass_no_treatment_model_2018_2019_density_exp.rda")

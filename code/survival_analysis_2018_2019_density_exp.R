@@ -2,7 +2,7 @@
 
 # file: survival_analysis_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/15/20
+# date last edited: 7/22/20
 # goal: evaluate the effects of density and fungicide on survival
 
 #### need to add severity from year 1 ####
@@ -178,6 +178,14 @@ no_back_plant_dat <- sumy1 %>%
   mutate(yearf = "year 1") %>%
   full_join(sumy2 %>%
               filter(plot == 1 & background == "Mv seedling") %>%
+              mutate(yearf = "year 2"))
+
+# high Mv data
+hi_mv_plant_dat <- sumy1 %>%
+  filter(plot == 4 & background == "Mv seedling" & focal == 1) %>%
+  mutate(yearf = "year 1") %>%
+  full_join(sumy2 %>%
+              filter(plot == 4 & background == "Mv seedling" & focal == 1) %>%
               mutate(yearf = "year 2"))
 
 # Ev seedling no background winter data
@@ -436,6 +444,12 @@ mv_no_back_plant_dat <- filter(no_back_plant_dat, plant_type == "Mv seedling")
 evs_no_back_plant_dat <- filter(no_back_plant_dat, plant_type == "Ev seedling")
 eva_no_back_plant_dat <- filter(no_back_plant_dat, plant_type == "Ev adult")
 
+mv_hi_mv_plant_dat <- filter(hi_mv_plant_dat, plant_type == "Mv seedling")
+evs_hi_mv_plant_dat <- filter(hi_mv_plant_dat, plant_type == "Ev seedling")
+eva_hi_mv_plant_dat <- filter(hi_mv_plant_dat, plant_type == "Ev adult")
+
+## no background models ## 
+
 # Mv model
 mv_no_back_surv_mod <- brm(data = mv_no_back_plant_dat, family = bernoulli,
                            survival ~ fungicide + (1|site) + (1|yearf),
@@ -469,21 +483,39 @@ plot(evs_no_back_surv_mod)
 pp_check(evs_no_back_surv_mod, nsamples = 100)
 
 
-# Ev adult model
-eva_no_back_surv_mod <- brm(data = eva_no_back_plant_dat, family = bernoulli,
-                            survival ~ fungicide + (1|site) + (1|yearf),
-                            prior <- c(prior(normal(0, 10), class = Intercept),
-                                       prior(normal(0, 10), class = b),
-                                       prior(cauchy(0, 1), class = sd)),
-                            iter = 6000, warmup = 1000, chains = 1, 
-                            control = list(adapt_delta = 0.9999))
+## high background models ## 
+
+# Mv model
+mv_hi_mv_surv_mod <- brm(data = mv_hi_mv_plant_dat, family = bernoulli,
+                           survival ~ fungicide + (1|site) + (1|yearf),
+                           prior <- c(prior(normal(0, 10), class = Intercept),
+                                      prior(normal(0, 10), class = b),
+                                      prior(cauchy(0, 1), class = sd)),
+                           iter = 6000, warmup = 1000, chains = 1, 
+                           control = list(adapt_delta = 0.9999))
 
 # check model and add chains
-summary(eva_no_back_surv_mod)
-prior_summary(eva_no_back_surv_mod)
-eva_no_back_surv_mod <- update(eva_no_back_surv_mod, chains = 3)
-plot(eva_no_back_surv_mod)
-pp_check(eva_no_back_surv_mod, nsamples = 100)
+summary(mv_hi_mv_surv_mod)
+prior_summary(mv_hi_mv_surv_mod)
+mv_hi_mv_surv_mod <- update(mv_hi_mv_surv_mod, chains = 3)
+plot(mv_hi_mv_surv_mod)
+pp_check(mv_hi_mv_surv_mod, nsamples = 100)
+
+# Ev seedling model
+evs_hi_mv_surv_mod <- update(mv_hi_mv_surv_mod, newdata = evs_hi_mv_plant_dat)
+
+# check model and add chains
+summary(evs_hi_mv_surv_mod)
+plot(evs_hi_mv_surv_mod)
+pp_check(evs_hi_mv_surv_mod, nsamples = 100)
+
+# Ev adult model
+eva_hi_mv_surv_mod <- update(mv_hi_mv_surv_mod, newdata = eva_hi_mv_plant_dat)
+
+# check model and add chains
+summary(eva_hi_mv_surv_mod)
+plot(eva_hi_mv_surv_mod)
+pp_check(eva_hi_mv_surv_mod, nsamples = 100)
 
 
 #### Mv survival models ####
@@ -826,6 +858,9 @@ summary(eva_surv_sev_lau_19_mod) # not sig
 save(mv_no_back_surv_mod, file = "output/mv_survival_no_background_model_2018_2019_density_exp.rda")
 save(evs_no_back_surv_mod, file = "output/ev_seedling_survival_no_background_model_2018_2019_density_exp.rda")
 save(eva_no_back_surv_mod, file = "output/ev_adult_survival_no_background_model_2018_2019_density_exp.rda")
+save(mv_hi_mv_surv_mod, file = "output/mv_survival_high_mv_model_2018_2019_density_exp.rda")
+save(evs_hi_mv_surv_mod, file = "output/ev_seedling_survival_high_mv_model_2018_2019_density_exp.rda")
+save(eva_hi_mv_surv_mod, file = "output/ev_adult_survival_high_mv_model_2018_2019_density_exp.rda")
 save(mv_mv_surv_mod, file = "output/mv_survival_mv_background_model_2019_density_exp.rda")
 save(mv_evs_surv_mod, file = "output/mv_survival_ev_seedling_background_model_2019_density_exp.rda")
 save(mv_eva_surv_mod, file = "output/mv_survival_ev_adult_background_model_2019_density_exp.rda")
