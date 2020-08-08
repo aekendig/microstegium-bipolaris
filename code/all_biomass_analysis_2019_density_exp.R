@@ -612,3 +612,6 @@ ev_all_bio_fung_mod <- ev_bio_fung_mod
 save(ev_all_bio_fung_mod, file ="output/Ev_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")
 save(mv_plotf_bio_mod, file = "output/Mv_all_biomass_by_plot_model_2019_density_exp.rda")
 save(mv_plotf_bio_fung_mod, file = "output/Mv_all_biomass_by_plot_model_greenhouse_fungicide_2019_density_exp.rda")
+
+write_csv(mv_dat, "intermediate-data/mv_all_biomass_data_2019_density_exp.csv")
+write_csv(ev_dat, "intermediate-data/ev_all_biomass_data_2019_density_exp.csv")

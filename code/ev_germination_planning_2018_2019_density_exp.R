@@ -2,8 +2,9 @@
 
 # file: ev_germination_planning_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/22/20
-# goal: plan Elymus germination experiment
+# date last edited: 7/28/20
+# goal: plan experimental design for Ev germination trials
+
 
 #### set up ####
 
@@ -13,11 +14,16 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 
+
 # import data
 spike18 <- read_csv("./intermediate-data/ev_processed_seeds_both_year_conversion_2018_density_exp.csv")
 spike19 <- read_csv("./intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv")
 surv18 <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
 treat <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
+
+# import seed model
+# load("./output/ev_seeds_data_processing_2018_2019_seed_spikelet_weight_mod.rda")
+
 
 #### edit data ####
 
@@ -29,6 +35,8 @@ foc19 <- tibble(site = rep(c("D1", "D2", "D3", "D4"), each = 4),
          focal = 1) %>%
   merge(treat, all = T) %>%
   as_tibble()
+
+4*20*4
 
 # 2018 plants
 plants18 <- surv18 %>%
@@ -57,10 +65,6 @@ seed18 <- spike18 %>%
             seeds = sum(seeds)) %>%
   ungroup() %>%
   full_join(ev18) %>%
-  left_join(plots) %>%
-  left_join(covar) %>%
-  left_join(sevy1_1) %>%
-  left_join(sevy1_bgev_1) %>%
   mutate(spikelet_weight.g = replace_na(spikelet_weight.g, 0),
          seeds = replace_na(seeds, 0),
          plant_type = paste(sp, age, sep = " "),
@@ -87,19 +91,88 @@ seed19 <- spike19 %>%
          focal = 1) %>%
   ungroup() %>%
   full_join(foc19) %>%
-  left_join(covar) %>%
-  left_join(bgbio %>%
-              rename(background_biomass = biomass.g)) %>%
-  left_join(sevy2_1) %>%
   mutate(spikelet_weight.g = replace_na(spikelet_weight.g, 0),
          seeds = replace_na(seeds, 0),
          plant_type = paste(sp, age, sep = " "),
          fungicide = recode(treatment, water = 0, fungicide = 1),
-         Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide"),
-         background_pc_bio = background_biomass / background_density)
+         Treatment = recode(as.factor(fungicide), "0" = "control (water)", "1" = "fungicide"))
 
-# combine years
-seed <- fseed18 %>%
-  mutate(yearf = "Year 1") %>%
-  full_join(seed19 %>%
-              mutate(yearf = "Year 2"))
+
+#### 2018 seeds ####
+
+# no background plots
+seed18_plot1 <- seed18 %>% 
+  filter(plot == 1) %>%
+  group_by(site, treatment, age) %>%
+  summarise(seeds = sum(seeds)) %>%
+  mutate(year = 2018)
+
+
+# no background plots and high density plots
+seed18_plot1hi <- fseed18 %>% 
+  filter(plot %in% c(1, 4, 7, 10)) %>%
+  group_by(site, treatment, plot, age) %>%
+  summarise(seeds = sum(seeds)) %>%
+  mutate(year = 2018)
+
+# all plots
+seed18_plotall <- fseed18 %>% 
+  group_by(site, treatment, plot, age) %>%
+  summarise(seeds = sum(seeds)) %>%
+  mutate(year = 2018)
+
+
+#### 2019 seeds ####
+
+# no background plots
+seed19_plot1 <- seed19 %>% 
+  filter(plot == 1) %>%
+  group_by(site, treatment, age) %>%
+  summarise(seeds = sum(seeds)) %>%
+  mutate(year = 2019)
+
+# no background plots and high density plots
+seed19_plot1hi <- seed19 %>% 
+  filter(plot %in% c(1, 4, 7, 10)) %>%
+  group_by(site, treatment, plot, age) %>%
+  summarise(seeds = sum(seeds)) %>%
+  mutate(year = 2019)
+
+# all plots
+seed19_plotall <- seed19 %>% 
+  group_by(site, treatment, plot, age) %>%
+  summarise(seeds = sum(seeds)) %>%
+  mutate(year = 2019)
+
+
+#### combined ####
+
+# no background plots
+seed_plot1 <- seed18_plot1 %>%
+  full_join(seed19_plot1)
+
+# separate containers needed
+filter(seed_plot1, seeds > 0) # 23
+
+# no background and high density plots
+seed_plot1hi <- seed18_plot1hi %>%
+  full_join(seed19_plot1hi) %>%
+  mutate(seed_cat = case_when(seeds == 0 ~ "none",
+                              seeds <= 10 ~ "low",
+                              seeds > 10 & seeds <= 30 ~ "medium",
+                              seeds > 30 ~ "high"))
+
+# separate containers needed
+filter(seed_plot1hi, seeds > 0) # 96
+
+# number per group
+seed_plot1hi %>%
+  group_by(seed_cat) %>%
+  count()
+
+# all plots
+seed_plotall <- seed18_plotall %>%
+  full_join(seed19_plotall)
+
+# separate containers needed
+filter(seed_plotall, seeds > 0) # 242

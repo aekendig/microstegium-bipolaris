@@ -1,0 +1,39 @@
+---
+output: word_document
+---
+
+```{r setup, include = FALSE}
+rm(list=ls())
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Supplementary Tables**  
+
+**Table S2.** Statistical model of daily average relative humidity.
+
+```{r hum-bio-mod, echo = FALSE, comment = NA}
+load("../output/average_humidity_total_biomass_model_2019_density_exp.rda")
+summary(havg_totb_mod)
+```
+
+**Table S3.** Statistical model of disease severity (proportion leaf area without green) on *Microstegium* in control treatment plots in September.
+
+```{r mv-sep-ctrl-sev-mod, echo = FALSE, comment = NA}
+load("../output/mv_severity_humidity_model_2019_density_exp.rda")
+summary(mv_severity_humidity_mod)
+```
+
+**Table S4.** Statistical model of total *Microstegium* biomass.
+
+```{r mv-bio-mod, echo = FALSE, comment = NA}
+load("../output/Mv_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")
+summary(mv_all_bio_fung_mod)
+```
+
+**Table S5.** Statistical model of total *Elymus* biomass.
+
+```{r ev-bio-mod, echo = FALSE, comment = NA}
+load("../output/Ev_all_biomass_model_greenhouse_fungicide_2019_density_exp.rda")
+summary(ev_all_bio_fung_mod)
+```
