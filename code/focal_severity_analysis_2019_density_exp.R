@@ -2,7 +2,7 @@
 
 # file: focal_severity_analysis_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/2/20
+# date last edited: 8/20/20
 # goal: analyze focal disease severity
 
 
@@ -26,7 +26,7 @@ dat <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv")
 edge_dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv")
 plots <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 plots_simple <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
-temp_hum <- read_csv("intermediate-data/temp_humidity_daily_2019_density_exp.csv")
+temp_hum <- read_csv("intermediate-data/average_humidity_total_biomass_2019_density_exp.csv")
 bg_bio <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv")
 mv_bio <- read_csv("data/mv_biomass_seeds_2019_density_exp.csv")
 ev_bio <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
@@ -41,21 +41,8 @@ dat %>%
             last_day = max(date))
 
 # temp/hum data
-# take average of daily values over the month leading up to sampling
+# remove October data
 temp_hum2 <- temp_hum %>%
-  mutate(month = case_when(day < as.Date("2019-07-29") ~ "early_aug",
-                           day >= as.Date("2019-07-29") & day < as.Date("2019-08-28") ~ "late_aug",
-                           day >= as.Date("2019-08-28") & day < as.Date("2019-09-24") ~ "sep",
-                           TRUE ~ "oct")) %>%
-  group_by(site, plot, treatment, month) %>%
-  summarise(temp_avg = mean(temp_avg),
-            temp_min = mean(temp_min),
-            temp_max = mean(temp_max),
-            hum_avg = mean(hum_avg),
-            hum_min = mean(hum_min),
-            hum_max = mean(hum_max),
-            hum_dur = mean(hum_dur)) %>%
-  ungroup() %>%
   filter(month != "oct")
 
 # edge data
@@ -448,7 +435,6 @@ dat2 %>%
 #### model selection for water treatment ####
 
 # can ignore warning "NA/NaN function evaluation" if model converges
-
 # include humidity data (only available for control plots)
 
 # water treatment by species and month
@@ -484,8 +470,13 @@ stepAIC(eau_ev_totd_water_mod)
 plot(simulateResiduals(eau_ev_totd_water_mod))
 # sig deviation
 
+# dew intensity
+eau_ev_dew_water_mod <- glmmTMB(plant_severity_adjusted ~ dew_intensity2 + (1|site/plot), data = eau_ev_water_dat, family = "beta_family")
+summary(eau_ev_dew_water_mod)
+# not sig
 
-## early August Ev ##
+
+## late August Ev ##
 lau_ev_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
 lau_ev_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
 lau_ev_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
@@ -501,6 +492,11 @@ summary(lau_ev_totp_water_mod)
 stepAIC(lau_ev_totp_water_mod)
 # keep full model
 plot(simulateResiduals(lau_ev_totp_water_mod))
+
+# dew intensity
+lau_ev_dew_water_mod <- glmmTMB(plant_severity_adjusted ~ bg_present + edge_severity + dew_intensity2 + (1|site/plot), data = lau_ev_water_dat, family = "beta_family")
+summary(lau_ev_dew_water_mod)
+# not sig
 
 
 ## September Ev ##
@@ -526,6 +522,11 @@ summary(sep_ev_totd_water_mod2)
 # none sig
 plot(simulateResiduals(sep_ev_totd_water_mod2))
 
+# dew intensity model
+sep_ev_dew_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + dew_intensity2, data = sep_ev_water_dat, family = "beta_family")
+summary(sep_ev_dew_water_mod)
+# none sig
+
 
 ## early August Mv ##
 eau_mv_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
@@ -544,8 +545,28 @@ stepAIC(eau_mv_totp_water_mod)
 # keep full model
 plot(simulateResiduals(eau_mv_totp_water_mod))
 
+# dew intensity
+eau_mv_dew_water_mod <- glmmTMB(plant_severity_adjusted ~ bg_present + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+summary(eau_mv_dew_water_mod) # related
 
-## early August Mv ##
+# dew intensity models
+eau_mv_totb_water_mod2 <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+eau_mv_sepb_water_mod2 <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+eau_mv_totd_water_mod2 <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+eau_mv_sepd_water_mod2 <- glmmTMB(plant_severity_adjusted ~ Ev_density + Mv_density + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+eau_mv_totp_water_mod2 <- glmmTMB(plant_severity_adjusted ~ bg_present + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+eau_mv_sepp_water_mod2 <- glmmTMB(plant_severity_adjusted ~ Ev_present + Mv_present + edge_severity + dew_intensity2 + (1|site/plot), data = eau_mv_water_dat, family = "beta_family")
+
+# compare different plant models
+AIC(eau_mv_totb_water_mod2, eau_mv_sepb_water_mod2, eau_mv_totd_water_mod2, eau_mv_sepd_water_mod2, eau_mv_totp_water_mod2, eau_mv_sepp_water_mod2)
+# total present is the lowest
+summary(eau_mv_totp_water_mod2)
+# dew intensity
+stepAIC(eau_mv_totp_water_mod2)
+# keep full model
+plot(simulateResiduals(eau_mv_totp_water_mod2))
+
+## late August Mv ##
 lau_mv_totb_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
 lau_mv_sepb_water_mod <- glmmTMB(plant_severity_adjusted ~ Ev_biomass.g + Mv_biomass.g + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
 lau_mv_totd_water_mod <- glmmTMB(plant_severity_adjusted ~ total_density + edge_severity + hum_avg + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
@@ -561,6 +582,11 @@ summary(lau_mv_totb_water_mod)
 stepAIC(lau_mv_totb_water_mod)
 # keep full model
 plot(simulateResiduals(lau_mv_totb_water_mod))
+
+# dew intensity model
+lau_mv_dew_water_mod <- glmmTMB(plant_severity_adjusted ~ total_biomass.g + edge_severity + dew_intensity2 + (1|site/plot), data = lau_mv_water_dat, family = "beta_family")
+summary(lau_mv_dew_water_mod)
+# edge severity
 
 
 ## September Mv ##
@@ -588,6 +614,15 @@ plot(simulateResiduals(sep_mv_totp_water_mod2))
 summary(sep_mv_totb_water_mod)
 stepAIC(sep_mv_totb_water_mod)
 # remove everything except humidity
+
+# dew model
+sep_mv_dew_water_mod <- glmmTMB(plant_severity_adjusted ~ bg_present + edge_severity + dew_intensity2 + (1|site/plot), data = sep_mv_water_dat, family = "beta_family")
+summary(sep_mv_dew_water_mod)
+# sig
+stepAIC(sep_mv_dew_water_mod)
+# dge severity and dew intensity
+sep_mv_dew_water_mod2 <- update(sep_mv_dew_water_mod, .~. -bg_present)
+summary(sep_mv_dew_water_mod2)
 
 
 #### model selection for both treatments ####
@@ -968,6 +1003,43 @@ hum_mv_fig <- ggplot(sep_mv_water_sim_dat, aes(x = hum_avg, y = plant_severity_a
   temp_theme 
 
 
+## Dew intensity Mv September ##
+sep_mv_dew_sim_dat <- sep_mv_water_dat %>%
+  mutate(edge_severity = 0) %>%
+  mutate(pred = predict(sep_mv_dew_water_mod2, newdata = ., re.form = NA, type = "response"),
+         pred_se = predict(sep_mv_dew_water_mod2, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
+
+dew_mv_sep_fig <- ggplot(sep_mv_dew_sim_dat, aes(x = dew_intensity2, y = plant_severity_adjusted)) +
+  geom_point(alpha = 0.3, aes(color = Treatment)) +
+  geom_ribbon(alpha = 0.5, aes(fill = Treatment, ymin = pred - pred_se, ymax = pred + pred_se)) +
+  geom_line(aes(y = pred, color = Treatment)) +
+  scale_color_manual(values = col_pal, guide = F) +
+  scale_fill_manual(values = col_pal, guide = F) +
+  xlab("Dew intensity") +
+  ylab(expression(paste("Proportion ", italic("Microstegium"), " leaf area brown", sep = ""))) +
+  ggtitle("September") +
+  temp_theme 
+
+
+## Dew intensity early August ##
+eau_mv_dew_sim_dat <- eau_mv_water_dat %>%
+  mutate(edge_severity = 0,
+         bg_present = 0) %>%
+  mutate(pred = predict(eau_mv_totp_water_mod2, newdata = ., re.form = NA, type = "response"),
+         pred_se = predict(eau_mv_totp_water_mod2, newdata = ., re.form = NA, type = "response", se.fit = T)$se.fit)
+
+dew_mv_eau_fig <- ggplot(eau_mv_dew_sim_dat, aes(x = dew_intensity2, y = plant_severity_adjusted)) +
+  geom_point(alpha = 0.3, aes(color = Treatment)) +
+  geom_ribbon(alpha = 0.5, aes(fill = Treatment, ymin = pred - pred_se, ymax = pred + pred_se)) +
+  geom_line(aes(y = pred, color = Treatment)) +
+  scale_color_manual(values = col_pal, guide = F) +
+  scale_fill_manual(values = col_pal, guide = F) +
+  xlab("Dew intensity") +
+  ylab(expression(paste("Proportion ", italic("Microstegium"), " leaf area brown", sep = ""))) +
+  ggtitle("Early August") +
+  temp_theme 
+
+
 ## Separate presence Ev May ##
 may_ev_sim_dat <- may_ev_dat %>%
   select(Treatment, fungicide, Mv_present) %>%
@@ -1230,7 +1302,28 @@ ggplot(sep_mv_water_sim_dat, aes(x = hum_avg*100, y = plant_severity_adjusted*10
         panel.grid.minor = element_blank())
 dev.off()
 
+pdf("output/mv_severity_dew_intensity_figure_2019_density_exp.pdf", width = 3.5, height = 3.5)
+ggplot(eau_mv_dew_sim_dat, aes(x = dew_intensity2, y = plant_severity_adjusted*100)) +
+  geom_point(alpha = 0.3, aes(color = Treatment)) +
+  geom_ribbon(alpha = 0.5, aes(fill = Treatment, ymin = (pred - pred_se)*100, ymax = (pred + pred_se)*100)) +
+  geom_line(aes(y = pred*100, color = Treatment)) +
+  scale_color_manual(values = col_pal, guide = F) +
+  scale_fill_manual(values = col_pal, guide = F) +
+  xlab("Dew intensity") +
+  ylab(expression(paste("% ", italic("Microstegium"), " leaf area diseased", sep = ""))) +
+  scale_x_continuous(breaks = c(80, 85, 90)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 10, color="black"),
+        axis.title = element_text(size = 12),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+dev.off()
+
+
 #### output ####
+
+# didn't run this on 8/20 to add in the dew figures because I didn't run all the other models
 pdf("output/focal_severity_analysis_2019_density_exp.pdf")
 may_ev_fig
 jul_ev_fig
@@ -1241,6 +1334,8 @@ jul_mv_fig
 eau_mv_fig
 lau_mv_fig
 sep_mv_fig
+dew_mv_eau_fig
+dew_mv_sep_fig
 hum_mv_fig
 dev.off()
 

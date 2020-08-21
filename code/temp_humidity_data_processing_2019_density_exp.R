@@ -2,7 +2,7 @@
 
 # file: temp_humidity_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/23/20
+# date last edited: 8/20/20
 # goal: process data from temperature and humdity loggers
 
 
@@ -43,13 +43,19 @@ dat2 <- do.call(rbind.data.frame, dat) %>%
   mutate(site = substr(id, 1, 2),
          plot = substr(id, 4, 5) %>% gsub("[^[:digit:]]", "", .) %>% as.factor(),
          treatment = "water",
-         time = case_when(site == "D3" & plot == 6 ~ as.POSIXct(Date.Time, format = "%m/%d/%y %H:%M"),
-                          TRUE ~ as.POSIXct(Date.Time, format = "%m/%d/%y %H:%M:%S")),
+         time = case_when(site == "D3" & plot == 6 ~ as.POSIXlt(Date.Time, format = "%m/%d/%y %H:%M"),
+                          TRUE ~ as.POSIXlt(Date.Time, format = "%m/%d/%y %H:%M:%S")),
          day = case_when(site == "D3" & plot == 6 ~ as.Date(Date.Time, format = "%m/%d/%y %H:%M"),
                          TRUE ~ as.Date(Date.Time, format = "%m/%d/%y %H:%M:%S")),
          hum_prop = rel_hum / 100) %>%
-  select(-c(Date.Time)) %>%
+#  select(-c(Date.Time)) %>%
   filter(time >= "2019-07-03 00:00:00" & time <= "2019-10-21 23:59:59")
+
+# check days and times
+dat2 %>%
+  group_by(day) %>%
+  summarise(min_time = min(time),
+            max_time = max(time))
 
 # check for missing data
 filter(dat2, is.na(temp) | is.na(hum_prop)) 
