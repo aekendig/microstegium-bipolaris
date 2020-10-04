@@ -204,11 +204,9 @@ d_dens <- d_dens %>%
            !(site == "D3" & plot == 2 & treatment == "water" & ID == "1" & sp == "Mv" & month == "September"))
 
 d_lit <- d_lit %>%
-  filter(
-      !(site == "L2" & plot == 3)
-  )
+  filter(!(site == "L2" & plot == 3))
 
-# change survival values if seeds were produced
+# change survival values if seeds were produced in that month
 d_dens <- d_dens %>%
   mutate(survival_seeds = replace_na(survival_seeds, 0),
          survival = ifelse(survival_seeds == 1, 1, survival))
@@ -222,6 +220,7 @@ sum(is.na(d_dens$survival)) #17
 sum(is.na(d_lit$survival)) #0
 
 # change survival values if plant was noted as surviving at a later month or dying in an earlier month
+# add column for if seeds were ever produced
 d_dens2 <- d_dens %>%
   mutate(month = recode(month, "late August" = "lAug", "early August" = "eAug")) %>%
   select(-c(field_notes, survival_seeds)) %>%
@@ -241,18 +240,32 @@ d_dens2 <- d_dens %>%
   gather("month", "survival", -c(site, plot, treatment, sp, age, ID, focal)) %>%
   mutate(month = recode(month, "lAug" = "late August", "eAug" = "early August")) %>%
   full_join(select(d_dens, site, plot, treatment, sp, age, ID, focal, month, field_notes)) %>%
-  mutate(month = factor(month, levels = c("June", "July", "early August", "late August", "September", "October", "April")))
+  mutate(month = factor(month, levels = c("June", "July", "early August", "late August", "September", "October", "April"))) %>%
+  full_join(d_dens %>%
+              group_by(site, plot, treatment, sp, age, ID, focal) %>%
+              summarise(seeds_produced = as.numeric(sum(survival_seeds, na.rm = T) > 0)))
 
+# change survival values if plant was noted as surviving at a later month or dying in an earlier month
+# add column for if seeds were ever produced
 d_lit2 <- d_lit %>%
+  mutate(month = recode(month, "late August" = "lAug", "early August" = "eAug")) %>%
   select(-c(field_notes, survival_seeds)) %>%
   spread(month, survival) %>%
-  mutate(July = case_when(September == 1 ~ 1, TRUE ~ July),
+  mutate(lAug = case_when(September == 1 ~ 1, TRUE ~ lAug),
+         eAug = case_when(lAug == 1 ~ 1, TRUE ~ eAug),
+         July = case_when(eAug == 1 ~ 1, TRUE ~ July),
          June = case_when(July == 1 ~ 1, TRUE ~ June),
          July = case_when(is.na(July) & June == 0 ~ 0, TRUE ~ July),
-         September = case_when(is.na(September) & July == 0 ~ 0, TRUE ~ September)) %>%
+         eAug = case_when(is.na(eAug) & July == 0 ~ 0, TRUE ~ eAug),
+         lAug = case_when(is.na(lAug) & eAug == 0 ~ 0, TRUE ~ lAug),
+         September = case_when(is.na(September) & lAug == 0 ~ 0, TRUE ~ September)) %>%
   gather("month", "survival", -c(site, plot, sp, age, ID, focal)) %>%
+  mutate(month = recode(month, "lAug" = "late August", "eAug" = "early August")) %>%
   full_join(select(d_lit, site, plot, sp, age, ID, focal, month, field_notes)) %>%
-  mutate(month = factor(month, levels = c("June", "July", "September")))
+  mutate(month = factor(month, levels = c("June", "July", "early August", "late August", "September"))) %>%
+  full_join(d_lit %>%
+              group_by(site, plot, sp, age, ID, focal) %>%
+              summarise(seeds_produced = as.numeric(sum(survival_seeds, na.rm = T) > 0)))
 
 # check NA values
 sum(is.na(d_dens2$survival)) #968
