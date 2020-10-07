@@ -19,8 +19,13 @@ library(brms)
 source("code/microstegium_gs_survival_parameter_2019_density_exp.R")
 source("code/elymus_seedling_gs_survival_parameter_2019_density_exp.R")
 source("code/elymus_adult_gs_survival_parameter_2019_density_exp.R")
+
 source("code/elymus_seedling_ngs_survival_parameter_2019_density_exp.R")
 source("code/elymus_adult_ngs_survival_parameter_2019_density_exp.R")
+
+source("code/microstegium_biomass_parameter_2019_density_exp.R")
+source("code/elymus_seedling_biomass_parameter_2019_density_exp.R")
+source("code/elymus_adult_biomass_parameter_2019_density_exp.R")
 
 # simulation time
 simtime = 10000

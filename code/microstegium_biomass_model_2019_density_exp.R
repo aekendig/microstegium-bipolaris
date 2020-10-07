@@ -1,9 +1,9 @@
 ##### info ####
 
-# file: elymus_seedling_biomass_model_2019_density_exp
+# file: microstegium_biomass_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/6/20
-# goal: estimate Elymus seedling biomass based on density and fungicide treatments
+# date last edited: 10/7/20
+# goal: estimate Microstegium biomass based on density and fungicide treatments
 
 
 #### set up ####
@@ -16,8 +16,8 @@ library(tidyverse)
 library(brms)
 
 # import data
-bioD2Dat <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
-fungDat <- read_csv("data/ev_biomass_dec_2019_fungicide_exp.csv")
+bioD2Dat <- read_csv("data/mv_biomass_seeds_2019_density_exp.csv")
+fungDat <- read_csv("data/mv_biomass_seeds_height_jun_2019_fungicide_exp.csv")
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 plotsD2 <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 
@@ -34,21 +34,21 @@ plotDens <- plotsD %>%
 # remove missing data
 # select Elymus seedlings
 # add columns
-evSBioD2Dat <- bioD2Dat %>%
-  filter(!is.na(weight) & ID != "A") %>%
-  rename(bio.g = weight) %>%
+mvBioD2Dat <- bioD2Dat %>%
+  filter(!is.na(biomass_weight.g)) %>%
+  rename(bio.g = biomass_weight.g) %>%
   left_join(plotDens) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          log_bio.g = log(bio.g),
          treatment = recode(treatment, water = "control"))
 
 # fungicide experiment
-# combine live and dead weight
+# remove dead plant
 # fungicide column
-evFungDat <- fungDat %>%
-  group_by(treatment, pot, sp) %>%
-  summarise(weight.g = sum(weight.g)) %>%
-  ungroup() %>%
+unique(fungDat$notes)
+
+mvFungDat <- fungDat %>%
+  filter(is.na(notes)) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          log_bio.g = log(weight.g))
 
@@ -57,18 +57,11 @@ evFungDat <- fungDat %>%
 
 # modify dataset so that zero plots are repeated
 vizDat <- bioD2Dat %>%
-  filter(!is.na(weight) & ID != "A") %>%
-  rename(bio.g = weight) %>%
+  filter(!is.na(biomass_weight.g)) %>%
+  rename(bio.g = biomass_weight.g) %>%
   left_join(plotsD2) %>%
   mutate(log_bio.g = log(bio.g),
          treatment = recode(treatment, water = "control"))
-
-# non-transformed biomass
-ggplot(vizDat, aes(background_density, bio.g, color = treatment)) +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  facet_wrap(~background, scales = "free_x") +
-  theme_bw()
 
 # log-transformed biomass
 ggplot(vizDat, aes(background_density, log_bio.g, color = treatment)) +
@@ -81,45 +74,40 @@ ggplot(vizDat, aes(background_density, log_bio.g, color = treatment)) +
 #### fit greenhouse regression ####
 
 # initial fit
-evBioGhMod1 <- brm(log_bio.g ~ fungicide,
-                   data = evFungDat, family = gaussian,
+mvBioGhMod1 <- brm(log_bio.g ~ fungicide,
+                   data = mvFungDat, family = gaussian,
                    prior <- c(prior(normal(0, 10), class = Intercept),
                               prior(normal(0, 10), class = b),
                               prior(cauchy(0, 1), class = sigma)),
                    iter = 6000, warmup = 1000, chains = 1)
-summary(evBioGhMod1)
+summary(mvBioGhMod1)
 
 # increase chains
-evBioGhMod2 <- update(evBioGhMod1, chains = 3)
-summary(evBioGhMod2)
-plot(evBioGhMod2)
-pp_check(evBioGhMod2, nsamples = 50)
+mvBioGhMod2 <- update(mvBioGhMod1, chains = 3)
+summary(mvBioGhMod2)
+plot(mvBioGhMod2)
+pp_check(mvBioGhMod2, nsamples = 50)
 
 # biomass change
-evFungDat %>%
-  group_by(fungicide) %>%
-  summarise(log_mean = mean(log_bio.g),
-            mean = mean(weight.g))
-# log-scale: add 0.03 with fungicide
-# non-transformed scale: multiply by 1.03 (e^0.03) with fungicide
+# -0.16
 
 
 #### fit regression ####
 
 # remove plots with no background (negative effect on growth)
-evSBioD2Dat2 <- evSBioD2Dat %>%
+mvBioD2Dat2 <- mvBioD2Dat %>%
   filter(background != "none")
 
 # initial fit
-evSBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + alphaS * ev_seedling_density + alphaP * ev_adult_density),
+mvBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + alphaS * ev_seedling_density + alphaP * ev_adult_density),
                      logv ~ fungicide + treatment + (1|site),
                      alphaA ~ 0 + treatment,
                      alphaS ~ 0 + treatment,
                      alphaP ~ 0 + treatment,
                      nl = T),
-                  data = evSBioD2Dat2, family = gaussian,
-                  prior <- c(prior(normal(1.5, 10), nlpar = "logv", class = "b", coef = "Intercept"),
-                             prior(normal(0.03, 0.001), nlpar = "logv", class = "b", coef = "treatmentfungicide"),
+                  data = mvBioD2Dat2, family = gaussian,
+                  prior <- c(prior(normal(4, 10), nlpar = "logv", class = "b", coef = "Intercept"),
+                             prior(normal(-0.16, 0.001), nlpar = "logv", class = "b", coef = "treatmentfungicide"),
                              prior(normal(0, 10), nlpar = "logv", class = "b"),
                              prior(exponential(0.5), nlpar = "alphaA", lb = 0),
                              prior(exponential(0.5), nlpar = "alphaS", lb = 0),
@@ -127,15 +115,15 @@ evSBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + a
                              prior(cauchy(0, 1), nlpar = "logv", class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
-# 26 divergent transitions
-summary(evSBioMod1)
+# 5 divergent transitions
+summary(mvBioMod1)
 
 # increase chains and adapt delta
-evSBioMod2 <- update(evSBioMod1, chains = 3,
-                     control = list(adapt_delta = 0.999))
-summary(evSBioMod2)
-plot(evSBioMod2)
-pp_check(evSBioMod2, nsamples = 50)
+mvBioMod2 <- update(mvBioMod1, chains = 3,
+                    control = list(adapt_delta = 0.9999))
+summary(mvBioMod2)
+plot(mvBioMod2)
+pp_check(mvBioMod2, nsamples = 50)
 
 
 #### visualize ####
@@ -154,9 +142,9 @@ simDat <- tibble(mv_seedling_density = c(seq(0, 64, length.out = 100), rep(0, 20
 
 # simulate fit
 fitDat <- simDat %>%
-  mutate(bio.g = exp(fitted(evSBioMod2, newdata = ., re_formula = NA)[, "Estimate"]),
-         bio.g_lower = exp(fitted(evSBioMod2, newdata = ., re_formula = NA)[, "Q2.5"]),
-         bio.g_upper = exp(fitted(evSBioMod2, newdata = ., re_formula = NA)[, "Q97.5"]))
+  mutate(bio.g = exp(fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Estimate"]),
+         bio.g_lower = exp(fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Q2.5"]),
+         bio.g_upper = exp(fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Q97.5"]))
 
 # fit figure
 ggplot(fitDat, aes(background_density, bio.g, color = treatment, fill = treatment)) +
@@ -169,4 +157,4 @@ ggplot(fitDat, aes(background_density, bio.g, color = treatment, fill = treatmen
 
 
 #### output ####
-save(evSBioMod2, file = "output/elymus_seedling_biomass_model_2019_density_exp.rda")
+save(mvBioMod2, file = "output/microstegium_biomass_model_2019_density_exp.rda")
