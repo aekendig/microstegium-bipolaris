@@ -13,6 +13,14 @@ rm(list=ls())
 
 # load packages
 library(tidyverse)
+library(brms)
+
+# load scripts
+source("code/microstegium_gs_survival_parameter_2019_density_exp.R")
+source("code/elymus_seedling_gs_survival_parameter_2019_density_exp.R")
+source("code/elymus_adult_gs_survival_parameter_2019_density_exp.R")
+source("code/elymus_seedling_ngs_survival_parameter_2019_density_exp.R")
+source("code/elymus_adult_ngs_survival_parameter_2019_density_exp.R")
 
 # simulation time
 simtime = 10000
@@ -31,7 +39,7 @@ Ni.S = 1 # introduction of perennial
 
 #### model ####
 
-simFun = function(params, N0.A, N0.S, N0.P, L0, Ni.A, Ni.S, simtime, invtime, invader){
+simFun = function(params, A0, S0, P0, L0, simtime, disease, iter){
   
   # define parameters
   g.A = filter(params, symbol == "g.A")$value
@@ -61,8 +69,6 @@ simFun = function(params, N0.A, N0.S, N0.P, L0, Ni.A, Ni.S, simtime, invtime, in
   y.Sint = filter(params, symbol == "y.Sint")$value
   y.P = filter(params, symbol == "y.P")$value
   y.Pint = filter(params, symbol == "y.Pint")$value
-  h.S = filter(params, symbol == "h.S")$value
-  h.P = filter(params, symbol == "h.P")$value
   w.S = filter(params, symbol == "w.S")$value
   w.P = filter(params, symbol == "w.P")$value
   
@@ -80,13 +86,15 @@ simFun = function(params, N0.A, N0.S, N0.P, L0, Ni.A, Ni.S, simtime, invtime, in
   # simulate population dynamics
   for(t in 1:(simtime - 1)){	
     
-    # introduce invader
-    N.A[t] = ifelse(t == invtime & invader == "annual", Ni.A, N.A[t])
-    N.S[t] = ifelse(t == invtime & invader == "perennial", Ni.S, N.S[t])
     
     # reduce germination due to litter
     G.A = g.A / (1 + beta.A * L[t])
     G.S = g.S / (1 + beta.S * L[t])
+    
+    # growing season survival
+    H.A <- H_A_fun(disease, A[t], S[t], P[t], iter)
+    H.S <- H_S_fun(disease, A[t], S[t], P[t], iter)
+    H.P <- H_P_fun(disease, A[t], S[t], P[t], iter)
     
     # reduce growth due to competition
     V.A = v.A / (1 + alpha.AA * G.A * N.A[t] + alpha.AP * N.P[t] + alpha.AS * G.S * N.S[t])    
