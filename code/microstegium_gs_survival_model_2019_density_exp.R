@@ -48,13 +48,14 @@ mvGsSurvD2Dat <- survD2Dat %>%
   full_join(focD2Dat) %>%
   left_join(plotDens) %>%
   mutate(survival = replace_na(survival, 1),
-         fungicide = ifelse(treatment == "fungicide", 1, 0))
+         fungicide = ifelse(treatment == "fungicide", 1, 0),
+         plotr = ifelse(treatment == "fungicide", plot + 10, plot))
 
 
 #### fit regression ####
 
 # initial fit
-mvGsSurvD2Mod1 <- brm(survival ~ fungicide * (mv_seedling_density + ev_seedling_density + ev_adult_density) + (1|site/plot),
+mvGsSurvD2Mod1 <- brm(survival ~ fungicide * (mv_seedling_density + ev_seedling_density + ev_adult_density) + (1|site/plotr),
                         data = mvGsSurvD2Dat,
                         family = bernoulli,
                         prior = c(prior(normal(0, 10), class = Intercept),

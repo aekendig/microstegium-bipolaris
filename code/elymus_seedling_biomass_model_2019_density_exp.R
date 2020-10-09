@@ -40,7 +40,8 @@ evSBioD2Dat <- bioD2Dat %>%
   left_join(plotDens) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          log_bio.g = log(bio.g),
-         treatment = recode(treatment, water = "control"))
+         treatment = recode(treatment, water = "control"),
+         plotr = ifelse(treatment == "fungicide", plot + 10, plot))
 
 # fungicide experiment
 # combine live and dead weight
@@ -112,7 +113,7 @@ evSBioD2Dat2 <- evSBioD2Dat %>%
 
 # initial fit
 evSBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + alphaS * ev_seedling_density + alphaP * ev_adult_density),
-                     logv ~ fungicide + treatment + (1|site),
+                     logv ~ fungicide + treatment + (1|site/plotr),
                      alphaA ~ 0 + treatment,
                      alphaS ~ 0 + treatment,
                      alphaP ~ 0 + treatment,
@@ -127,12 +128,12 @@ evSBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + a
                              prior(cauchy(0, 1), nlpar = "logv", class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
-# 26 divergent transitions
+# 7 divergent transitions
 summary(evSBioMod1)
 
 # increase chains and adapt delta
 evSBioMod2 <- update(evSBioMod1, chains = 3,
-                     control = list(adapt_delta = 0.999))
+                     control = list(adapt_delta = 0.999, max_treedepth = 15))
 summary(evSBioMod2)
 plot(evSBioMod2)
 pp_check(evSBioMod2, nsamples = 50)

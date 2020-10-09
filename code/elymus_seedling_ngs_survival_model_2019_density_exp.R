@@ -35,7 +35,8 @@ evSNgsSurvD1Dat <- survD1Dat %>%
   select(-field_notes) %>%
   spread(month, survival) %>%
   mutate(September = case_when(seeds_produced == 1 ~ 1, TRUE ~ September),
-         fungicide = ifelse(treatment == "fungicide", 1, 0)) %>%
+         fungicide = ifelse(treatment == "fungicide", 1, 0),
+         plotr = ifelse(treatment == "fungicide", plot + 10, plot)) %>%
   filter(September == 1 & !is.na(April)) %>%
   select(-September) %>%
   rename(survival = April) %>%
@@ -48,19 +49,20 @@ mean(evSNgsSurvD1Dat$survival)
 #### fit regression ####
 
 # initial fit
-evSNgsSurvD1Mod1 <- brm(survival ~ fungicide * (mv_seedling_density + ev_seedling_density + ev_adult_density) + (1|site/plot),
+evSNgsSurvD1Mod2 <- brm(survival ~ fungicide * (mv_seedling_density + ev_seedling_density + ev_adult_density) + (1|site/plotr),
                       data = evSNgsSurvD1Dat,
                       family = bernoulli,
                       prior = c(prior(normal(0, 10), class = Intercept),
                                 prior(normal(0, 10), class = b),
                                 prior(cauchy(0, 1), class = sd)),
-                      iter = 6000, warmup = 1000, chains = 1)
+                      iter = 6000, warmup = 1000, chains = 3,
+                      control = list(adapt_delta = 0.999, max_treedepth = 15))
 # 13 divergent transitions
 summary(evSNgsSurvD1Mod1)
 
 # increase chains
 evSNgsSurvD1Mod2 <- update(evSNgsSurvD1Mod1, chains = 3,
-                           control = list(adapt_delta = 0.999))
+                           control = list(adapt_delta = 0.999, max_treedepth = 15))
 summary(evSNgsSurvD1Mod2)
 plot(evSNgsSurvD1Mod2)
 pp_check(evSNgsSurvD1Mod2, nsamples = 50)

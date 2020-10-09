@@ -40,7 +40,8 @@ mvBioD2Dat <- bioD2Dat %>%
   left_join(plotDens) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          log_bio.g = log(bio.g),
-         treatment = recode(treatment, water = "control"))
+         treatment = recode(treatment, water = "control"),
+         plotr = ifelse(treatment == "fungicide", plot + 10, plot))
 
 # fungicide experiment
 # remove dead plant
@@ -100,7 +101,7 @@ mvBioD2Dat2 <- mvBioD2Dat %>%
 
 # initial fit
 mvBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + alphaS * ev_seedling_density + alphaP * ev_adult_density),
-                     logv ~ fungicide + treatment + (1|site),
+                     logv ~ fungicide + treatment + (1|site/plotr),
                      alphaA ~ 0 + treatment,
                      alphaS ~ 0 + treatment,
                      alphaP ~ 0 + treatment,
@@ -115,12 +116,12 @@ mvBioMod1 <- brm(bf(log_bio.g ~ logv - log(1 + alphaA * mv_seedling_density + al
                              prior(cauchy(0, 1), nlpar = "logv", class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
-# 5 divergent transitions
+# 6 divergent transitions
 summary(mvBioMod1)
 
 # increase chains and adapt delta
 mvBioMod2 <- update(mvBioMod1, chains = 3,
-                    control = list(adapt_delta = 0.9999))
+                    control = list(adapt_delta = 0.9999, max_treedepth = 15))
 summary(mvBioMod2)
 plot(mvBioMod2)
 pp_check(mvBioMod2, nsamples = 50)
@@ -136,6 +137,7 @@ simDat <- tibble(mv_seedling_density = c(seq(0, 64, length.out = 100), rep(0, 20
   expand_grid(fungicide = c(0, 1)) %>%
   mutate(treatment = ifelse(fungicide == 1, "fungicide", "control"),
          site = NA,
+         plotr = NA,
          background_density = case_when(background == "Mv seedling" ~ mv_seedling_density,
                                         background == "Ev seedling" ~ ev_seedling_density,
                                         TRUE ~ ev_adult_density))
