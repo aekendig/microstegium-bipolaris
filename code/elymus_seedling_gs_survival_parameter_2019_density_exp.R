@@ -39,7 +39,7 @@ H_S_fun <- function(disease, A_dens, S_dens, P_dens, iter) {
                          H_S_int_wat[iter] + H_S_mv_dens_wat[iter] * A_dens + H_S_evS_dens_wat[iter] * S_dens + H_S_evA_dens_wat[iter] * P_dens,
                          H_S_int_fun[iter] + H_S_mv_dens_fun[iter] * A_dens + H_S_evS_dens_fun[iter] * S_dens + H_S_evA_dens_fun[iter] * P_dens)
   
-  H_S <- exp(H_S_lin_expr)/(1 + exp(H_S_lin_expr))
+  H_S <- ifelse(exp(H_S_lin_expr) == Inf, 1, exp(H_S_lin_expr)/(1 + exp(H_S_lin_expr)))
   
   return(H_S)
 }

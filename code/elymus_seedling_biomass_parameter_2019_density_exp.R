@@ -31,7 +31,7 @@ V_S_evA_dens_wat <- sample(evSBioSamps$b_alphaP_treatmentcontrol, size = n_samps
 V_S_evA_dens_fun <- sample(evSBioSamps$b_alphaP_treatmentfungicide, size = n_samps, replace = T)
 
 
-#### survival function
+#### biomass function ####
 
 V_S_fun <- function(disease, A_dens, S_dens, P_dens, iter) {
   
