@@ -2,7 +2,7 @@
 
 # file: annual_perennial_simulation_parameter_distributions_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/17/20
+# date last edited: 10/18/20
 # goal: demonstrate sampling from statistical model distributions for simulation model
 
 
@@ -32,11 +32,11 @@ S0 <- 10 # initial perennial seedling population size
 P0 <- 100 # initial perennial adult population size
 L0 <- 0 # initial annual litter amount
 
-
-#### parameter distributions ####
-
 # samples from parameter distributions
 samps <- n_samps
+
+
+#### parameter distributions without disease ####
 
 # initiate list
 params <- list()
@@ -94,3 +94,31 @@ ggplot(param_dat2, aes(x = transformed_value)) +
              ncol = 2) +
   theme_bw()
 dev.off()
+
+
+#### parameter distributions with disease ####
+
+# initiate list
+params2 <- list()
+
+# save parameter values from each sample
+for(iter in 1:samps){
+  
+  params2[[iter]] <- sim_fun(A0, S0, P0, L0, simtime, disease = 1, iter)[[2]]
+  
+}
+
+# convert to dataframe
+param_dat2 <- do.call(rbind, params2)
+
+# visualize
+pdf("output/simulation_parameter_with_disease_distributions.pdf")
+ggplot(param_dat2, aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~ description, 
+             scales = "free",
+             ncol = 2) +
+  theme_bw()
+dev.off()
+
+#### start here: plot two distributions together (disease/not), also compare with/without litter ####

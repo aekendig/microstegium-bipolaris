@@ -30,17 +30,21 @@ V_A_evS_dens_fun <- sample(mvBioSamps$b_alphaS_treatmentfungicide, size = n_samp
 V_A_evA_dens_wat <- sample(mvBioSamps$b_alphaP_treatmentcontrol, size = n_samps, replace = T)
 V_A_evA_dens_fun <- sample(mvBioSamps$b_alphaP_treatmentfungicide, size = n_samps, replace = T)
 
+# from Lili's experiment: litter reduced log-transformed individual M. vimineum biomass by 0.05 per gram litter
+gamma_A_L <- -0.05
+
+
 
 #### survival function
 
-V_A_fun <- function(disease, A_dens, S_dens, P_dens, iter) {
+V_A_fun <- function(disease, A_dens, S_dens, P_dens, litter, iter) {
   
   # calculate survival
   V_A_expr <- ifelse(disease == 1, 
                      V_A_int_wat[iter] - log(1 + V_A_mv_dens_wat[iter] * A_dens + V_A_evS_dens_wat[iter] * S_dens + V_A_evA_dens_wat[iter] * P_dens),
                      V_A_int_fun[iter] - log(1 + V_A_mv_dens_fun[iter] * A_dens + V_A_evS_dens_fun[iter] * S_dens + V_A_evA_dens_fun[iter] * P_dens))
   
-  V_A <- exp(V_A_expr)
+  V_A <- exp(V_A_expr + gamma_A_L * litter)
   
   return(V_A)
 }

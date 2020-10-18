@@ -2,7 +2,7 @@
 
 # file: annual_perennial_simulation_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/17/20
+# date last edited: 10/18/20
 # goal: simulate populations with parameters derived from data
 
 
@@ -82,7 +82,7 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
     W.P <- W_P_fun(iter)
     
     # reduce growth due to competition
-    V.A <- V_A_fun(disease, A[t], S[t], P[t], iter)
+    V.A <- V_A_fun(disease, A[t], S[t], P[t], L[t], iter)
     V.S <- V_S_fun(disease, A[t], S[t], P[t], iter)
     V.P <- V_P_fun(disease, A[t], S[t], P[t], iter) 
     
@@ -126,12 +126,13 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
   
   # population data
   dfN <- tibble(time = rep(1:simtime, 4),
-                species = rep(c("Elymus seedling", 
-                                "Elymus adult", 
-                                "Microstegium", 
-                                "Microstegium litter"), 
+                species = rep(c("Perennial seedling", 
+                                "Perennial adult", 
+                                "Annual", 
+                                "Annual litter"), 
                               each = simtime),
-                N = c(S, P, A, L))
+                N = c(S, P, A, L),
+                iteration = iter)
 
   # parameter data
   dfP <- tibble(time = rep(1:(simtime-1), 13),
@@ -151,7 +152,8 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
                                     "annual germination",
                                     "perennial germination"), 
                                   each = simtime - 1),
-                value = c(H.A_vec, H.S_vec, H.P_vec, W.S_vec, W.P_vec, V.A_vec, V.S_vec, V.P_vec, Y.A_vec, Y.S_vec, Y.P_vec, G.A_vec, G.S_vec))
+                value = c(H.A_vec, H.S_vec, H.P_vec, W.S_vec, W.P_vec, V.A_vec, V.S_vec, V.P_vec, Y.A_vec, Y.S_vec, Y.P_vec, G.A_vec, G.S_vec),
+                iteration = iter)
 
   # return
   return(list(dfN, dfP))
