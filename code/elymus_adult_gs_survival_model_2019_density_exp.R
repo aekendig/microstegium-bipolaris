@@ -2,7 +2,7 @@
 
 # file: elymus_adult_gs_survival_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/5/20
+# date last edited: 10/23/20
 # goal: estimate Elymus adult growing season survival based on density and fungicide treatments
 
 
@@ -95,13 +95,13 @@ vizDat <- evAGsSurvD2Dat %>%
   full_join(plotsD2)
 
 # fit figure
-ggplot(fitDat, aes(background_density, survival, color = treatment, fill = treatment)) +
+(evAGsSurvD2Plot <- ggplot(fitDat, aes(background_density, survival, color = treatment, fill = treatment)) +
   geom_ribbon(aes(ymin = survival_lower, ymax = survival_upper), alpha = 0.5, color = NA) +
   geom_line(size = 1.5) +
   stat_summary(data = vizDat, geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
   stat_summary(data = vizDat, geom = "point", size = 2, fun = "mean") +
   facet_wrap(~ background, scales = "free_x") +
-  theme_bw()
+  theme_bw())
 # huge uncertainty
 # fits are reasonable
 
@@ -109,3 +109,4 @@ ggplot(fitDat, aes(background_density, survival, color = treatment, fill = treat
 #### output ####
 
 save(evAGsSurvD2Mod2, file = "output/elymus_adult_gs_survival_model_2019_density_exp.rda")
+save(evAGsSurvD2Plot, file = "output/elymus_adult_gs_survival_figure_2019_density_exp.rda")

@@ -34,9 +34,9 @@ source("code/microstegium_germination_parameter_2018_density_exp.R")
 source("code/elymus_germination_parameter_2019_density_exp.R")
 
 # constant parameters
-s.A <- 0.05 # annual seed survival (Redwood et al. 2018)
-s.S <- 0.09 # perennial seed survival (Garrison and Stier 2010)
-b <- 0.33 # annual litter decomposition (DeMeester and Richter 2010)
+s.A <- 0.15 # annual seed survival (Redwood et al. 2018)
+s.S <- 0.05 # perennial seed survival (Garrison and Stier 2010)
+d <- 0.61 # annual litter decomposition (DeMeester and Richter 2010)
 
 
 #### model ####
@@ -98,7 +98,7 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
     
     # population size
     A[t+1] = s.A * (1-G.A) * A[t] + G.A * H.A * Y.A * A[t]  
-    L[t+1] = G.A * H.A * V.A * A[t] + b * L[t]    
+    L[t+1] = G.A * H.A * V.A * A[t] + (1 - d) * L[t]    
     S[t+1] = s.S * (1-G.S) * S[t] + G.S * H.S * Y.S * S[t] + H.P * Y.P * P[t]
     P[t+1] = H.P * W.P * P[t] + G.S * H.S * W.S * S[t]  
     
