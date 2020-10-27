@@ -20,13 +20,10 @@ source("code/microstegium_establishment_bh_parameter_2019_density_exp.R")
 source("code/elymus_seedling_establishment_bh_parameter_2019_density_exp.R")
 
 source("code/elymus_adult_gs_survival_parameter_2019_density_exp.R")
-
-source("code/elymus_seedling_ngs_survival_parameter_2019_density_exp.R")
 source("code/elymus_adult_ngs_survival_parameter_2019_density_exp.R")
 
-source("code/microstegium_biomass_parameter_2019_density_exp.R")
-source("code/elymus_seedling_biomass_parameter_2019_density_exp.R")
-source("code/elymus_adult_biomass_parameter_2019_density_exp.R")
+source("code/microstegium_biomass_fung_parameter_2019_density_exp.R")
+source("code/elymus_adult_biomass_fung_parameter_2019_density_exp.R")
 
 source("code/microstegium_seed_production_parameter_2019_density_exp.R")
 source("code/elymus_seedling_seed_production_parameter_2019_density_exp.R")
@@ -37,7 +34,7 @@ source("code/elymus_germination_parameter_2019_density_exp.R")
 
 # constant parameters
 s.A <- 0.15 # annual seed survival (Redwood et al. 2018)
-s.S <- 0.05 # perennial seed survival (Garrison and Stier 2010)
+s.P <- 0.05 # perennial seed survival (Garrison and Stier 2010)
 d <- 0.61 # annual litter decomposition (DeMeester and Richter 2010)
 
 
@@ -56,57 +53,124 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
   P[1] <- P0
   L[1] <- L0
   
+  # constant parameters
+  
+  # perennial adult growing season survival
+  u.P <- u_P_fun(disease, iter)
+  
+  # perennial non-growing season survival
+  w.P <- w_P_fun(disease, iter)
+  
+  # perennial annual survival
+  s <- ifelse(w.P * u.P > 0.99, 0.99, w.P * u.P)
+  
+  # biomass production
+  b.A <- b_A_fung_fun(disease, iter)
+  b.P <- b_P_fung_fun(disease, iter) 
+  
+  # germination
+  g.A <- g_A_fun(disease, iter)
+  g.P <- g_S_fun(disease, iter)
+  
+  # maximum establishment
+  e.A <- ifelse(disease == 1, E_A_df$int_wat[iter], E_A_df$int_fun[iter])
+  e.P <- ifelse(disease == 1, E_S_df$int_wat[iter], E_S_df$int_fun[iter])
+  
+  # maximum seed production
+  y.A <- ifelse(disease == 1, Y_A_dens$int_wat[iter], Y_A_dens$int_fun[iter])
+  y.P <- u.P * ifelse(disease == 1, Y_P_dens$int_wat[iter], Y_P_dens$int_fun[iter])
+  y.S <- ifelse(disease == 1, Y_S_dens$int_wat[iter], Y_S_dens$int_fun[iter])
+  y.1 <- y.S / y.P
+  
+  # competition coefficients
+  alpha.A.A <- ifelse(disease == 1, 
+                      Y_A_dens$mv_dens_wat, 
+                      Y_A_dens$mv_dens_fun)
+  alpha.A.P <- ifelse(disease == 1, 
+                      Y_A_dens$evA_dens_wat, 
+                      Y_A_dens$evA_dens_fun)
+  gamma.A <- ifelse(disease == 1, 
+                    Y_A_dens$evS_dens_wat/alpha.A.P, 
+                    Y_A_dens$evS_dens_fun/alpha.A.P)
+  
+  alpha.P.A <- ifelse(disease == 1, 
+                      Y_P_dens$mv_dens_wat, 
+                      Y_P_dens$mv_dens_fun)
+  alpha.P.P <- ifelse(disease == 1, 
+                      Y_P_dens$evA_dens_wat, 
+                      Y_P_dens$evA_dens_fun)
+  gamma.P <- ifelse(disease == 1, 
+                    Y_P_dens$evS_dens_wat/alpha.P.P, 
+                    Y_P_dens$evS_dens_fun/alpha.P.P)
+  
+  alpha.S.A <- ifelse(disease == 1, 
+                      Y_S_dens$mv_dens_wat, 
+                      Y_S_dens$mv_dens_fun)
+  alpha.S.P <- ifelse(disease == 1, 
+                      Y_S_dens$evA_dens_wat, 
+                      Y_S_dens$evA_dens_fun)
+  gamma.S <- ifelse(disease == 1, 
+                    Y_S_dens$evS_dens_wat/alpha.S.P, 
+                    Y_S_dens$evS_dens_fun/alpha.S.P)
+  
+  alpha.A <- mean(c(alpha.A.A, alpha.P.A, alpha.S.A))
+  alpha.P <- mean(c(alpha.A.P, alpha.P.P, alpha.S.P))
+  gamma <- mean(c(gamma.A, gamma.P, gamma.S))
+  
+  alpha.i.P <- alpha.P * (1 + gamma * (1 - s))
+  
+  # litter effect values
+  beta.A <- ifelse(disease == 1,
+                   E_A_beta_wat[iter],
+                   E_A_beta_fun$beta[iter])
+  
+  beta.P <- ifelse(disease == 1,
+                   E_S_beta_wat[iter],
+                   E_S_beta_fun$beta[iter])
+  
+  # lambda values
+  l.A <- g.A * e.A * y.A / (1 - s.A * (1 - g.A))
+  l.P <- y.P * e.P * g.P * (y.1 + 1 / (1 - s))/(1 - s.P * (1 - g.P))
+  
+  # equilibrium litter density
+  L.P.1 = -0.5 * (b.P / (d * alpha.i.P) + 1 / beta.P)
+  L.P.2 = sqrt(0.25 * (b.P / (d * alpha.i.P) + 1 / beta.P)^2 + (b.P / d) * (l.P - 1) / (alpha.i.P * beta.P))
+  L.P = ifelse((L.P.1 + L.P.2) > (L.P.1 - L.P.2), L.P.1 + L.P.2, L.P.1 - L.P.2)
+  
+  L.A.1 = -0.5 * (b.A / (d * alpha.A) + 1 / beta.A)
+  L.A.2 = sqrt(0.25 * (b.A / (d * alpha.A) + 1 / beta.A)^2 + (b.A / d) * (l.A - 1) / (alpha.A * beta.A))
+  L.A = ifelse((L.A.1 + L.A.2) > (L.A.1 - L.A.2), L.A.1 + L.A.2, L.A.1 - L.A.2)
+  
   # initialize parameter vectors
   E.A_vec <- rep(NA, simtime-1)
-  E.S_vec <- rep(NA, simtime-1)
-  u.P_vec <- rep(NA, simtime-1)
-  w.S_vec <- rep(NA, simtime-1)
-  w.P_vec <- rep(NA, simtime-1)
-  B.A_vec <- rep(NA, simtime-1)
-  B.S_vec <- rep(NA, simtime-1)
-  B.P_vec <- rep(NA, simtime-1)
+  E.P_vec <- rep(NA, simtime-1)
+  s_vec <- rep(s, simtime-1)
+  b.A_vec <- rep(b.A, simtime-1)
+  b.P_vec <- rep(b.P, simtime-1)
   Y.A_vec <- rep(NA, simtime-1)
-  Y.S_vec <- rep(NA, simtime-1)
+  y.1_vec <- rep(y.1, simtime-1)
   Y.P_vec <- rep(NA, simtime-1)
-  g.A_vec <- rep(NA, simtime-1)
-  g.S_vec <- rep(NA, simtime-1)
+  g.A_vec <- rep(g.A, simtime-1)
+  g.P_vec <- rep(g.P, simtime-1)
+  l.A_vec <- rep(l.A, simtime-1)
+  l.P_vec <- rep(l.P, simtime-1)
   
   # simulate population dynamics
   for(t in 1:(simtime - 1)){	
     
     # seedling establishment
     E.A <- E_A_bh_fun(disease, L[t], iter)
-    E.S <- E_S_bh_fun(disease, L[t], iter)
-    
-    # perennial adult growing season survival
-    u.P <- u_P_fun(disease, iter)
-    
-    # perennial non-growing season survival
-    w.S <- w_S_fun(disease, iter)
-    w.P <- w_P_fun(disease, iter)
-    
-    # reduce growth due to competition
-    B.A <- B_A_fun(disease, A[t], S[t], P[t], iter)
-    B.S <- B_S_fun(disease, A[t], S[t], P[t], iter)
-    B.P <- B_P_fun(disease, A[t], S[t], P[t], iter) 
+    E.P <- E_S_bh_fun(disease, L[t], iter)
     
     # reduce seed production due to competition
     Y.A <- Y_A_fun(disease, A[t], S[t], P[t], iter)
-    Y.S <- Y_S_fun(disease, A[t], S[t], P[t], iter)
-    Y.P <- Y_P_fun(disease, A[t], S[t], P[t], iter)
-    
-    # germination depends on disease and decreases due to litter
-    g.A <- g_A_fun(disease, iter)
-    g.S <- g_S_fun(disease, iter)
-    
-    # perennial lifespan
-    l.P <- ifelse(w.P * u.P > 0.99, 0.99, w.P * u.P)
+    Y.P <- u.P * Y_P_fun(disease, A[t], S[t], P[t], iter)
     
     # population size
-    A[t+1] = s.A * (1-g.A) * A[t] + g.A * E.A * Y.A * A[t]  
-    L[t+1] = g.A * E.A * B.A * A[t] + g.S * E.S * B.S * S[t] + u.P * B.P * P[t] + (1 - d) * L[t]    
-    S[t+1] = s.S * (1-g.S) * S[t] + g.S * E.S * Y.S * S[t] + u.P * Y.P * P[t]
-    P[t+1] = l.P * P[t] + g.S * E.S * w.S * S[t]  
+    A[t+1] = s.A * (1 - g.A) * A[t] + g.A * E.A * Y.A * A[t]  
+    L[t+1] = g.A * E.A * b.A * A[t] + b.P * P[t] + (1 - d) * L[t]    
+    S[t+1] = s.P * (1 - g.P) * S[t] + g.P * E.P * Y.P * y.1 * S[t] + Y.P * P[t]
+    P[t+1] = s * P[t] + g.P * E.P * S[t]  
     
     # correct to prevent negative numbers
     A[t+1] = ifelse(A[t+1] < 1, 0, A[t+1])
@@ -116,18 +180,9 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
     
     # save parameter value
     E.A_vec[t] <- E.A
-    E.S_vec[t] <- E.S
-    u.P_vec[t] <- u.P
-    w.S_vec[t] <- w.S
-    w.P_vec[t] <- w.P
-    B.A_vec[t] <- B.A
-    B.S_vec[t] <- B.S
-    B.P_vec[t] <- B.P
+    E.P_vec[t] <- E.P
     Y.A_vec[t] <- Y.A
-    Y.S_vec[t] <- Y.S
     Y.P_vec[t] <- Y.P
-    g.A_vec[t] <- g.A
-    g.S_vec[t] <- g.S
   }
   
   # population data
@@ -141,24 +196,23 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
                 iteration = iter)
 
   # parameter data
-  dfP <- tibble(time = rep(1:(simtime-1), 13),
-                parameter = rep(c("E.A", "E.S", "u.P", "w.S", "w.P", "B.A", "B.S", "B.P", "Y.A", "Y.S", "Y.P", "g.A", "g.S"), 
+  dfP <- tibble(time = rep(1:(simtime-1), 12),
+                parameter = rep(c("E.A", "E.P", "s", "b.A", "b.P", "Y.A", "y.1", "Y.P", "g.A", "g.P", "l.A", "l.P"), 
                                 each = simtime - 1),
                 description = rep(c("annual seedling establishment",
                                     "perennial seedling establishment",
-                                    "perennial adult growing season survival",
-                                    "perennial seedling non-growing season survival",
-                                    "perennial adult non-growing season survival",
+                                    "perennial adult survival",
                                     "annual biomass production",
-                                    "perennial seedling biomass production",
                                     "perennial adult biomass production",
                                     "annual seed production",
                                     "perennial seedling seed production",
                                     "perennial adult seed production",
                                     "annual germination",
-                                    "perennial germination"), 
+                                    "perennial germination",
+                                    "annual lifetime reproduction",
+                                    "perennial lifetime reproduction"), 
                                   each = simtime - 1),
-                value = c(E.A_vec, E.S_vec, u.P_vec, w.S_vec, w.P_vec, B.A_vec, B.S_vec, B.P_vec, Y.A_vec, Y.S_vec, Y.P_vec, g.A_vec, g.S_vec),
+                value = c(E.A_vec, E.P_vec, s_vec, b.A_vec, b.P_vec, Y.A_vec, y.1_vec, Y.P_vec, g.A_vec, g.P_vec, l.A_vec, l.P_vec),
                 iteration = iter)
 
   # return

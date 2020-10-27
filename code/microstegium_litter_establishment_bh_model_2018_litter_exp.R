@@ -62,19 +62,21 @@ filter(mvEstL1BhDat, litter.g.m2 == 0) %>% data.frame()
 
 # initial fit
 mvEstL1BhMod1 <- brm(bf(prop_germ_den_cor ~ maxEst / (1 + betaL * litter.g.cm2),
-                        maxEst ~ 0 + sterilizedF,
+                        maxEst ~ 1 + (1|site),
                         betaL ~ 0 + sterilizedF,
                         nl = T),
                    data = mvEstL1BhDat, family = gaussian,
-                   prior = c(prior(normal(1, 1), nlpar = "maxEst", ub = 1),
+                   prior = c(prior(normal(1, 1), nlpar = "maxEst", class = "b", ub = 1),
                              prior(exponential(0.5), nlpar = "betaL", lb = 0),
-                             prior(cauchy(0, 1), class = "sigma")),
+                             prior(cauchy(0, 1), class = "sigma"),
+                             prior(cauchy(0, 1), nlpar = "maxEst", class = "sd")),
                    iter = 6000, warmup = 1000, chains = 1)
-# did not include random effect of site because there's no intercept for max establishment
+# 6 divergent transitions
 summary(mvEstL1BhMod1)
 
 # increase chains
-mvEstL1BhMod2 <- update(mvEstL1BhMod1, chains = 3)
+mvEstL1BhMod2 <- update(mvEstL1BhMod1, chains = 3,
+                        control = list(adapt_delta = 0.9999))
 summary(mvEstL1BhMod2)
 plot(mvEstL1BhMod2)
 pp_check(mvEstL1BhMod2, nsamples = 50)
@@ -103,7 +105,7 @@ ggplot(mvEstL1BhDat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = steriliz
   ggtitle(expression(italic("M. vimineum"))) +
   ylab("Proportion established") +
   xlab(expression(paste("Litter (g ", m^-2, ")", sep = ""))) +
-  coord_cartesian(ylim = c(0.2, 1)) +
+  coord_cartesian(ylim = c(0, 1)) +
   theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -113,7 +115,7 @@ ggplot(mvEstL1BhDat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = steriliz
         legend.text = element_text(size = 9),
         legend.title = element_text(size = 9),
         plot.title = element_text(size = 10, hjust = 0.5),
-        legend.position = c(0.8, 0.83))
+        legend.position = c(0.5, 0.18))
 dev.off()
 
 
