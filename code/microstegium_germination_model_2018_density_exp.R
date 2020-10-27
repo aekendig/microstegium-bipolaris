@@ -49,7 +49,8 @@ mvGermD1Dat <- set1 %>%
            as.factor() %>%
            recode("F" = "fungicide", "W" = "water"),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
-         plotr = ifelse(treatment == "fungicide", plot + 10, plot))
+         plotr = ifelse(treatment == "fungicide", plot + 10, plot),
+         site = ifelse(site == "P1", "D1", site))
 
 
 #### initial visualizations ####
@@ -72,32 +73,37 @@ mvGermD1Mod1 <- brm(germination_final | trials(seeds) ~ fungicide + (1|site/plot
                                prior(normal(0, 10), class = b),
                                prior(cauchy(0, 1), class = sd)),
                      iter = 6000, warmup = 1000, chains = 1)
-# 82 divergent transitions
+# 98 divergent transitions
 summary(mvGermD1Mod1)
 
 # increase chains and adapt delta
 mvGermD1Mod2 <- update(mvGermD1Mod1, chains = 3,
-                        control = list(adapt_delta = 0.999, max_treedepth = 15))
+                        control = list(adapt_delta = 0.999))
 summary(mvGermD1Mod2)
 plot(mvGermD1Mod2)
 pp_check(mvGermD1Mod2, nsamples = 50)
 
 # simulate fit
 fitDat <- tibble(fungicide = c(0, 1), seeds = c(30, 30)) %>%
-  mutate(germination_final = fitted(mvGermD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"],
-         germination_final_lower = fitted(mvGermD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"],
-         germination_final_upper = fitted(mvGermD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"],
+  mutate(germination = fitted(mvGermD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"]/seeds,
+         germination_lower = fitted(mvGermD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"]/seeds,
+         germination_upper = fitted(mvGermD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"]/seeds,
          treatment = ifelse(fungicide == 0, "water", "fungicide"))
 
+# summarize by site
+vizDat <- mvGermD1Dat %>%
+  group_by(site, treatment) %>%
+  summarise(germination = mean(germination_final/seeds))
+
 # fit figure
-ggplot(mvGermD1Dat, aes(treatment, germination_final/seeds)) +
-  stat_summary(geom = "point", fun = "mean", size = 3) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  geom_point(data = fitDat, size = 2, color = "red", alpha = 0.5) +
-  geom_errorbar(data = fitDat, aes(ymin = germination_final_lower/seeds, ymax = germination_final_upper/seeds), color = "red", width = 0, alpha = 0.5) +
+mvGermD1Plot <- ggplot(fitDat, aes(treatment, germination, color = treatment)) +
+  geom_errorbar(aes(ymin = germination_lower, ymax = germination_upper), width = 0) +
+  geom_point(size = 4, shape = 16) +
+  geom_point(data = vizDat, shape = 15, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5) +
   theme_bw()
 
 
 #### output ####
 
 save(mvGermD1Mod2, file = "output/microstegium_germination_model_2018_density_exp.rda")
+save(mvGermD1Plot, file = "output/microstegium_germination_figure_2018_density_exp.rda")

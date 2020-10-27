@@ -2,7 +2,7 @@
 
 # file: elymus_germination_parameter_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/17/20
+# date last edited: 10/26/20
 # goal: sample from model coefficients to estimate survival
 
 
@@ -17,21 +17,19 @@ load("output/elymus_germination_model_2019_density_exp.rda")
 evGermD2Samps <- posterior_samples(evGermD2Mod2)
 
 # sample parameters
-g0_S_int_wat <- sample(evGermD2Samps$b_Intercept, size = n_samps, replace = T)
-g0_S_int_fun <- g0_S_int_wat + sample(evGermD2Samps$b_fungicide, size = n_samps, replace = T)
+g_S_df <- evGermD2Samps[sample(nrow(evGermD2Samps), size = n_samps, replace = T), ] %>%
+  mutate(int_wat = b_Intercept,
+         int_fun = int_wat + b_fungicide)
 
-# from Lili's experiment: The presence of Microstegium litter reduced Elymus establishment by an average of 8.9%.
-beta_S_L <- 1 - 0.089
 
 
 #### germination function ####
 
-G_S_fun <- function(disease, litter_pres, iter) {
+g_S_fun <- function(disease, iter) {
   
-  # maximum germination
-  g_S_expr <- ifelse(disease == 1, exp(g0_S_int_wat[iter])/(1 + exp(g0_S_int_wat[iter])), exp(g0_S_int_fun[iter])/(1 + exp(g0_S_int_fun[iter])))
+  g_S_expr <- ifelse(disease == 1, g_S_df$int_wat[iter], g_S_df$int_fun[iter])
   
-  G_S <- ifelse(litter_pres == 1, g_S_expr * beta_S_L, g_S_expr)
+  g_S <- exp(g_S_expr) / (1 + exp(g_S_expr))
   
-  return(G_S)
+  return(g_S)
 }

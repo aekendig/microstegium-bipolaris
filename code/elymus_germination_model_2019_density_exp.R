@@ -56,14 +56,6 @@ evGermD2Dat %>%
   count()
 # 3-4 reps each
 
-# seedling data
-evSGermD2Dat <- evGermD2Dat %>%
-  filter(age == "seedling")
-
-# adult data
-evAGermD2Dat <- evGermD2Dat %>%
-  filter(age == "adult")
-
 
 #### initial visualizations ####
 
@@ -91,111 +83,42 @@ ggplot(evGermD2Dat, aes(treatment, emerg/seeds_planted)) +
 #### model ####
 
 # initial fit
-evGermD2Mod1 <- brm(emerg | trials(seeds_planted) ~ fungicide + (1|site),
+evGermD2Mod1 <- brm(emerg | trials(seeds_planted) ~ fungicide + (1|site/plotr),
                      data = evGermD2Dat, family = binomial,
                      prior = c(prior(normal(0, 10), class = Intercept),
                                prior(normal(0, 10), class = b),
                                prior(cauchy(0, 1), class = sd)),
                      iter = 6000, warmup = 1000, chains = 1)
-# 7 divergent transitions
+# 13 divergent transitions
 summary(evGermD2Mod1)
 
 # increase chains and adapt delta
 evGermD2Mod2 <- update(evGermD2Mod1, chains = 3,
-                        control = list(adapt_delta = 0.999))
+                        control = list(adapt_delta = 0.9999, max_treedepth = 15))
 summary(evGermD2Mod2)
 plot(evGermD2Mod2)
 pp_check(evGermD2Mod2, nsamples = 50)
 
 # simulate fit
 fitDat <- tibble(fungicide = c(0, 1), seeds_planted = c(30, 30)) %>%
-  mutate(emerg = fitted(evGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"],
-         emerg_lower = fitted(evGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"],
-         emerg_upper = fitted(evGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"],
+  mutate(germination = fitted(evGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"]/seeds_planted,
+         germination_lower = fitted(evGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"]/seeds_planted,
+         germination_upper = fitted(evGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"]/seeds_planted,
          treatment = ifelse(fungicide == 0, "water", "fungicide"))
 
-# fit figure
-ggplot(evGermD2Dat, aes(treatment, emerg/seeds_planted)) +
-  stat_summary(geom = "point", fun = "mean", size = 3) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  geom_point(data = fitDat, size = 2, color = "red", alpha = 0.5) +
-  geom_errorbar(data = fitDat, aes(ymin = emerg_lower/seeds_planted, ymax = emerg_upper/seeds_planted), color = "red", width = 0, alpha = 0.5) +
-  theme_bw()
-
-# did separate models by parent age (below), but seeds are grouped together in the model after they're produced, so the age of the parent is not tracked
-
-
-#### seedling model ####
-
-# initial fit
-evSGermD2Mod1 <- brm(emerg | trials(seeds_planted) ~ fungicide + (1|site),
-                    data = evSGermD2Dat, family = binomial,
-                    prior = c(prior(normal(0, 10), class = Intercept),
-                              prior(normal(0, 10), class = b),
-                              prior(cauchy(0, 1), class = sd)),
-                    iter = 6000, warmup = 1000, chains = 1)
-# 7 divergent transitions
-summary(evSGermD2Mod1)
-
-# increase chains and adapt delta
-evSGermD2Mod2 <- update(evSGermD2Mod1, chains = 3,
-                        control = list(adapt_delta = 0.999))
-summary(evSGermD2Mod2)
-plot(evSGermD2Mod2)
-pp_check(evSGermD2Mod2, nsamples = 50)
-
-# simulate fit
-fitDat1 <- tibble(fungicide = c(0, 1), seeds_planted = c(30, 30)) %>%
-  mutate(emerg = fitted(evSGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"],
-         emerg_lower = fitted(evSGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"],
-         emerg_upper = fitted(evSGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"],
-         treatment = ifelse(fungicide == 0, "water", "fungicide"))
+# summarize by site
+vizDat <- evGermD2Dat %>%
+  group_by(site, treatment) %>%
+  summarise(germination = mean(emerg/seeds_planted))
 
 # fit figure
-ggplot(evSGermD2Dat, aes(treatment, emerg/seeds_planted)) +
-  stat_summary(geom = "point", fun = "mean", size = 3) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  geom_point(data = fitDat1, size = 2, color = "red", alpha = 0.5) +
-  geom_errorbar(data = fitDat1, aes(ymin = emerg_lower/seeds_planted, ymax = emerg_upper/seeds_planted), color = "red", width = 0, alpha = 0.5) +
-  theme_bw()
-
-
-#### adult model ####
-
-# initial fit
-evAGermD2Mod1 <- brm(emerg | trials(seeds_planted) ~ fungicide + (1|site),
-                     data = evAGermD2Dat, family = binomial,
-                     prior = c(prior(normal(0, 10), class = Intercept),
-                               prior(normal(0, 10), class = b),
-                               prior(cauchy(0, 1), class = sd)),
-                     iter = 6000, warmup = 1000, chains = 1)
-# 1 divergent transition
-summary(evAGermD2Mod1)
-
-# increase chains and adapt delta
-evAGermD2Mod2 <- update(evAGermD2Mod1, chains = 3,
-                        control = list(adapt_delta = 0.999))
-summary(evAGermD2Mod2)
-plot(evAGermD2Mod2)
-pp_check(evAGermD2Mod2, nsamples = 50)
-
-# simulate fit
-fitDat2 <- tibble(fungicide = c(0, 1), seeds_planted = c(30, 30)) %>%
-  mutate(emerg = fitted(evAGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"],
-         emerg_lower = fitted(evAGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"],
-         emerg_upper = fitted(evAGermD2Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"],
-         treatment = ifelse(fungicide == 0, "water", "fungicide"))
-
-# fit figure
-ggplot(evAGermD2Dat, aes(treatment, emerg/seeds_planted)) +
-  stat_summary(geom = "point", fun = "mean", size = 3) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  geom_point(data = fitDat2, size = 2, color = "red", alpha = 0.5) +
-  geom_errorbar(data = fitDat2, aes(ymin = emerg_lower/seeds_planted, ymax = emerg_upper/seeds_planted), color = "red", width = 0, alpha = 0.5) +
+evGermD2Plot <- ggplot(fitDat, aes(treatment, germination, color = treatment)) +
+  geom_errorbar(aes(ymin = germination_lower, ymax = germination_upper), width = 0) +
+  geom_point(size = 4, shape = 16) +
+  geom_point(data = vizDat, shape = 15, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5) +
   theme_bw()
 
 
 #### output ####
 save(evGermD2Mod2, file = "output/elymus_germination_model_2019_density_exp.rda")
-save(evSGermD2Mod2, file = "output/elymus_seedling_germination_model_2019_density_exp.rda")
-save(evAGermD2Mod2, file = "output/elymus_adult_germination_model_2019_density_exp.rda")
+save(evGermD2Plot, file = "output/elymus_germination_figure_2019_density_exp.rda")

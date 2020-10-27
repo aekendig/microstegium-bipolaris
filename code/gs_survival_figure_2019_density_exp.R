@@ -15,7 +15,7 @@ rm(list=ls())
 library(tidyverse)
 library(cowplot)
 
-# import models
+# import figures
 load("output/elymus_seedling_gs_survival_figure_2019_density_exp.rda")
 load("output/elymus_adult_gs_survival_figure_2019_density_exp.rda")
 load("output/microstegium_gs_survival_figure_2019_density_exp.rda")

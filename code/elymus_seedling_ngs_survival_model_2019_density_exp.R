@@ -2,7 +2,7 @@
 
 # file: elymus_seedling_ngs_survival_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/6/20
+# date last edited: 10/25/20
 # goal: estimate Elymus seedling non-growing season survival based on density and fungicide treatments
 
 
@@ -48,21 +48,22 @@ mean(evSNgsSurvD1Dat$survival)
 
 #### fit regression ####
 
+# Initially fit regression with plant density information included. Removed this because (1) this is survival during the time when plants are not taking up resources and (2) the densities were from 2018 when they were not as well maintained. See Github archive for code.
+
 # initial fit
-evSNgsSurvD1Mod2 <- brm(survival ~ fungicide * (mv_seedling_density + ev_seedling_density + ev_adult_density) + (1|site/plotr),
-                      data = evSNgsSurvD1Dat,
-                      family = bernoulli,
-                      prior = c(prior(normal(0, 10), class = Intercept),
-                                prior(normal(0, 10), class = b),
-                                prior(cauchy(0, 1), class = sd)),
-                      iter = 6000, warmup = 1000, chains = 3,
-                      control = list(adapt_delta = 0.999, max_treedepth = 15))
-# 13 divergent transitions
+evSNgsSurvD1Mod1 <- brm(survival ~ fungicide + (1|site/plotr),
+                        data = evSNgsSurvD1Dat,
+                        family = bernoulli,
+                        prior = c(prior(normal(0, 10), class = Intercept),
+                                  prior(normal(0, 10), class = b),
+                                  prior(cauchy(0, 1), class = sd)),
+                        iter = 6000, warmup = 1000, chains = 1)
+# 22 divergent transitions
 summary(evSNgsSurvD1Mod1)
 
 # increase chains
 evSNgsSurvD1Mod2 <- update(evSNgsSurvD1Mod1, chains = 3,
-                           control = list(adapt_delta = 0.999, max_treedepth = 15))
+                           control = list(adapt_delta = 0.999))
 summary(evSNgsSurvD1Mod2)
 plot(evSNgsSurvD1Mod2)
 pp_check(evSNgsSurvD1Mod2, nsamples = 50)
@@ -70,41 +71,28 @@ pp_check(evSNgsSurvD1Mod2, nsamples = 50)
 
 #### visualize ####
 
-# simulation data
-simDat <- tibble(mv_seedling_density = c(seq(0, 64, length.out = 100), rep(0, 200)),
-                 ev_seedling_density = c(rep(0, 100), seq(0, 16, length.out = 100), rep(0, 100)),
-                 ev_adult_density = c(rep(0, 200), seq(0, 8, length.out = 100)),
-                 background = rep(c("Mv seedling", "Ev seedling", "Ev adult"), each = 100)) %>%
-  expand_grid(fungicide = c(0, 1)) %>%
-  mutate(treatment = ifelse(fungicide == 1, "fungicide", "water"),
-         site = NA,
-         background_density = case_when(background == "Mv seedling" ~ mv_seedling_density,
-                                        background == "Ev seedling" ~ ev_seedling_density,
-                                        TRUE ~ ev_adult_density))
-
 # simulate fit
-fitDat <- simDat %>%
+fitDat <- tibble(fungicide = c(1, 0)) %>%
   mutate(survival = fitted(evSNgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"],
          survival_lower = fitted(evSNgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"],
-         survival_upper = fitted(evSNgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"])
+         survival_upper = fitted(evSNgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"]) %>%
+  mutate(treatment = ifelse(fungicide == 1, "fungicide", "water"))
 
 # modify dataset so that zero plots are repeated
 vizDat <- evSNgsSurvD1Dat %>%
-  select(-c(background, background_sp)) %>%
-  full_join(plotsD2)
+  group_by(site, treatment) %>%
+  summarise(survival = mean(survival))
 
 # fit figure
-ggplot(fitDat, aes(background_density, survival, color = treatment, fill = treatment)) +
-  geom_ribbon(aes(ymin = survival_lower, ymax = survival_upper), alpha = 0.5, color = NA) +
-  geom_line(size = 1.5) +
-  stat_summary(data = vizDat, geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
-  stat_summary(data = vizDat, geom = "point", size = 2, fun = "mean") +
-  facet_wrap(~ background, scales = "free_x") +
+evSNgsSurvD1Plot <- ggplot(fitDat, aes(treatment, survival, color = treatment)) +
+  geom_errorbar(aes(ymin = survival_lower, ymax = survival_upper), width = 0) +
+  geom_point(size = 4, shape = 16) +
+  geom_point(data = vizDat, shape = 15, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5) +
   theme_bw()
-# density tends to increase survival without disease and decrease survival with disease
-# fits are messy
+
 
 
 #### output ####
 
 save(evSNgsSurvD1Mod2, file = "output/elymus_seedling_ngs_survival_model_2019_density_exp.rda")
+save(evSNgsSurvD1Plot, file = "output/elymus_seedling_ngs_survival_figure_2019_density_exp.rda")

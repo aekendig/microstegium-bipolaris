@@ -2,7 +2,7 @@
 
 # file: microstegium_biomass_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/7/20
+# date last edited: 10/26/20
 # goal: estimate Microstegium biomass based on density and fungicide treatments
 
 
@@ -61,8 +61,7 @@ vizDat <- bioD2Dat %>%
   filter(!is.na(biomass_weight.g)) %>%
   rename(bio.g = biomass_weight.g) %>%
   left_join(plotsD2) %>%
-  mutate(log_bio.g = log(bio.g),
-         treatment = recode(treatment, water = "control"))
+  mutate(log_bio.g = log(bio.g))
 
 # log-transformed biomass
 ggplot(vizDat, aes(background_density, log_bio.g, color = treatment)) +
@@ -144,19 +143,33 @@ simDat <- tibble(mv_seedling_density = c(seq(0, 64, length.out = 100), rep(0, 20
 
 # simulate fit
 fitDat <- simDat %>%
-  mutate(bio.g = exp(fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Estimate"]),
-         bio.g_lower = exp(fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Q2.5"]),
-         bio.g_upper = exp(fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Q97.5"]))
+  mutate(log_bio.g = fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Estimate"],
+         log_bio.g_lower = fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Q2.5"],
+         log_bio.g_upper = fitted(mvBioMod2, newdata = ., re_formula = NA)[, "Q97.5"],
+         treatment = ifelse(treatment == "control", "water", treatment))
+
+# change levels on raw data
+mvBioD2Dat3 <- mvBioD2Dat2 %>%
+  mutate(treatment = ifelse(treatment == "control", "water", treatment))
 
 # fit figure
-ggplot(fitDat, aes(background_density, bio.g, color = treatment, fill = treatment)) +
-  geom_ribbon(aes(ymin = bio.g_lower, ymax = bio.g_upper), alpha = 0.5, color = NA) +
+mvBioPlot <- ggplot(fitDat, aes(background_density, log_bio.g, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = log_bio.g_lower, ymax = log_bio.g_upper), alpha = 0.5, color = NA) +
   geom_line(size = 1.5) +
-  stat_summary(data = vizDat, geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
-  stat_summary(data = vizDat, geom = "point", size = 2, fun = "mean") +
+  stat_summary(data = mvBioD2Dat3, geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(data = mvBioD2Dat3, geom = "point", size = 2, fun = "mean") +
   facet_wrap(~ background, scales = "free_x") +
   theme_bw()
+
+# fungicide figure
+mvFungPlot <- ggplot(mvFungDat, aes(treatment, log_bio.g, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", size = 2, fun = "mean") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 
 #### output ####
 save(mvBioMod2, file = "output/microstegium_biomass_model_2019_density_exp.rda")
+save(mvBioPlot, file = "output/microstegium_biomass_figure_2019_density_exp.rda")
+save(mvFungPlot, file = "output/microstegium_biomass_figure_2019_greenhouse_exp.rda")

@@ -2,7 +2,7 @@
 
 # file: elymus_adult_ngs_survival_parameter_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/6/20
+# date last edited: 10/25/20
 # goal: sample from model coefficients to estimate survival
 
 
@@ -17,16 +17,22 @@ load("output/elymus_adult_ngs_survival_model_2019_density_exp.rda")
 evANgsSurvD1Samps <- posterior_samples(evANgsSurvD1Mod2)
 
 # sample parameters
-W_P_int <- sample(evANgsSurvD1Samps$b_Intercept, size = n_samps, replace = T)
+w_P_df <- evANgsSurvD1Samps[sample(nrow(evANgsSurvD1Samps), size = n_samps, replace = T), ] %>%
+  mutate(int_wat = b_Intercept,
+         int_fun = int_wat + b_fungicide)
 
 
-#### survival function
+#### survival function ####
 
-W_P_fun <- function(iter) {
+w_P_fun <- function(disease, iter) {
   
-  # calculate survival
-  W_P <- exp(W_P_int[iter])/(1 + exp(W_P_int[iter]))
+  # non-growing season survival
+  w_P_lin_expr <- ifelse(disease == 1, 
+                         w_P_df$int_wat[iter],
+                         w_P_df$int_fun[iter])
   
-  return(W_P)
+  w_P <- exp(w_P_lin_expr)/(1 + exp(w_P_lin_expr))
+  
+  return(w_P)
 }
 

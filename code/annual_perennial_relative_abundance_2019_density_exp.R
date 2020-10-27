@@ -2,7 +2,7 @@
 
 # file: annual_perennial_relative_abundance_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/18/20
+# date last edited: 10/26/20
 # goal: relative abundance of annual to perennial
 
 
@@ -10,6 +10,9 @@
 
 # clear all existing data
 rm(list=ls())
+
+# load packages
+library(ggforce)
 
 # number of iterations
 n_samps <- 100
@@ -24,8 +27,8 @@ source("code/annual_perennial_simulation_model_2019_density_exp.R")
 simtime <- 600
 
 # initial conditions
-A0 <- 1 # initial annual population size
-S0 <- 0 # initial perennial seedling population size
+A0 <- 2 # initial annual population size
+S0 <- 1 # initial perennial seedling population size
 P0 <- 1 # initial perennial adult population size
 L0 <- 0 # initial annual litter amount
 
@@ -73,7 +76,7 @@ abund_dat2 <- do.call(rbind, abund2)
 param_dat2 <- do.call(rbind, params2)
 
 
-#### relative abundance ####
+#### figures ####
 
 # relative abundance
 rel_abund_dat <- abund_dat %>%
@@ -89,10 +92,13 @@ rel_abund_dat <- abund_dat %>%
          iterationF = as.factor(iteration))
 
 # figure
+pdf("output/annual_perennial_relative_abundance_time_series_2019_density_exp.pdf")
 ggplot(rel_abund_dat, aes(time, ann_rel_abund, color = iterationF)) +
-  geom_line() +
-  theme(legend.position = "none") +
-  facet_wrap(~ disease)
+  geom_line()  +
+  facet_wrap(~ disease) +
+  theme_bw() +
+  theme(legend.position = "none")
+dev.off()
 
 # relative abundance summary
 rel_sum_dat <- rel_abund_dat %>%
@@ -102,7 +108,7 @@ rel_sum_dat <- rel_abund_dat %>%
             per_rel_abund = mean(per_rel_abund))
 
 # figure
-pdf("output/annual_perennial_relative_abundance_2019_density_exp.pdf")
+pdf("output/annual_perennial_relative_abundance_distribution_2019_density_exp.pdf")
 ggplot(rel_sum_dat, aes(x = ann_rel_abund, fill = disease)) +
   geom_histogram(binwidth = 0.01, position = position_dodge()) +
   xlab("Annual relative abundance") +
@@ -110,3 +116,25 @@ ggplot(rel_sum_dat, aes(x = ann_rel_abund, fill = disease)) +
   theme_bw() +
   theme(legend.position = c(0.2, 0.8))
 dev.off()
+
+# absolute abundance
+abs_abund_dat <- rel_abund_dat %>%
+  select(disease, time, iteration, iterationF, Perennial, Annual, Litter) %>%
+  pivot_longer(cols = c("Perennial", "Annual", "Litter"), names_to = "species", values_to = "density")
+
+# figure
+pdf("output/annual_perennial_absolute_abundance_time_series_2019_density_exp.pdf")
+for(i in 1:11){
+  print(ggplot(abs_abund_dat, aes(time, density, color = species, linetype = disease)) +
+          geom_line()  +
+          facet_wrap_paginate(~ iterationF, nrow = 3, ncol = 3, page = i, scales = "free") +
+          theme_bw() +
+          theme(legend.position = "bottom",
+                legend.direction = "horizontal",
+                legend.box.margin = margin(-10, 0, 0, 0),
+                legend.margin = margin(0, 0, 0, 0))) 
+}
+dev.off()
+
+# see annual_perennial_troubleshooting_2019_density_exp for additional code
+

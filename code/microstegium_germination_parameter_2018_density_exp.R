@@ -2,7 +2,7 @@
 
 # file: microstegium_germination_2018_density_exp
 # author: Amy Kendig
-# date last edited: 10/16/20
+# date last edited: 10/26/20
 # goal: sample from model coefficients to estimate survival
 
 
@@ -17,21 +17,18 @@ load("output/microstegium_germination_model_2018_density_exp.rda")
 mvGermD1Samps <- posterior_samples(mvGermD1Mod2)
 
 # sample parameters
-g0_A_int_wat <- sample(mvGermD1Samps$b_Intercept, size = n_samps, replace = T)
-g0_A_int_fun <- g0_A_int_wat + sample(mvGermD1Samps$b_fungicide, size = n_samps, replace = T)
-
-# from Lili's experiment: The effect of litter on germination is weaker when Elymus is present, but converges with the estimate for when Elymus is absent when litter reaches ~2.5g. Using the model coefficients
-beta_A_L <- -0.26 + 0.14
+g_A_df <- mvGermD1Samps[sample(nrow(mvGermD1Samps), size = n_samps, replace = T), ] %>%
+  mutate(int_wat = b_Intercept,
+         int_fun = int_wat + b_fungicide)
 
 
 #### germination function ####
 
-G_A_fun <- function(disease, litter, iter) {
+g_A_fun <- function(disease, iter) {
   
-  # maximum germination
-  g_A_expr <- ifelse(disease == 1, g0_A_int_wat[iter] + beta_A_L * litter, g0_A_int_fun[iter] + beta_A_L * litter)
+  g_A_expr <- ifelse(disease == 1, g_A_df$int_wat[iter], g_A_df$int_fun[iter])
   
-  G_A <- exp(g_A_expr) / (1 + exp(g_A_expr))
+  g_A <- exp(g_A_expr) / (1 + exp(g_A_expr))
   
-  return(G_A)
+  return(g_A)
 }

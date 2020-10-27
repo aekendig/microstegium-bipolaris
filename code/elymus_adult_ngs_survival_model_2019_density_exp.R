@@ -2,7 +2,7 @@
 
 # file: elymus_adult_ngs_survival_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/6/20
+# date last edited: 10/25/20
 # goal: estimate Elymus adult non-growing season survival based on density and fungicide treatments
 
 
@@ -49,57 +49,47 @@ mean(evANgsSurvD1Dat$survival)
 #### fit regression ####
 
 # initial fit
-evANgsSurvD1Mod1 <- brm(survival ~ fungicide * (mv_seedling_density + ev_seedling_density + ev_adult_density) + (1|site),
+evANgsSurvD1Mod1 <- brm(survival ~ fungicide + (1|site),
                       data = evANgsSurvD1Dat,
                       family = bernoulli,
                       prior = c(prior(normal(0, 10), class = Intercept),
                                 prior(normal(0, 10), class = b),
                                 prior(cauchy(0, 1), class = sd)),
                       iter = 6000, warmup = 1000, chains = 1)
-# 5 divergent transitions and several other warnings
-# likely because there are too few zeros
+# 1 divergent transition
 summary(evANgsSurvD1Mod1)
 
-# intercept-only model
-evANgsSurvD1Mod2 <- brm(survival ~ 1 + (1|site),
-                        data = evANgsSurvD1Dat,
-                        family = bernoulli,
-                        prior = c(prior(normal(0, 10), class = Intercept),
-                                  prior(cauchy(0, 1), class = sd)),
-                        iter = 6000, warmup = 1000, chains = 3,
-                        control = list(adapt_delta = 0.999))
+# increase chains
+evANgsSurvD1Mod2 <- update(evANgsSurvD1Mod1, chains = 3,
+                           control = list(adapt_delta = 0.999))
 summary(evANgsSurvD1Mod2)
 plot(evANgsSurvD1Mod2)
 pp_check(evANgsSurvD1Mod2, nsamples = 50)
 
 
-#### visualize ####
+#### visualize #### 
 
 # simulate fit
-fitDat <- tibble(site = c("D1", "D2", "D3", "D4")) %>%
+fitDat <- tibble(fungicide = c(1, 0)) %>%
   mutate(survival = fitted(evANgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Estimate"],
          survival_lower = fitted(evANgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q2.5"],
-         survival_upper = fitted(evANgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"])
+         survival_upper = fitted(evANgsSurvD1Mod2, newdata = ., re_formula = NA, type = "response")[, "Q97.5"]) %>%
+  mutate(treatment = ifelse(fungicide == 1, "fungicide", "water"))
 
-# average b
+# summarize by site
 vizDat <- evANgsSurvD1Dat %>%
-  group_by(site) %>%
-  summarise(survival_obs = mean(survival),
-            survival_lower_obs = mean_cl_boot(survival)$ymin,
-            survival_upper_obs = mean_cl_boot(survival)$ymax) %>%
-  full_join(fitDat)
+  group_by(site, treatment) %>%
+  summarise(survival = mean(survival))
 
 # fit figure
-ggplot(vizDat, aes(survival_obs, survival, color = site)) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+evANgsSurvD1Plot <- ggplot(fitDat, aes(treatment, survival, color = treatment)) +
   geom_errorbar(aes(ymin = survival_lower, ymax = survival_upper), width = 0) +
-  geom_errorbarh(aes(xmin = survival_lower_obs, xmax = survival_upper_obs), height = 0) +
-  geom_point(size = 2) +
+  geom_point(size = 4, shape = 16) +
+  geom_point(data = vizDat, shape = 15, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5) +
   theme_bw()
-# density tends to increase survival without disease and decrease survival with disease
-# fits are messy
 
 
 #### output ####
 
 save(evANgsSurvD1Mod2, file = "output/elymus_adult_ngs_survival_model_2019_density_exp.rda")
+save(evANgsSurvD1Plot, file = "output/elymus_adult_ngs_survival_figure_2019_density_exp.rda")
