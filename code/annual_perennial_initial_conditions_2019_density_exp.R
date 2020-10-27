@@ -6,6 +6,9 @@
 # goal: annual and perennial dominance across a range of initial conditions
 
 
+#### haven't edited script from relative abundance analysis yet ####
+
+
 #### set-up ####
 
 # clear all existing data

@@ -2,7 +2,7 @@
 
 # file: elymus_adult_gs_survival_parameter_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/25/20
+# date last edited: 10/27/20
 # goal: sample from model coefficients to estimate survival
 
 
@@ -11,10 +11,12 @@
 # tidyverse and brms packages must be loaded
 
 # load model
-load("output/elymus_adult_gs_survival_model_2019_density_exp.rda")
+# load("output/elymus_adult_gs_survival_model_2019_density_exp.rda")
+load("output/elymus_adult_gs_survival_fung_model_2019_density_exp.rda")
 
 # extract posterior distributions
-evAGsSurvD2Samps <- posterior_samples(evAGsSurvD2Mod2)
+# evAGsSurvD2Samps <- posterior_samples(evAGsSurvD2Mod2)
+evAGsSurvD2FuSamps <- posterior_samples(evAGsSurvD2FuMod2)
 
 # sample parameters
 # U_P_dens <- evAGsSurvD2Samps[sample(nrow(evAGsSurvD2Samps), size = n_samps, replace = T), ] %>%
@@ -30,7 +32,7 @@ evAGsSurvD2Samps <- posterior_samples(evAGsSurvD2Mod2)
 #          evA_dens_wat = b_ev_adult_density,
 #          evA_dens_fun = evA_dens_wat + fungicide_ev_adult_density)
 
-u_P_df <- evAGsSurvD2Samps[sample(nrow(evAGsSurvD2Samps), size = n_samps, replace = T), ] %>%
+u_P_df <- evAGsSurvD2FuSamps[sample(nrow(evAGsSurvD2FuSamps), size = n_samps, replace = T), ] %>%
   mutate(int_wat = b_Intercept,
          int_fun = int_wat + b_fungicide)
 

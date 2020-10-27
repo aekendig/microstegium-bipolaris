@@ -40,7 +40,7 @@ evSNgsSurvD1Fig <- evSNgsSurvD1Plot +
   ggtitle(expression(paste(italic("E. virginicus"), " seedling", sep = ""))) +
   scale_fill_viridis_d(name = "Disease treatment", direction = -1, end = 0.6) +
   scale_color_viridis_d(name = "Disease treatment", direction = -1, end = 0.6) +
-  ylab("Proportion surviving") +
+  ylab("Proportion alive") +
   xlab("Disease treatment") +
   coord_cartesian(ylim = c(0.63, 1)) +
   fig_theme +
@@ -50,7 +50,7 @@ evANgsSurvD1Fig <- evANgsSurvD1Plot +
   ggtitle(expression(paste(italic("E. virginicus"), " adult", sep = ""))) +
   scale_fill_viridis_d(name = "Disease treatment", direction = -1, end = 0.6) +
   scale_color_viridis_d(name = "Disease treatment", direction = -1, end = 0.6) +
-  ylab("Proportion surviving") +
+  ylab("Proportion alive") +
   xlab("Disease treatment") +
   coord_cartesian(ylim = c(0.63, 1)) +
   fig_theme +
