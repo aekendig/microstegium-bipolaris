@@ -108,3 +108,31 @@ param_dat %>%
   geom_line() +
   facet_wrap(~ parameter, scales = "free")
 # not sure what is causing fluctuations in annual population
+
+
+#### annual_perennial_kortessis_relative_abundance_2019_density_exp ####
+
+# making sure L* is equal to simulated L
+
+# combine data
+cdat <- full_join(idat, rdat) %>%
+  full_join(ldat) %>%
+  mutate(outcome = fct_relevel(outcome, "E. virginicus only"),
+         lit_diff = L.P / eq_litter)
+
+# figures
+ggplot(filter(cdat, resident == "E. virginicus"), aes(eq_litter, L.P, color = disease)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1)
+
+ggplot(filter(cdat, resident == "M. vimineum"), aes(eq_litter, L.A, color = disease)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1)
+
+lit_mod <- lm(L.P ~ eq_litter, data = filter(cdat, resident == "E. virginicus" & per_viable == 1))
+summary(lit_mod)
+
+tdat %>%
+  filter(iteration == 47 & disease == "without disease" & resident == "E. virginicus" & species %in% c("Perennial", "Annual", "Litter") & time < 10) %>%
+  ggplot(aes(time, density, color = species)) +
+  geom_line()

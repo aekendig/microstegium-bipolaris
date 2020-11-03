@@ -12,10 +12,10 @@
 rm(list=ls())
 
 # load packages
-library("tidyverse")
-library("brms")
-library("tidybayes")
-library("cowplot")
+library(tidyverse)
+library(brms)
+library(tidybayes)
+library(cowplot)
 
 # number of iterations
 n_samps <- 1000

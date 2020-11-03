@@ -46,12 +46,12 @@ E_A_lit_fun <- mvEstL1Samps[sample(nrow(mvEstL1Samps), size = n_samps, replace =
 
 #### survival function
 
-E_A_fun <- function(disease, A_dens, S_dens, P_dens, litter, iter) {
+E_A_fun <- function(disease, g.A, A_dens, g.S, S_dens, P_dens, litter, iter) {
   
   # calculate survival
   E_A_lin_expr <- ifelse(disease == 1, 
-                         E_A_dens$int_wat[iter] + E_A_dens$mv_dens_wat[iter] * A_dens + E_A_dens$evS_dens_wat[iter] * S_dens + E_A_dens$evA_dens_wat[iter] * P_dens + E_A_lit_wat[iter] * litter,
-                         E_A_dens$int_fun[iter] + E_A_dens$mv_dens_fun[iter] * A_dens + E_A_dens$evS_dens_fun[iter] * S_dens + E_A_dens$evA_dens_fun[iter] * P_dens + E_A_lit_fun$sterilized_litter[iter] * litter)
+                         E_A_dens$int_wat[iter] + E_A_dens$mv_dens_wat[iter] * g.A * A_dens + E_A_dens$evS_dens_wat[iter] * g.S * S_dens + E_A_dens$evA_dens_wat[iter] * P_dens + E_A_lit_wat[iter] * litter,
+                         E_A_dens$int_fun[iter] + E_A_dens$mv_dens_fun[iter] * g.A * A_dens + E_A_dens$evS_dens_fun[iter] * g.S * S_dens + E_A_dens$evA_dens_fun[iter] * P_dens + E_A_lit_fun$sterilized_litter[iter] * litter)
   
   E_A <- ifelse(exp(E_A_lin_expr) == Inf, 1, exp(E_A_lin_expr)/(1 + exp(E_A_lin_expr)))
   

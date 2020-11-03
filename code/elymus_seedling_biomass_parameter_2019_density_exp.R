@@ -31,12 +31,12 @@ B_S_dens <- evSBioSamps[sample(nrow(evSBioSamps), size = n_samps, replace = T), 
 
 #### biomass function ####
 
-B_S_fun <- function(disease, A_dens, S_dens, P_dens, iter) {
+B_S_fun <- function(disease, g.A, E.A, A_dens, g.S, E.S, S_dens, P_dens, iter) {
   
   # calculate survival
   B_S_expr <- ifelse(disease == 1, 
-                     B_S_dens$int_wat[iter] - log(1 + B_S_dens$mv_dens_wat[iter] * A_dens + B_S_dens$evS_dens_wat[iter] * S_dens + B_S_dens$evA_dens_wat[iter] * P_dens),
-                     B_S_dens$int_fun[iter] - log(1 + B_S_dens$mv_dens_fun[iter] * A_dens + B_S_dens$evS_dens_fun[iter] * S_dens + B_S_dens$evA_dens_fun[iter] * P_dens))
+                     B_S_dens$int_wat[iter] - log(1 + B_S_dens$mv_dens_wat[iter] * g.A * E.A * A_dens + B_S_dens$evS_dens_wat[iter] * g.S * E.S * S_dens + B_S_dens$evA_dens_wat[iter] * P_dens),
+                     B_S_dens$int_fun[iter] - log(1 + B_S_dens$mv_dens_fun[iter] * g.A * E.A * A_dens + B_S_dens$evS_dens_fun[iter] * g.S * E.S * S_dens + B_S_dens$evA_dens_fun[iter] * P_dens))
   
   B_S <- exp(B_S_expr)
   

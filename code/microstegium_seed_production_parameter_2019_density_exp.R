@@ -30,12 +30,12 @@ Y_A_dens <- mvSeedD2Samps[sample(nrow(mvSeedD2Samps), size = n_samps, replace = 
 
 #### biomass function ####
 
-Y_A_fun <- function(disease, A_dens, S_dens, P_dens, iter) {
+Y_A_fun <- function(disease, g.A, E.A, A_dens, g.S, E.S, S_dens, P_dens, iter) {
   
   # calculate survival
   Y_A <- ifelse(disease == 1, 
-                     Y_A_dens$int_wat[iter] / (1 + Y_A_dens$mv_dens_wat[iter] * A_dens + Y_A_dens$evS_dens_wat[iter] * S_dens + Y_A_dens$evA_dens_wat[iter] * P_dens),
-                     Y_A_dens$int_fun[iter] / (1 + Y_A_dens$mv_dens_fun[iter] * A_dens + Y_A_dens$evS_dens_fun[iter] * S_dens + Y_A_dens$evA_dens_fun[iter] * P_dens))
+                     Y_A_dens$int_wat[iter] / (1 + Y_A_dens$mv_dens_wat[iter] * g.A * E.A * A_dens + Y_A_dens$evS_dens_wat[iter] * g.S * E.S * S_dens + Y_A_dens$evA_dens_wat[iter] * P_dens),
+                     Y_A_dens$int_fun[iter] / (1 + Y_A_dens$mv_dens_fun[iter] * g.A * E.A * A_dens + Y_A_dens$evS_dens_fun[iter] * g.S * E.S * S_dens + Y_A_dens$evA_dens_fun[iter] * P_dens))
   
   return(Y_A)
 }

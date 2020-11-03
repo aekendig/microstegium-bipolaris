@@ -74,10 +74,6 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
   # simulate population dynamics
   for(t in 1:(simtime - 1)){	
     
-    # seedling establishment
-    E.A <- E_A_fun(disease, A[t], S[t], P[t], L[t], iter)
-    E.S <- E_S_fun(disease, A[t], S[t], P[t], L[t], iter)
-    
     # perennial adult growing season survival
     u.P <- u_P_fun(disease, iter)
     
@@ -85,19 +81,23 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter){
     w.S <- w_S_fun(disease, iter)
     w.P <- w_P_fun(disease, iter)
     
-    # reduce growth due to competition
-    B.A <- B_A_fun(disease, A[t], S[t], P[t], iter)
-    B.S <- B_S_fun(disease, A[t], S[t], P[t], iter)
-    B.P <- B_P_fun(disease, A[t], S[t], P[t], iter) 
-    
-    # reduce seed production due to competition
-    Y.A <- Y_A_fun(disease, A[t], S[t], P[t], iter)
-    Y.S <- Y_S_fun(disease, A[t], S[t], P[t], iter)
-    Y.P <- Y_P_fun(disease, A[t], S[t], P[t], iter)
-    
     # germination depends on disease and decreases due to litter
     g.A <- g_A_fun(disease, iter)
     g.S <- g_S_fun(disease, iter)
+    
+    # seedling establishment
+    E.A <- E_A_fun(disease, g.A, A[t], g.S, S[t], P[t], L[t], iter)
+    E.S <- E_S_fun(disease, g.A, A[t], g.S, S[t], P[t], L[t], iter)
+    
+    # reduce growth due to competition
+    B.A <- B_A_fun(disease, g.A, E.A, A[t], g.S, E.S, S[t], P[t], iter)
+    B.S <- B_S_fun(disease, g.A, E.A, A[t], g.S, E.S, S[t], P[t], iter)
+    B.P <- B_P_fun(disease, g.A, E.A, A[t], g.S, E.S, S[t], P[t], iter) 
+    
+    # reduce seed production due to competition
+    Y.A <- Y_A_fun(disease, g.A, E.A, A[t], g.S, E.S, S[t], P[t], iter)
+    Y.S <- Y_S_fun(disease, g.A, E.A, A[t], g.S, E.S, S[t], P[t], iter)
+    Y.P <- Y_P_fun(disease, g.A, E.A, A[t], g.S, E.S, S[t], P[t], iter)
     
     # perennial lifespan
     l.P <- ifelse(w.P * u.P > 0.99, 0.99, w.P * u.P)
