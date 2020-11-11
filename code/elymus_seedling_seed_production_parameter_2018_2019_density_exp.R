@@ -2,7 +2,7 @@
 
 # file: elymus_seedling_seed_production_parameter_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 11/10/20
+# date last edited: 11/11/20
 # goal: sample from model coefficients to estimate survival
 
 
@@ -28,11 +28,8 @@ Y_S_fun_eff <- evSSeedFuSamps[sample(nrow(evSSeedFuSamps), size = n_samps / 2, r
                names_sep = "_y")
 
 Y_S_dens <- evSSeedSamps[sample(nrow(evSSeedSamps), size = n_samps / 2, replace = T), ] %>%
-  rename("b_maxS_yearfyear2_treatmentfungicide" = "b_maxS_yearfyear2:treatmentfungicide") %>%
   transmute(int_wat_y1 = b_maxS_Intercept,
             int_wat_y2 = int_wat_y1 + b_maxS_yearfyear2,
-            int_fun_y1 = int_wat_y1 + b_maxS_treatmentfungicide,
-            int_fun_y2 = int_fun_y1 + b_maxS_yearfyear2 + b_maxS_yearfyear2_treatmentfungicide,
             mv_dens_wat_y1 = b_gammaA_treatment_yearcontrol_year1,
             mv_dens_fun_y1 = b_gammaA_treatment_yearfungicide_year1,
             evS_dens_wat_y1 = b_gammaS_treatment_yearcontrol_year1,

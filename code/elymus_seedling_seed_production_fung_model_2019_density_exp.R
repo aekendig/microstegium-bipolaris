@@ -1,8 +1,8 @@
 ##### info ####
 
-# file: elymus_seedling_seed_production_fung_model_2018_2019_density_exp
+# file: elymus_seedling_seed_production_fung_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 11/4/20
+# date last edited: 11/11/20
 # goal: estimate Elymus seedling seed production based on fungicide treatments
 
 
@@ -16,8 +16,6 @@ library(tidyverse)
 library(brms)
 
 # import data
-survD1Dat <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
-seedD1Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2018_density_exp.csv")
 seedD2Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv")
 bioD2Dat <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
@@ -31,32 +29,6 @@ plotDens <- plotsD %>%
   mutate(mv_seedling_density = case_when(background == "Mv seedling" ~ background_density, TRUE ~ 0),
          ev_seedling_density = case_when(background == "Ev seedling" ~ background_density, TRUE ~ 0),
          ev_adult_density = case_when(background == "Ev adult" ~ background_density, TRUE ~ 0))
-
-# summer survival 2018
-# make survival 1 if the plant produced seeds in summer
-# remove NA's 
-evSGsSurvD1Dat <- survD1Dat %>%
-  filter(month == "September" & sp == "Ev" & focal == 1 & age == "seedling") %>%
-  select(-month) %>%
-  mutate(survival = case_when(seeds_produced == 1 ~ 1, 
-                              TRUE ~ survival))
-
-# add columns
-# remove missing data
-evSSeedD1Dat <- seedD1Dat %>%
-  filter(ID %in% c("1", "2", "3") & ID_unclear == 0) %>%
-  group_by(site, plot, treatment, sp, ID) %>%
-  summarise(seeds = sum(seeds)) %>%
-  ungroup() %>%
-  full_join(evSGsSurvD1Dat %>%
-               filter(survival == 1) %>%
-               select(site, plot, treatment, sp, age, ID, survival)) %>%
-  left_join(plotDens) %>%
-  mutate(seeds = replace_na(seeds, 0),
-         log_seeds = log(seeds + 1),
-         fungicide = ifelse(treatment == "fungicide", 1, 0),
-         plotr = ifelse(treatment == "fungicide", plot + 10, plot),
-         yearf = "year 1")
 
 # check for notes about seeds
 unique(seedD2Dat$spikelet_notes)
@@ -76,18 +48,14 @@ evSSeedD2Dat <- seedD2Dat %>%
          log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotr = ifelse(treatment == "fungicide", plot + 10, plot),
-         age = ifelse(ID == "A", "adult", "seedling"),
-         yearf = "year 2") %>%
+         age = ifelse(ID == "A", "adult", "seedling")) %>%
   filter(age == "seedling")
-
-# combine years
-evSSeedDat <- full_join(evSSeedD1Dat, evSSeedD2Dat)
 
 
 #### initial visualizations ####
 
 # modify dataset so that zero plots are repeated
-vizDat <- evSSeedDat %>%
+vizDat <- evSSeedD2Dat %>%
   select(-c(background, background_sp)) %>%
   left_join(plotsD2)
 
@@ -95,61 +63,60 @@ vizDat <- evSSeedDat %>%
 ggplot(vizDat, aes(background_density, seeds, color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  facet_grid(yearf~background, scales = "free") +
+  facet_grid(~background, scales = "free") +
   theme_bw()
 
 # log-transformed seeds
 ggplot(vizDat, aes(background_density, log_seeds, color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  facet_grid(yearf~background, scales = "free") +
+  facet_grid(~background, scales = "free") +
   theme_bw()
 
 
 #### fit regression ####
 
 # select plots with no background (negative effect on growth)
-evSSeedDat0 <- evSSeedDat %>%
+evSSeedD2Dat0 <- evSSeedD2Dat %>%
   filter(background == "none")
 
 # initial fit
-evSSeedFuMod1 <- brm(log_seeds ~ fungicide * yearf + (1|site),
-                  data = evSSeedDat0, family = gaussian,
-                  prior <- c(prior(normal(1, 3), class = "Intercept"),
+evSSeedFuD2Mod1 <- brm(log_seeds ~ fungicide + (1|site),
+                  data = evSSeedD2Dat0, family = gaussian,
+                  prior <- c(prior(normal(1.5, 3), class = "Intercept"),
                              prior(normal(0, 10), class = "b"),
                              prior(cauchy(0, 1), class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
-# 5 divergent transitions
-summary(evSSeedFuMod1)
+# 1 divergent transition
+summary(evSSeedFuD2Mod1)
 
 # increase chains and adapt delta
-evSSeedFuMod2 <- update(evSSeedFuMod1, chains = 3,
+evSSeedFuD2Mod2 <- update(evSSeedFuD2Mod1, chains = 3,
                      control = list(adapt_delta = 0.999))
-summary(evSSeedFuMod2)
-plot(evSSeedFuMod2)
-pp_check(evSSeedFuMod2, nsamples = 50)
+summary(evSSeedFuD2Mod2)
+plot(evSSeedFuD2Mod2)
+pp_check(evSSeedFuD2Mod2, nsamples = 50)
 
 
 #### visualize ####
 
 # simulation data
-simDat <- tibble(fungicide = rep(c(1, 0), 2),
-                 yearf = rep(c("year 1", "year 2"), each = 2)) %>%
+simDat <- tibble(fungicide = c(1, 0)) %>%
   mutate(treatment = ifelse(fungicide == 1, "fungicide", "water"))
 
 # simulate fit
 fitDat <- simDat %>%
-  mutate(log_seeds =fitted(evSSeedFuMod2, newdata = ., re_formula = NA)[, "Estimate"],
-         log_seeds_lower = fitted(evSSeedFuMod2, newdata = ., re_formula = NA)[, "Q2.5"],
-         log_seeds_upper = fitted(evSSeedFuMod2, newdata = ., re_formula = NA)[, "Q97.5"],
+  mutate(log_seeds =fitted(evSSeedFuD2Mod2, newdata = ., re_formula = NA)[, "Estimate"],
+         log_seeds_lower = fitted(evSSeedFuD2Mod2, newdata = ., re_formula = NA)[, "Q2.5"],
+         log_seeds_upper = fitted(evSSeedFuD2Mod2, newdata = ., re_formula = NA)[, "Q97.5"],
          seeds = exp(log_seeds) - 1,
          seeds_lower = exp(log_seeds_lower) - 1,
          seeds_upper = exp(log_seeds_upper) - 1)
 
 # summarise by site
-vizDat2 <- evSSeedDat0  %>%
-  group_by(yearf, site, treatment) %>%
+vizDat2 <- evSSeedD2Dat0  %>%
+  group_by(site, treatment) %>%
   summarise(seeds = mean(seeds),
             log_seeds = mean(log_seeds))
 
@@ -161,15 +128,14 @@ ggplot(fitDat, aes(treatment, seeds, color = treatment)) +
   facet_wrap(~ yearf) +
   theme_bw()
 
-(evSSeedFuPlot <- ggplot(fitDat, aes(treatment, log_seeds, color = treatment)) +
+(evSSeedFuD2Plot <- ggplot(fitDat, aes(treatment, log_seeds, color = treatment)) +
     geom_errorbar(aes(ymin = log_seeds_lower, ymax = log_seeds_upper), width = 0) +
     geom_point(size = 4, shape = 16) +
     geom_point(data = vizDat2, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5, aes(shape = site)) +
-    facet_wrap(~ yearf) +
     theme_bw())
 
 
 
 #### output ####
-save(evSSeedFuMod2, file = "output/elymus_seedling_seed_fung_model_2018_2019_density_exp.rda")
-save(evSSeedFuPlot, file = "output/elymus_seedling_seed_fung_figure_2018_2019_density_exp.rda")
+save(evSSeedFuD2Mod2, file = "output/elymus_seedling_seed_fung_model_2019_density_exp.rda")
+save(evSSeedFuD2Plot, file = "output/elymus_seedling_seed_fung_figure_2019_density_exp.rda")

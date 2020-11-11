@@ -181,4 +181,4 @@ evASeedDat3 <- evASeedDat2 %>%
 
 #### output ####
 save(evASeedMod2, file = "output/elymus_adult_seed_model_2018_2019_density_exp.rda")
-save(evASeedPlot, file = "output/elymus_adult_seed_figure_2019_2019_density_exp.rda")
+save(evASeedPlot, file = "output/elymus_adult_seed_figure_2018_2019_density_exp.rda")

@@ -172,4 +172,4 @@ ggplot(fitDat, aes(treatment, seeds, color = treatment)) +
 
 #### output ####
 save(evASeedFuMod2, file = "output/elymus_adult_seed_fung_model_2018_2019_density_exp.rda")
-save(evASeedFuPlot, file = "output/elymus_adult_seed_fung_figure_2019_2019_density_exp.rda")
+save(evASeedFuPlot, file = "output/elymus_adult_seed_fung_figure_2018_2019_density_exp.rda")
