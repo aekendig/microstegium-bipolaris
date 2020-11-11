@@ -2,7 +2,7 @@
 
 # file: annual_perennial_kortessis_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/27/20
+# date last edited: 11/11/20
 # goal: simulate populations with parameters derived from data
 
 
@@ -36,6 +36,7 @@ source("code/elymus_germination_parameter_2019_density_exp.R")
 s.A <- 0.15 # annual seed survival (Redwood et al. 2018)
 s.P <- 0.05 # perennial seed survival (Garrison and Stier 2010)
 d <- 0.61 # annual litter decomposition (DeMeester and Richter 2010)
+h <- 0.22 # seedling survival from germination to establishment (Emery et al. 2013)
 
 
 #### model ####
@@ -78,10 +79,10 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter, d_in){
   # maximum establishment
   e.A <- ifelse(disease == 1, 
                 exp(E_A_df$int_wat[iter])/(1 + exp(E_A_df$int_wat[iter])), 
-                exp(E_A_df$int_fun[iter])/(1 + exp(E_A_df$int_fun[iter])))
+                exp(E_A_df$int_fun[iter])/(1 + exp(E_A_df$int_fun[iter]))) * h
   e.P <- ifelse(disease == 1, 
                 exp(E_S_df$int_wat[iter])/(1 + exp(E_S_df$int_wat[iter])), 
-                exp(E_S_df$int_fun[iter])/(1 + exp(E_S_df$int_fun[iter])))
+                exp(E_S_df$int_fun[iter])/(1 + exp(E_S_df$int_fun[iter]))) * h
   
   # maximum seed production
   y.A <- ifelse(disease == 1, 
@@ -178,8 +179,8 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter, d_in){
   for(t in 1:(simtime - 1)){	
     
     # seedling establishment
-    E.A <- E_A_bh_fun(disease, L[t], iter)
-    E.P <- E_S_bh_fun(disease, L[t], iter)
+    E.A <- E_A_bh_fun(disease, L[t], iter) * h
+    E.P <- E_S_bh_fun(disease, L[t], iter) * h
     
     # reduce seed production due to competition
     Y.A <- y.A / (1 + alpha.A * g.A * E.A * A[t] + alpha.P * P[t] + alpha.P * gamma * g.P * E.P * S[t])
