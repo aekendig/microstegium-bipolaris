@@ -21,7 +21,7 @@ mvLitEstBhSamps <- posterior_samples(mvLitEstBhMod2)
 mvEstL1BhSamps <- posterior_samples(mvEstL1BhMod2)
 
 # sample parameters
-E_A_df <- mvGsSurvBhSamps[sample(nrow(mvGsSurvBhSamps), size = n_samps, replace = T), ] %>%
+E_A_df <- mvGsSurvBhSamps[sample(nrow(mvGsSurvBhSamps), size = n_samps / 2, replace = T), ] %>%
   rename("b_fungicide_year2" = "b_fungicide:yearfyear2") %>%
   transmute(int_wat_y1 = b_Intercept,
          int_fun_y1 = int_wat_y1 + b_fungicide,

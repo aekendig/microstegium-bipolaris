@@ -91,8 +91,15 @@ vizDat <- evSSeedDat %>%
   select(-c(background, background_sp)) %>%
   left_join(plotsD2)
 
-# non-transformed biomass
+# non-transformed seeds
 ggplot(vizDat, aes(background_density, seeds, color = treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  facet_grid(yearf~background, scales = "free") +
+  theme_bw()
+
+# log-transformed seeds
+ggplot(vizDat, aes(background_density, log_seeds, color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   facet_grid(yearf~background, scales = "free") +
@@ -101,7 +108,7 @@ ggplot(vizDat, aes(background_density, seeds, color = treatment)) +
 
 #### fit regression ####
 
-# remove plots with no background (negative effect on growth)
+# select plots with no background (negative effect on growth)
 evSSeedDat0 <- evSSeedDat %>%
   filter(background == "none")
 

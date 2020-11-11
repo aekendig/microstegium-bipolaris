@@ -1,6 +1,6 @@
 ##### info ####
 
-# file: elymus_seedling_seed_production_model_2019_density_exp
+# file: microstegium_seed_production_model_2019_density_exp
 # author: Amy Kendig
 # date last edited: 10/26/20
 # goal: estimate Elymus seedling seed production based on density and fungicide treatments

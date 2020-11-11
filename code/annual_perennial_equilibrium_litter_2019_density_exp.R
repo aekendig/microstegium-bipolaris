@@ -109,4 +109,4 @@ dev.off()
 
 
 #### output ####
-write_csv(lit_df2, "annual_perennial_equilibrium_litter_2019_density_exp.csv")
+write_csv(lit_df2, "output/annual_perennial_equilibrium_litter_2019_density_exp.csv")

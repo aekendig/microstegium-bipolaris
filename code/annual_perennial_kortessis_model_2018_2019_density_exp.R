@@ -2,7 +2,7 @@
 
 # file: annual_perennial_kortessis_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 11/4/20
+# date last edited: 11/10/20
 # goal: simulate populations with parameters derived from data
 
 
@@ -25,12 +25,12 @@ source("code/elymus_adult_ngs_survival_parameter_2019_density_exp.R")
 source("code/microstegium_biomass_fung_parameter_2019_density_exp.R")
 source("code/elymus_adult_biomass_fung_parameter_2019_density_exp.R")
 
-source("code/microstegium_seed_production_parameter_2019_density_exp.R")
-source("code/elymus_seedling_seed_production_parameter_2019_density_exp.R")
-source("code/elymus_adult_seed_production_parameter_2019_density_exp.R")
+source("code/microstegium_seed_production_parameter_2018_2019_density_exp.R")
+source("code/elymus_seedling_seed_production_parameter_2018_2019_density_exp.R")
+source("code/elymus_adult_seed_production_parameter_2018_2019_density_exp.R")
 
 source("code/microstegium_germination_parameter_2018_density_exp.R")
-source("code/elymus_germination_parameter_2019_density_exp.R")
+source("code/elymus_germination_parameter_2018_2019_density_exp.R")
 
 # constant parameters
 s.A <- 0.15 # annual seed survival (Redwood et al. 2018)

@@ -17,7 +17,7 @@ load("output/elymus_adult_gs_survival_fung_model_2018_2019_density_exp.rda")
 evAGsSurvFuSamps <- posterior_samples(evAGsSurvFuMod2)
 
 # sample parameters
-u_P_df <- evAGsSurvFuSamps[sample(nrow(evAGsSurvFuSamps), size = n_samps, replace = T), ] %>%
+u_P_df <- evAGsSurvFuSamps[sample(nrow(evAGsSurvFuSamps), size = n_samps / 2, replace = T), ] %>%
   rename("b_fungicide_year2" = "b_fungicide:yearfyear2") %>%
   transmute(int_wat_y1 = b_Intercept,
             int_fun_y1 = int_wat_y1 + b_fungicide,
