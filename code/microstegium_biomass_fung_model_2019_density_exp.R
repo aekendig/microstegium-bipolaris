@@ -2,7 +2,7 @@
 
 # file: microstegium_biomass_fung_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/27/20
+# date last edited: 11/11/20
 # goal: estimate Microstegium biomass based on fungicide treatment
 
 
@@ -77,7 +77,7 @@ pp_check(mvBioGhMod2, nsamples = 50)
 #### fit regression ####
 
 # initial fit
-mvBioFuMod1 <- brm(log_bio.g ~ fungicide + treatment + (1|site/plotr),
+mvBioFuD2Mod1 <- brm(log_bio.g ~ fungicide + treatment + (1|site/plotr),
                     data = mvBioD2Dat, family = gaussian,
                     prior <- c(prior(normal(4, 10), class = "Intercept"),
                                prior(normal(-0.16, 0.001), class = "b", coef = "treatmentfungicide"),
@@ -86,24 +86,24 @@ mvBioFuMod1 <- brm(log_bio.g ~ fungicide + treatment + (1|site/plotr),
                                prior(cauchy(0, 1), class = "sigma")),
                     iter = 6000, warmup = 1000, chains = 1)
 
-# 8 divergent transitions
-summary(mvBioFuMod1)
+# 28 divergent transitions
+summary(mvBioFuD2Mod1)
 
 # increase chains and adapt delta
-mvBioFuMod2 <- update(mvBioFuMod1, chains = 3,
-                    control = list(adapt_delta = 0.999999, max_treedepth = 15))
-summary(mvBioFuMod2)
-plot(mvBioFuMod2)
-pp_check(mvBioFuMod2, nsamples = 50)
+mvBioFuD2Mod2 <- update(mvBioFuD2Mod1, chains = 3,
+                    control = list(adapt_delta = 0.9999999, max_treedepth = 15))
+summary(mvBioFuD2Mod2)
+plot(mvBioFuD2Mod2)
+pp_check(mvBioFuD2Mod2, nsamples = 50)
 
 
 #### visualize ####
 
 # simulate fit
 fitDat <- tibble(fungicide = c(0, 1), treatment = c("control", "fungicide")) %>%
-  mutate(log_bio.g = fitted(mvBioFuMod2, newdata = ., re_formula = NA)[, "Estimate"],
-         log_bio.g_lower = fitted(mvBioFuMod2, newdata = ., re_formula = NA)[, "Q2.5"],
-         log_bio.g_upper = fitted(mvBioFuMod2, newdata = ., re_formula = NA)[, "Q97.5"],
+  mutate(log_bio.g = fitted(mvBioFuD2Mod2, newdata = ., re_formula = NA)[, "Estimate"],
+         log_bio.g_lower = fitted(mvBioFuD2Mod2, newdata = ., re_formula = NA)[, "Q2.5"],
+         log_bio.g_upper = fitted(mvBioFuD2Mod2, newdata = ., re_formula = NA)[, "Q97.5"],
          treatment = ifelse(treatment == "control", "water", treatment))
 
 # change levels on raw data
@@ -114,8 +114,8 @@ mvBioD2Dat2 <- mvBioD2Dat %>%
   ungroup()
 
 # fit figure
-mvBioFuPlot <- ggplot(fitDat, aes(treatment, log_bio.g, color = treatment)) +
-  geom_point(data = mvBioD2Dat2, shape = 15, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5) +
+mvBioFuD2Plot <- ggplot(fitDat, aes(treatment, log_bio.g, color = treatment)) +
+  geom_point(data = mvBioD2Dat2, size = 2, position = position_jitter(width = 0.1, height = 0), alpha = 0.5, aes(shape = site)) +
   geom_errorbar(aes(ymin = log_bio.g_lower, ymax = log_bio.g_upper), width = 0) +
   geom_point(size = 4, shape = 16) +
   theme_bw()
@@ -129,6 +129,6 @@ mvFungPlot <- ggplot(mvFungDat, aes(treatment, log_bio.g, color = treatment)) +
 
 
 #### output ####
-save(mvBioFuMod2, file = "output/microstegium_biomass_fung_model_2019_density_exp.rda")
-save(mvBioFuPlot, file = "output/microstegium_biomass_fung_figure_2019_density_exp.rda")
+save(mvBioFuD2Mod2, file = "output/microstegium_biomass_fung_model_2019_density_exp.rda")
+save(mvBioFuD2Plot, file = "output/microstegium_biomass_fung_figure_2019_density_exp.rda")
 save(mvFungPlot, file = "output/microstegium_biomass_figure_2019_greenhouse_exp.rda")

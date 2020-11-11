@@ -2,7 +2,7 @@
 
 # file: microstegium_biomass_fung_parameter_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/27/20
+# date last edited: 11/11/20
 # goal: sample from model coefficients to estimate survival
 
 
@@ -14,10 +14,10 @@
 load("output/microstegium_biomass_fung_model_2019_density_exp.rda")
 
 # extract posterior distributions
-mvBioFuSamps <- posterior_samples(mvBioFuMod2)
+mvBioFuD2Samps <- posterior_samples(mvBioFuD2Mod2)
 
 # sample parameters
-b_A_df <- mvBioFuSamps[sample(nrow(mvBioFuSamps), size = n_samps, replace = T), ] %>%
+b_A_df <- mvBioFuD2Samps[sample(nrow(mvBioFuD2Samps), size = n_samps, replace = T), ] %>%
   mutate(int_wat = b_Intercept,
          int_fun = int_wat + b_fungicide)
 # remove the direct effect of fungicide by not including b_logv_treatmentfungicide 
