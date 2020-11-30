@@ -2,7 +2,7 @@
 
 # file: annual_perennial_kortessis_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 11/11/20
+# date last edited: 11/19/20
 # goal: simulate populations with parameters derived from data
 
 
@@ -36,7 +36,7 @@ source("code/elymus_germination_parameter_2018_2019_density_exp.R")
 s.A <- 0.15 # annual seed survival (Redwood et al. 2018)
 s.P <- 0.05 # perennial seed survival (Garrison and Stier 2010)
 d <- 0.61 # annual litter decomposition (DeMeester and Richter 2010)
-h <- 0.22 # seedling survival from germination to establishment (Emery et al. 2013)
+h <- 0.29 # seedling survival from germination to establishment (Emery et al. 2013)
 
 
 #### model ####
@@ -86,15 +86,21 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter, d_in){
   
   # maximum seed production
   y.A <- ifelse(disease == 1, 
-                Y_A_dens$int_wat[iter], 
-                Y_A_dens$int_fun[iter])
-  y.P <- u.P * ifelse(disease == 1, 
-                      Y_P_dens$int_wat[iter], 
-                      Y_P_dens$int_fun[iter])
+                exp(Y_A_dens$int_wat[iter]) - 1, 
+                exp(Y_A_dens$int_wat[iter] * Y_A_fun_eff$fun_eff[iter]) - 1)
+  y.A <- ifelse(y.A < 0, 0, y.A)
+  
+  y.P <- ifelse(disease == 1, 
+                exp(Y_P_dens$int_wat[iter]) - 1, 
+                exp(Y_P_dens$int_wat[iter] * Y_P_fun_eff$fun_eff[iter]) - 1)
+  y.P <- ifelse(y.P < 0, 0, y.P)
+  
   y.S <- ifelse(disease == 1, 
-                Y_S_dens$int_wat[iter], 
-                Y_S_dens$int_fun[iter])
-  y.1 <- y.S / y.P
+                exp(Y_S_dens$int_wat[iter]) - 1, 
+                exp(Y_S_dens$int_wat[iter] * Y_S_fun_eff$fun_eff[iter]) - 1)
+  y.S <- ifelse(y.S < 0, 0, y.S)
+  
+  y.1 <- ifelse(y.P > 0, y.S / y.P, 0)
   
   # competition coefficients
   alpha.A.A <- ifelse(disease == 1, 
@@ -193,10 +199,10 @@ sim_fun = function(A0, S0, P0, L0, simtime, disease, iter, d_in){
     P[t+1] = s * P[t] + g.P * E.P * S[t]  
     
     # correct to prevent negative numbers
-    A[t+1] = ifelse(A[t+1] < 1, 0, A[t+1])
-    L[t+1] = ifelse(L[t+1] < 1, 0, L[t+1])
-    S[t+1] = ifelse(S[t+1] < 1, 0, S[t+1])
-    P[t+1] = ifelse(P[t+1] < 1, 0, P[t+1])
+    A[t+1] = ifelse(A[t+1] < 0, 0, A[t+1])
+    L[t+1] = ifelse(L[t+1] < 0, 0, L[t+1])
+    S[t+1] = ifelse(S[t+1] < 0, 0, S[t+1])
+    P[t+1] = ifelse(P[t+1] < 0, 0, P[t+1])
     
     # save parameter value
     E.A_vec[t] <- E.A

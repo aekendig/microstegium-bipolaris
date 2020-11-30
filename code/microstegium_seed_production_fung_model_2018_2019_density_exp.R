@@ -2,7 +2,7 @@
 
 # file: microstegium_seed_production_fung_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 11/10/20
+# date last edited: 11/12/20
 # goal: estimate Microstegium seed production based on fungicide treatments
 
 
@@ -45,7 +45,7 @@ mvSeedD1Dat <- seedD1Dat %>%
 # remove missing data
 mvSeedD2Dat <- seedD2Dat %>%
   left_join(plotDens) %>%
-  mutate(log_seeds = log(seeds),
+  mutate(log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotr = ifelse(treatment == "fungicide", plot + 10, plot),
          yearf = "year 2") %>%
@@ -86,11 +86,12 @@ mvSeedDat0 <- mvSeedDat %>%
 # initial fit
 mvSeedFuMod1 <- brm(log_seeds ~ fungicide * yearf + (1|site),
                   data = mvSeedDat0, family = gaussian,
-                  prior <- c(prior(normal(6, 3), class = "Intercept"),
+                  prior <- c(prior(normal(6.8, 3), class = "Intercept"),
                              prior(normal(0, 10), class = "b"),
                              prior(cauchy(0, 1), class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
+# 2 divergent transitions
 summary(mvSeedFuMod1)
 
 # increase chains

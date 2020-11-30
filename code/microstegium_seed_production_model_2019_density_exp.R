@@ -2,7 +2,7 @@
 
 # file: microstegium_seed_production_model_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/26/20
+# date last edited: 11/12/20
 # goal: estimate Elymus seedling seed production based on density and fungicide treatments
 
 
@@ -46,7 +46,7 @@ unique(bioD2Dat$processing_notes)
 # remove missing data
 mvSeedD2Dat <- seedD2Dat %>%
   left_join(plotDens) %>%
-  mutate(log_seeds = log(seeds),
+  mutate(log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotr = ifelse(treatment == "fungicide", plot + 10, plot),
          treatment = ifelse(treatment == "water", "control", treatment)) %>%
@@ -83,21 +83,21 @@ mvSeedD2Dat2 <- mvSeedD2Dat %>%
   filter(background != "none")
 
 # initial fit
-mvSeedD2Mod1 <- brm(bf(seeds ~ maxS/(1 + gammaA * mv_seedling_density + gammaS * ev_seedling_density + gammaP * ev_adult_density),
-                        maxS ~ treatment + (1|site/plotr),
-                        gammaA ~ 0 + treatment,
-                        gammaS ~ 0 + treatment,
-                        gammaP ~ 0 + treatment,
-                     nl = T),
-                  data = mvSeedD2Dat2, family = gaussian,
-                  prior <- c(prior(normal(2000, 100), nlpar = "maxS", class = "b", coef = "Intercept"),
-                             prior(normal(0, 10), nlpar = "maxS", class = "b"),
-                             prior(exponential(0.5), nlpar = "gammaA", lb = 0),
-                             prior(exponential(0.5), nlpar = "gammaS", lb = 0),
-                             prior(exponential(0.5), nlpar = "gammaP", lb = 0),
-                             prior(cauchy(0, 1), nlpar = "maxS", class = "sd"),
-                             prior(cauchy(0, 1), class = "sigma")),
-                  iter = 6000, warmup = 1000, chains = 1)
+mvSeedD2Mod1 <- brm(bf(log_seeds ~ logS - log(1 + alphaA * mv_seedling_density + alphaS * ev_seedling_density + alphaP * ev_adult_density),
+                       logS ~ treatment + (1|site),
+                       alphaA ~ 0 + treatment,
+                       alphaS ~ 0 + treatment,
+                       alphaP ~ 0 + treatment,
+                       nl = T),
+                    data = mvSeedD2Dat2, family = gaussian,
+                    prior <- c(prior(normal(7.5, 10), nlpar = "logS", class = "b", coef = "Intercept"),
+                               prior(normal(0, 10), nlpar = "logS", class = "b"),
+                               prior(exponential(0.5), nlpar = "alphaA", lb = 0),
+                               prior(exponential(0.5), nlpar = "alphaS", lb = 0),
+                               prior(exponential(0.5), nlpar = "alphaP", lb = 0),
+                               prior(cauchy(0, 1), nlpar = "logS", class = "sd"),
+                               prior(cauchy(0, 1), class = "sigma")),
+                    iter = 6000, warmup = 1000, chains = 1)
 # 1 divergent transition
 summary(mvSeedD2Mod1)
 
@@ -125,9 +125,9 @@ simDat <- tibble(mv_seedling_density = c(seq(0, 64, length.out = 100), rep(0, 20
 
 # simulate fit
 fitDat <- simDat %>%
-  mutate(seeds = fitted(mvSeedD2Mod2, newdata = ., re_formula = NA)[, "Estimate"],
-         seeds_lower = fitted(mvSeedD2Mod2, newdata = ., re_formula = NA)[, "Q2.5"],
-         seeds_upper = fitted(mvSeedD2Mod2, newdata = ., re_formula = NA)[, "Q97.5"],
+  mutate(log_seeds = fitted(mvSeedD2Mod2, newdata = ., re_formula = NA)[, "Estimate"],
+         log_seeds_lower = fitted(mvSeedD2Mod2, newdata = ., re_formula = NA)[, "Q2.5"],
+         log_seeds_upper = fitted(mvSeedD2Mod2, newdata = ., re_formula = NA)[, "Q97.5"],
          treatment = ifelse(treatment == "control", "water", treatment))
 
 # change levels on raw data
@@ -135,13 +135,13 @@ mvSeedD2Dat3 <- mvSeedD2Dat2 %>%
   mutate(treatment = ifelse(treatment == "control", "water", treatment))
 
 # fit figure
-mvSeedD2Plot <- ggplot(fitDat, aes(background_density, seeds, color = treatment, fill = treatment)) +
-  geom_ribbon(aes(ymin = seeds_lower, ymax = seeds_upper), alpha = 0.5, color = NA) +
+(mvSeedD2Plot <- ggplot(fitDat, aes(background_density, log_seeds, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = log_seeds_lower, ymax = log_seeds_upper), alpha = 0.5, color = NA) +
   geom_line(size = 1.5) +
   stat_summary(data = mvSeedD2Dat3, geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
   stat_summary(data = mvSeedD2Dat3, geom = "point", size = 2, fun = "mean") +
   facet_wrap(~ background, scales = "free_x") +
-  theme_bw()
+  theme_bw())
 
 
 #### output ####

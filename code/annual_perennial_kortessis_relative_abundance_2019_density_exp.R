@@ -2,7 +2,7 @@
 
 # file: annual_perennial_kortessis_relative_abundance_2019_density_exp
 # author: Amy Kendig
-# date last edited: 10/28/20
+# date last edited: 11/12/20
 # goal: relative abundance of annual to perennial and invasion conditions
 
 
@@ -26,7 +26,6 @@ samps <- n_samps
 # simulation time
 simtimeR <- 600
 simtimeI <- 1000
-
 
 
 #### resident E. virginicus ####
@@ -204,20 +203,25 @@ cdat <- full_join(idat, rdat) %>%
            fct_relevel("Resident: M. vimineum"))
 
 # check that relative abundance makes sense
-filter(cdat, outcome == "E. virginicus only" & ann_rel_abund > 0) %>%
+filter(cdat, outcome == "E. virginicus only" & ann_rel_abund > 0.01) %>%
   select(resident, disease, ann_rel_abund)
-filter(cdat, outcome == "M. vimineum only" & per_rel_abund > 0) %>%
+filter(cdat, outcome == "E. virginicus only" & ann_rel_abund > 0.01 & resident == "E. virginicus") %>%
+  select(resident, disease, ann_rel_abund)
+# all Microstegium residents
+filter(cdat, outcome == "M. vimineum only" & per_rel_abund > 0.01) %>%
   select(resident, disease, per_rel_abund) %>%
   data.frame()
+# all Elymus residents
 
-filter(tdat, iteration == 25 & disease == "without disease" & resident == "M. vimineum" & species %in% c("Perennial_seedling", "Perennial_adult", "Annual", "Litter")) %>%
+filter(tdat, iteration == 75 & disease == "with disease" & resident == "M. vimineum" & species %in% c("Perennial_seedling", "Perennial_adult", "Annual", "Litter")) %>%
   ggplot(aes(time, density, color = species)) +
   geom_line()
+# slow Microstegium declines
 
-filter(tdat, iteration == 9 & disease == "without disease" & resident == "E. virginicus" & species %in% c("Perennial_seedling", "Perennial_adult", "Annual", "Litter")) %>%
+filter(tdat, iteration == 211 & disease == "with disease" & resident == "E. virginicus" & species %in% c("Perennial_seedling", "Perennial_adult", "Annual", "Litter")) %>%
   ggplot(aes(time, density, color = species)) +
   geom_line()
-# really slow declines
+# slow Elymus decline
 
 
 #### figures ####
@@ -240,107 +244,107 @@ cdat %>%
         axis.text = element_text(size = 9, color = "black"),
         axis.title.x = element_blank(),
         axis.title.y = element_text(size = 10),
-        legend.position = c(0.2, 0.85),
+        legend.position = c(0.5, 0.85),
         legend.text = element_text(size = 9),
         legend.title = element_blank(),
         strip.text = element_text(size = 10),
         strip.background = element_blank())
 dev.off()
 
-pdf("output/annual_perennial_kortessis_coexistence_rel_abund_2019_density_exp.pdf", width = 5, height = 3)
-cdat %>% 
-  filter(outcome == "coexistence") %>%
-  ggplot(aes(disease, ann_rel_abund, fill = disease)) +
-  stat_halfeye(point_interval = mean_hdci, .width = c(0.66, 0.95), point_size = 3, shape = 21, point_color = "white", slab_alpha = 0.7, aes(fill = disease)) +
-  scale_fill_viridis_d(direction = -1, end = 0.6) +
-  facet_wrap(~ Resident) +
-  ylab(expression(paste("Relative abundance (", italic("M. vimineum"), "/", italic("E. virginicus"), ")", sep = ""))) +
-  theme_bw() +
-  theme(panel.background = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size = 9, color = "black"),
-        axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 10),
-        legend.position = "none",
-        strip.text = element_text(size = 10),
-        strip.background = element_blank())
-dev.off()
+# pdf("output/annual_perennial_kortessis_coexistence_rel_abund_2019_density_exp.pdf", width = 5, height = 3)
+# cdat %>% 
+#   filter(outcome == "coexistence") %>%
+#   ggplot(aes(disease, ann_rel_abund, fill = disease)) +
+#   stat_halfeye(point_interval = mean_hdci, .width = c(0.66, 0.95), point_size = 3, shape = 21, point_color = "white", slab_alpha = 0.7, aes(fill = disease)) +
+#   scale_fill_viridis_d(direction = -1, end = 0.6) +
+#   facet_wrap(~ Resident) +
+#   ylab(expression(paste("Relative abundance (", italic("M. vimineum"), "/", italic("E. virginicus"), ")", sep = ""))) +
+#   theme_bw() +
+#   theme(panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         axis.text = element_text(size = 9, color = "black"),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_text(size = 10),
+#         legend.position = "none",
+#         strip.text = element_text(size = 10),
+#         strip.background = element_blank())
+# dev.off()
 
 cdat %>% 
   filter(outcome == "priority effects") %>%
-  ggplot(aes(disease, ann_rel_abund, fill = disease)) +
+  ggplot(aes(disease, ann_rel_abund, color = disease)) +
   geom_point(position = position_jitter(width = 0.1), alpha = 0.5) +
   facet_wrap(~ Resident)
 
 cdat %>% 
   filter(outcome == "E. virginicus only") %>%
-  ggplot(aes(disease, ann_rel_abund, fill = disease)) +
+  ggplot(aes(disease, ann_rel_abund, color = disease)) +
   geom_point(position = position_jitter(width = 0.1), alpha = 0.5) +
   facet_wrap(~ Resident)
 
 cdat %>% 
   filter(outcome == "M. vimineum only") %>%
-  ggplot(aes(disease, ann_rel_abund, fill = disease)) +
+  ggplot(aes(disease, ann_rel_abund, color = disease)) +
   geom_point(position = position_jitter(width = 0.1), alpha = 0.5) +
   facet_wrap(~ Resident)
 
-pdf("output/annual_perennial_kortessis_elymus_wins_example.pdf", width = 3, height = 3)
-tdat %>%
-  filter(iteration == 145 & disease == "without disease" & resident == "M. vimineum" & species %in% c("Annual", "Perennial")) %>%
-  ggplot(aes(time, density, color = species)) +
-  geom_line(size = 1.5) +
-  xlab("Time") +
-  ylab("Density") +
-  scale_color_viridis_d(begin = 0.3, end = 0.8, name = "Species", labels = c("M. vimineum", "E. virginicus")) +
-  theme_bw() +
-  theme(panel.background = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        legend.text = element_text(size = 9, face = "italic"),
-        legend.title = element_text(size = 10),
-        axis.text = element_text(size = 10, color = "black"),
-        axis.title = element_text(size = 11),
-        legend.position = c(0.73, 0.8))
-dev.off()
+# pdf("output/annual_perennial_kortessis_elymus_wins_example.pdf", width = 3, height = 3)
+# tdat %>%
+#   filter(iteration == 145 & disease == "without disease" & resident == "M. vimineum" & species %in% c("Annual", "Perennial")) %>%
+#   ggplot(aes(time, density, color = species)) +
+#   geom_line(size = 1.5) +
+#   xlab("Time") +
+#   ylab("Density") +
+#   scale_color_viridis_d(begin = 0.3, end = 0.8, name = "Species", labels = c("M. vimineum", "E. virginicus")) +
+#   theme_bw() +
+#   theme(panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         legend.text = element_text(size = 9, face = "italic"),
+#         legend.title = element_text(size = 10),
+#         axis.text = element_text(size = 10, color = "black"),
+#         axis.title = element_text(size = 11),
+#         legend.position = c(0.73, 0.8))
+# dev.off()
 
-pdf("output/annual_perennial_kortessis_coexistence_example.pdf", width = 3, height = 3)
-tdat %>%
-  filter(iteration == 197 & disease == "with disease" & resident == "E. virginicus" & species %in% c("Annual", "Perennial")) %>%
-  ggplot(aes(time, density, color = species)) +
-  geom_line(size = 1.5) +
-  xlab("Time") +
-  ylab("Density") +
-  scale_color_viridis_d(begin = 0.3, end = 0.8, name = "Species", labels = c("M. vimineum", "E. virginicus")) +
-  theme_bw() +
-  theme(panel.background = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        legend.text = element_text(size = 9, face = "italic"),
-        legend.title = element_text(size = 10),
-        axis.text = element_text(size = 10, color = "black"),
-        axis.title = element_text(size = 11),
-        legend.position = c(0.5, 0.2))
-dev.off()
+# pdf("output/annual_perennial_kortessis_coexistence_example.pdf", width = 3, height = 3)
+# tdat %>%
+#   filter(iteration == 197 & disease == "with disease" & resident == "E. virginicus" & species %in% c("Annual", "Perennial")) %>%
+#   ggplot(aes(time, density, color = species)) +
+#   geom_line(size = 1.5) +
+#   xlab("Time") +
+#   ylab("Density") +
+#   scale_color_viridis_d(begin = 0.3, end = 0.8, name = "Species", labels = c("M. vimineum", "E. virginicus")) +
+#   theme_bw() +
+#   theme(panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         legend.text = element_text(size = 9, face = "italic"),
+#         legend.title = element_text(size = 10),
+#         axis.text = element_text(size = 10, color = "black"),
+#         axis.title = element_text(size = 11),
+#         legend.position = c(0.5, 0.2))
+# dev.off()
 
-pdf("output/annual_perennial_kortessis_microstegium_wins_example.pdf", width = 3, height = 3)
-tdat %>%
-  filter(iteration == 102 & disease == "without disease" & resident == "E. virginicus" & species %in% c("Annual", "Perennial")) %>%
-  ggplot(aes(time, density, color = species)) +
-  geom_line(size = 1.5) +
-  xlab("Time") +
-  ylab("Density") +
-  scale_color_viridis_d(begin = 0.3, end = 0.8, name = "Species", labels = c("M. vimineum", "E. virginicus")) +
-  theme_bw() +
-  theme(panel.background = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        legend.text = element_text(size = 9, face = "italic"),
-        legend.title = element_text(size = 10),
-        axis.text = element_text(size = 10, color = "black"),
-        axis.title = element_text(size = 11),
-        legend.position = c(0.3, 0.8))
-dev.off()
+# pdf("output/annual_perennial_kortessis_microstegium_wins_example.pdf", width = 3, height = 3)
+# tdat %>%
+#   filter(iteration == 102 & disease == "without disease" & resident == "E. virginicus" & species %in% c("Annual", "Perennial")) %>%
+#   ggplot(aes(time, density, color = species)) +
+#   geom_line(size = 1.5) +
+#   xlab("Time") +
+#   ylab("Density") +
+#   scale_color_viridis_d(begin = 0.3, end = 0.8, name = "Species", labels = c("M. vimineum", "E. virginicus")) +
+#   theme_bw() +
+#   theme(panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         legend.text = element_text(size = 9, face = "italic"),
+#         legend.title = element_text(size = 10),
+#         axis.text = element_text(size = 10, color = "black"),
+#         axis.title = element_text(size = 11),
+#         legend.position = c(0.3, 0.8))
+# dev.off()
 
 pdf("output/annual_perennial_kortessis_rel_abund_2019_density_exp.pdf", width = 4.5, height = 3)
 cdat %>%
@@ -356,7 +360,7 @@ cdat %>%
         panel.grid.minor = element_blank(),
         axis.text = element_text(size = 9, color = "black"),
         axis.title = element_text(size = 10),
-        legend.position = c(0.2, 0.8),
+        legend.position = c(0.5, 0.8),
         legend.title = element_blank(),
         legend.text = element_text(size = 9))
 dev.off()

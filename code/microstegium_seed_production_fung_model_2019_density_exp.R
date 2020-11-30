@@ -34,7 +34,7 @@ plotDens <- plotsD %>%
 # remove missing data
 mvSeedD2Dat <- seedD2Dat %>%
   left_join(plotDens) %>%
-  mutate(log_seeds = log(seeds),
+  mutate(log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotr = ifelse(treatment == "fungicide", plot + 10, plot)) %>%
   filter(!is.na(seeds))
@@ -76,7 +76,7 @@ mvSeedFuD2Mod1 <- brm(log_seeds ~ fungicide + (1|site),
                              prior(cauchy(0, 1), class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
-# 5 divergent transitions
+# 8 divergent transitions
 summary(mvSeedFuD2Mod1)
 
 # increase chains

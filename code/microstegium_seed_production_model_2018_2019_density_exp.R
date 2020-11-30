@@ -2,7 +2,7 @@
 
 # file: microstegium_seed_production_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 11/10/20
+# date last edited: 11/12/20
 # goal: estimate Microstegium seed production based on density and fungicide treatments
 
 
@@ -19,11 +19,22 @@ library(brms)
 seedD1Dat <- read_csv("./intermediate-data/mv_processed_seeds_2018_density_exp.csv")
 seedD2Dat <- read_csv("intermediate-data/mv_plant_level_seeds_2019_density_exp.csv")
 # adj values substitute averages of other two plants in the plot when a plant is missing data
-plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
-plotsD2 <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
+plotsD1 <- read_csv("intermediate-data/plot_densities_2018_density_exp.csv")
+plotsD2 <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 
 #### edit data ####
+
+# plant group densities
+plotDens1 <- plotsD1 %>%
+  mutate(mv_seedling_density = case_when(background == "Mv seedling" ~ background_density, TRUE ~ 0),
+         ev_seedling_density = case_when(background == "Ev seedling" ~ background_density, TRUE ~ 0),
+         ev_adult_density = case_when(background == "Ev adult" ~ background_density, TRUE ~ 0))
+
+plotDens2 <- plotsD2 %>%
+  mutate(mv_seedling_density = case_when(background == "Mv seedling" ~ background_density, TRUE ~ 0),
+         ev_seedling_density = case_when(background == "Ev seedling" ~ background_density, TRUE ~ 0),
+         ev_adult_density = case_when(background == "Ev adult" ~ background_density, TRUE ~ 0))
 
 # check notes
 unique(seedD2Dat$process_notes)
@@ -34,16 +45,10 @@ filter(seedD2Dat, is.na(seeds)) %>%
   data.frame()
 # 3 plants
 
-# plant group densities
-plotDens <- plotsD %>%
-  mutate(mv_seedling_density = case_when(background == "Mv seedling" ~ background_density, TRUE ~ 0),
-         ev_seedling_density = case_when(background == "Ev seedling" ~ background_density, TRUE ~ 0),
-         ev_adult_density = case_when(background == "Ev adult" ~ background_density, TRUE ~ 0))
-
 # add columns
 # remove missing data
 mvSeedD1Dat <- seedD1Dat %>%
-  left_join(plotDens) %>%
+  left_join(plotDens1) %>%
   mutate(seeds = bag_seeds,
          log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
@@ -53,33 +58,28 @@ mvSeedD1Dat <- seedD1Dat %>%
 # add columns
 # remove missing data
 mvSeedD2Dat <- seedD2Dat %>%
-  left_join(plotDens) %>%
-  mutate(log_seeds = log(seeds),
+  left_join(plotDens2) %>%
+  mutate(log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotr = ifelse(treatment == "fungicide", plot + 10, plot),
          yearf = "year 2") %>%
   filter(!is.na(seeds))
 
 # combine years
-mvSeedDat <- full_join(mvSeedD1Dat, mvSeedD2Dat) %>%
-  mutate(seeds_100 = seeds / 100)
+mvSeedDat <- full_join(mvSeedD1Dat, mvSeedD2Dat)
 
 
 #### initial visualizations ####
 
-# modify dataset so that zero plots are repeated
-vizDat <- mvSeedDat %>%
-  select(-c(background, background_sp)) %>%
-  left_join(plotsD2)
-
 # non-transformed seeds
-ggplot(vizDat, aes(background_density, seeds, color = treatment)) +
+ggplot(mvSeedDat, aes(background_density, seeds, color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   facet_grid(yearf~background, scales = "free") +
   theme_bw()
 
-ggplot(vizDat, aes(background_density, seeds_100, color = treatment)) +
+# log-transformed seeds
+ggplot(mvSeedDat, aes(background_density, log_seeds, color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   facet_grid(yearf~background, scales = "free") +
@@ -96,28 +96,28 @@ mvSeedDat2 <- mvSeedDat %>%
 
 # initial fit
 # using seeds_100 because the raw seed values are very large and cause many divergent transitions
-mvSeedMod1 <- brm(bf(seeds_100 ~ maxS/(1 + gammaA * mv_seedling_density + gammaS * ev_seedling_density + gammaP * ev_adult_density),
-                     maxS ~ yearf * treatment + (1|site/plotr),
-                     gammaA ~ 0 + treatment_year,
-                     gammaS ~ 0 + treatment_year,
-                     gammaP ~ 0 + treatment_year,
+mvSeedMod1 <- brm(bf(log_seeds ~ logS - log(1 + alphaA * mv_seedling_density + alphaS * ev_seedling_density + alphaP * ev_adult_density),
+                     logS ~ yearf * treatment + (1|site),
+                     alphaA ~ 0 + treatment_year,
+                     alphaS ~ 0 + treatment_year,
+                     alphaP ~ 0 + treatment_year,
                      nl = T),
                   data = mvSeedDat2, family = gaussian,
-                  prior <- c(prior(normal(8, 10), nlpar = "maxS", class = "b", coef = "Intercept"),
-                             prior(normal(10, 10), nlpar = "maxS", class = "b", coef = "yearfyear2"),
-                             prior(normal(0, 10), nlpar = "maxS", class = "b"),
-                             prior(exponential(0.5), nlpar = "gammaA", lb = 0),
-                             prior(exponential(0.5), nlpar = "gammaS", lb = 0),
-                             prior(exponential(0.5), nlpar = "gammaP", lb = 0),
-                             prior(cauchy(0, 1), nlpar = "maxS", class = "sd"),
+                  prior <- c(prior(normal(6.8, 10), nlpar = "logS", class = "b", coef = "Intercept"),
+                             prior(normal(0, 10), nlpar = "logS", class = "b"),
+                             prior(exponential(0.5), nlpar = "alphaA", lb = 0),
+                             prior(exponential(0.5), nlpar = "alphaS", lb = 0),
+                             prior(exponential(0.5), nlpar = "alphaP", lb = 0),
+                             prior(cauchy(0, 1), nlpar = "logS", class = "sd"),
                              prior(cauchy(0, 1), class = "sigma")),
                   iter = 6000, warmup = 1000, chains = 1)
-# 19 divergent transitions
+# 2 divergent transitions
 summary(mvSeedMod1)
 
 # increase chains and adapt delta
 mvSeedMod2 <- update(mvSeedMod1, chains = 3,
-                     control = list(adapt_delta = 0.999))
+                     control = list(adapt_delta = 0.999,
+                                    max_treedepth = 15))
 summary(mvSeedMod2)
 plot(mvSeedMod2)
 pp_check(mvSeedMod2, nsamples = 50)
@@ -140,9 +140,9 @@ simDat <- tibble(mv_seedling_density = c(seq(0, 64, length.out = 100), rep(0, 20
 
 # simulate fit
 fitDat <- simDat %>%
-  mutate(seeds = fitted(mvSeedMod2, newdata = ., re_formula = NA)[, "Estimate"] * 100,
-         seeds_lower = fitted(mvSeedMod2, newdata = ., re_formula = NA)[, "Q2.5"] * 100,
-         seeds_upper = fitted(mvSeedMod2, newdata = ., re_formula = NA)[, "Q97.5"] * 100,
+  mutate(log_seeds = fitted(mvSeedMod2, newdata = ., re_formula = NA)[, "Estimate"],
+         log_seeds_lower = fitted(mvSeedMod2, newdata = ., re_formula = NA)[, "Q2.5"],
+         log_seeds_upper = fitted(mvSeedMod2, newdata = ., re_formula = NA)[, "Q97.5"],
          treatment = ifelse(treatment == "control", "water", treatment))
 
 # change levels on raw data
@@ -150,8 +150,8 @@ mvSeedDat3 <- mvSeedDat2 %>%
   mutate(treatment = ifelse(treatment == "control", "water", treatment))
 
 # fit figure
-(mvSeedPlot <- ggplot(fitDat, aes(background_density, seeds, color = treatment, fill = treatment)) +
-  geom_ribbon(aes(ymin = seeds_lower, ymax = seeds_upper), alpha = 0.5, color = NA) +
+(mvSeedPlot <- ggplot(fitDat, aes(background_density, log_seeds, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = log_seeds_lower, ymax = log_seeds_upper), alpha = 0.5, color = NA) +
   geom_line(size = 1.5) +
   stat_summary(data = mvSeedDat3, geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
   stat_summary(data = mvSeedDat3, geom = "point", size = 2, fun = "mean") +
