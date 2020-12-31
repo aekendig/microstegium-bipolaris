@@ -39,7 +39,7 @@ E_A_beta_fun <- mvEstL1BhSamps[sample(nrow(mvEstL1BhSamps), size = n_samps, repl
          beta = (live_litter * sterilization_eff)/10000)
 
 
-#### survival function
+#### establishment function ####
 
 E_A_bh_fun <- function(disease, litter, iter) {
   

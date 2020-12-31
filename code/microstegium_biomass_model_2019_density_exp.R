@@ -32,7 +32,6 @@ plotDens <- plotsD %>%
 
 # biomass
 # remove missing data
-# select Elymus seedlings
 # add columns
 mvBioD2Dat <- bioD2Dat %>%
   filter(!is.na(biomass_weight.g)) %>%
