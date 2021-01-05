@@ -2,7 +2,7 @@
 
 # file: microstegium_sem_2019_density_exp
 # author: Amy Kendig
-# date last edited: 12/30/20
+# date last edited: 1/4/21
 # goal: fit SEM to focal Mv data
 
 
@@ -39,6 +39,12 @@ mvEdgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_ex
 envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv")
 envD2Dat <- read_csv("intermediate-data/average_humidity_total_biomass_2019_density_exp.csv")
 # from temp_humidity_analysis_2019_density_exp.R
+
+# knowns function
+known_fun <- function(knowns){
+  out = knowns * (knowns + 1) / 2
+  return(out)
+}
 
 
 #### edit data ####
@@ -84,6 +90,7 @@ filter(evBioD2Dat, is.na(weight)) # one seedling missing
 filter(bgBioD2Dat, is.na(biomass.g)) # none missing
 
 # plot biomass data
+# only include two Mv to remove the focal
 plotBioD2Dat <- bgBioD2Dat %>%
   mutate(sp = case_when(plot %in% 2:4 ~ "Mv",
                         plot %in% 5:10 ~ "Ev",
@@ -94,7 +101,7 @@ plotBioD2Dat <- bgBioD2Dat %>%
   filter(sp != "none") %>%
   full_join(mvBioD2Dat %>%
               group_by(site, plot, treatment, sp) %>%
-              summarise(biomass.g = mean(biomass_weight.g, na.rm = T) * 3) %>%
+              summarise(biomass.g = mean(biomass_weight.g, na.rm = T) * 2) %>%
               ungroup() %>%
               mutate(age = "seedling",
                      focal = 1)) %>%
@@ -163,11 +170,16 @@ mvGermD1Dat <- mvGermD1Dat1 %>%
 # environmental data
 envDDat <- envD2Dat %>%
   select(site, plot, treatment, month, dew_intensity2, temp_avg) %>%
-  pivot_wider(values_from = c(dew_intensity2, temp_avg),
+  rename(dew_intensity = dew_intensity2) %>%
+  pivot_wider(values_from = c(dew_intensity, temp_avg),
               names_from = month,
               names_glue = "{month}_{.value}") %>%
+  select(site, plot, treatment, early_aug_dew_intensity, late_aug_dew_intensity, early_aug_temp_avg, late_aug_temp_avg) %>%
+  mutate_at(c("early_aug_dew_intensity", "late_aug_dew_intensity"), log) %>%
   full_join(envD1Dat %>%
-              select(site, plot, treatment, soil_moisture_jun.prop, soil_moisture_oct.prop, canopy_cover.prop))
+              mutate(canopy_open.prop = 1 - canopy_cover.prop,
+                     canopy_open.prop = asin(sqrt(canopy_open.prop))) %>%
+              select(site, plot, treatment, soil_moisture_jun.prop, soil_moisture_oct.prop, canopy_open.prop))
 
 
 # check focal notes
@@ -186,7 +198,7 @@ filter(mvBioD2Dat, is.na(biomass_weight.g)) %>%
 # combine data
 # remove focal biomass from plot biomass and calculate ratio
 mvDat <- mvSeedD2Dat %>%
-  select(site, plot, treatment, sp, plant, seeds) %>%
+  select(site, plot, treatment, sp, plant, flower_seeds, stem_seeds, seeds) %>%
   rename("ID" = "plant") %>%
   mutate(ID = as.character(ID)) %>%
   full_join(mvBioD2Dat %>%
@@ -199,12 +211,16 @@ mvDat <- mvSeedD2Dat %>%
   full_join(sevD2Dat2) %>%
   full_join(envDDat) %>%
   full_join(plotDens) %>%
-  mutate(log_seeds = log(seeds),
+  mutate(log_flower_seeds = log(flower_seeds + 1),
+         log_stem_seeds =  log(stem_seeds),
+         log_seeds = log(seeds),
+         log_biomass = log(biomass_weight.g),
+         log_Mv_biomass = log(Mv_seedling_biomass), 
+         log_Ev_seedling_biomass = log(Ev_seedling_biomass),
+         log_Ev_adult_biomass = log(Ev_adult_biomass),
+         log_Ev_biomass = log(Ev_seedling_biomass + Ev_adult_biomass),
+         log_plot_biomass = log(Mv_seedling_biomass + Ev_seedling_biomass + Ev_adult_biomass),
          fungicide = ifelse(treatment == "water", 0, 1),
-         Mv_competition = log((Mv_seedling_biomass - biomass_weight.g)/biomass_weight.g),
-         Ev_seedling_competition = log(Ev_seedling_biomass/biomass_weight.g),
-         Ev_adult_competition = log(Ev_adult_biomass/biomass_weight.g),
-         Ev_competition = log((Ev_seedling_biomass + Ev_adult_biomass)/biomass_weight.g),
          log_Mv_density = log(Mv_seedling_density),
          log_Ev_seedling_density = log(Ev_seedling_density),
          log_Ev_adult_density = log(Ev_adult_density))
@@ -212,80 +228,71 @@ mvDat <- mvSeedD2Dat %>%
 
 #### visualizations ####
 
-# transformed seeds
-ggplot(mvDat, aes(x = log_seeds)) +
-  geom_histogram()
+# fitness metrics
+ggpairs(mvDat %>%
+          select(log_stem_seeds, log_flower_seeds, log_biomass, survival))
+# biomass and seeds are correlated, but not with survival
 
-# competition
-ggplot(mvDat, aes(x = Mv_competition)) +
-  geom_histogram()
-ggplot(mvDat, aes(x = Ev_seedling_competition)) +
-  geom_histogram()
-ggplot(mvDat, aes(x = Ev_adult_competition)) +
-  geom_histogram()
-ggplot(mvDat, aes(x = Ev_seedling_competition, y = Ev_adult_competition)) +
-  geom_point()
-ggplot(mvDat, aes(x = Ev_competition, y = Mv_competition)) +
-  geom_point()
+# plot biomass
+ggpairs(mvDat %>%
+          select(log_Mv_biomass, log_Ev_seedling_biomass, log_Ev_adult_biomass, log_Ev_biomass, log_plot_biomass))
+# not good indicators of the same latent variable
 
-# density
-ggplot(mvDat, aes(x = log(Mv_seedling_density))) +
-  geom_histogram()
-ggplot(mvDat, aes(x = log_Ev_seedling_density, y = log_Ev_adult_density, size = Ev_competition)) +
-  geom_point()
-ggplot(mvDat, aes(x = log_Ev_seedling_density, y = Ev_competition)) +
-  geom_point() +
-  geom_smooth(method = "lm")
-
-# competition relationships
-ggplot(mvDat, aes(x = log_Ev_adult_density, y = Ev_competition)) +
-  geom_point() +
-  geom_smooth(method = "lm")
-ggplot(mvDat, aes(x = Mv_competition, y = log_seeds)) +
-  geom_point()
-ggplot(mvDat, aes(x = Ev_competition, y = log_seeds)) +
-  geom_point()
+# biomass and density
+ggpairs(mvDat %>%
+          select(log_Mv_biomass, log_Mv_density, Mv_seedling_density))
 
 # severity
-ggplot(mvDat, aes(x = early_aug_Mv_severity)) +
-  geom_histogram()
 ggpairs(mvDat %>%
           select(jun_Mv_severity, jul_Mv_severity, early_aug_Mv_severity, late_aug_Mv_severity))
+
+# environment
+ggpairs(envDDat %>%
+          select(canopy_open.prop, soil_moisture_jun.prop, soil_moisture_oct.prop, early_aug_dew_intensity, late_aug_dew_intensity, early_aug_temp_avg, late_aug_temp_avg))
 
 
 #### fit model ####
 
+# plant fitness as a latent variable: Maddox and Antonovics 1983
+
 # define model
 mvMod1 <- '# latent variables
-          fitness =~ NA*log_seeds + survival + germination
-          comp =~ NA*Ev_seedling_competition + Ev_adult_competition + Mv_competition
-          intra_dis =~ NA*jun_Mv_severity + jul_Mv_severity + early_aug_Mv_severity + late_aug_Mv_severity
-          inter_dis =~ NA*may_Ev_severity + jun_Ev_severity + jul_Ev_severity + early_aug_Ev_severity + late_aug_Ev_severity
-
+          fitness =~ NA*log_stem_seeds + log_flower_seeds + log_biomass + survival
+          competition =~ log_plot_biomass
+          disease =~ NA*jun_Mv_severity + jul_Mv_severity + early_aug_Mv_severity + late_aug_Mv_severity
+          light =~ canopy_open.prop
+          water =~ w*soil_moisture_jun.prop + w*soil_moisture_oct.prop
+          dew =~ d*early_aug_dew_intensity + d*late_aug_dew_intensity
+          temp =~ t*early_aug_temp_avg + t*late_aug_temp_avg
+          
           # regressions
-          fitness ~ comp
-          Ev_seedling_competition ~ log_Ev_seedling_density
-          Ev_adult_competition ~ log_Ev_adult_density
-          Mv_competition ~ log_Mv_density
+          fitness ~ competition + disease + light + water
+          competition ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + light + water
+          disease ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + fungicide + light + water + dew + temp
+          dew ~ log_plot_biomass
+          temp ~ log_plot_biomass
+
+          # correlations
+          log_stem_seeds ~~ log_flower_seeds + log_biomass
+          log_flower_seeds ~~ log_biomass
 
           # constraints
           fitness ~~ 1*fitness
-          comp ~~ 1*comp
-          intra_dis ~~ 1*intra_dis
-          inter_dis ~~ 1*inter_dis'
-
-#### start here: errors start when disease is added into regressions ####
+          disease ~~ 1*disease'
 
 # fit model
-mvFit1 <- sem(mvMod1, data = mvDat,
+mvFit1 <- sem(mvMod1, data = mvDat,  
               missing = "fiml")
-# added correlations among severity metrics and they came out negative
 
 # examine model
 varTable(mvFit1)
 lavInspect(mvFit1, "theta")
-summary(mvFit1, fit.measures = T)
+summary(mvFit1, fit.measures = T, standardized = T)
 modificationIndices(mvFit1, sort. = TRUE, minimum.value = 3)
+
+#### start here: 
+# add in edge severity
+# figure out how to improve model fit
 
 # use edge data collected one month before in-plot severity sampling
 # constrain latent variables feeding into composite variable to have equal weights
