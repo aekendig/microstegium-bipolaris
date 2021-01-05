@@ -3,7 +3,7 @@
 
 
 // strip extension off image title
-// will leaf "f" if it takes off .tif first and it's a .tiff
+// will leave "f" if it takes off .tif first and it's a .tiff
 function getTitleStripExtension() { 
   t = getTitle(); 
   t = replace(t, ".tiff", "");   

@@ -244,11 +244,15 @@ ggpairs(mvDat %>%
 
 # severity
 ggpairs(mvDat %>%
-          select(jun_Mv_severity, jul_Mv_severity, early_aug_Mv_severity, late_aug_Mv_severity))
+          select(jun_Mv_severity, jul_Mv_severity, early_aug_Mv_severity, late_aug_Mv_severity, may_edge_severity, jun_edge_severity, jul_edge_severity, early_aug_edge_severity))
+
+ggpairs(mvDat %>%
+          select(jun_Mv_severity, jul_Mv_severity, early_aug_Mv_severity, late_aug_Mv_severity, may_Ev_severity, jun_Ev_severity, jul_Ev_severity, early_aug_Ev_severity, late_aug_Ev_severity))
+
 
 # environment
 ggpairs(envDDat %>%
-          select(canopy_open.prop, soil_moisture_jun.prop, soil_moisture_oct.prop, early_aug_dew_intensity, late_aug_dew_intensity, early_aug_temp_avg, late_aug_temp_avg))
+          select(canopy_open.prop, soil_moisture_jun.prop, soil_moisture_oct.prop, early_aug_dew_intensity, early_aug_temp_avg))
 
 
 #### fit model ####
@@ -260,25 +264,33 @@ mvMod1 <- '# latent variables
           fitness =~ NA*log_stem_seeds + log_flower_seeds + log_biomass + survival
           competition =~ log_plot_biomass
           disease =~ NA*jun_Mv_severity + jul_Mv_severity + early_aug_Mv_severity + late_aug_Mv_severity
+          inter_disease =~ NA*may_Ev_severity + jun_Ev_severity + jul_Ev_severity + early_aug_Ev_severity + late_aug_Ev_severity
           light =~ canopy_open.prop
           water =~ w*soil_moisture_jun.prop + w*soil_moisture_oct.prop
-          dew =~ d*early_aug_dew_intensity + d*late_aug_dew_intensity
-          temp =~ t*early_aug_temp_avg + t*late_aug_temp_avg
           
           # regressions
           fitness ~ competition + disease + light + water
-          competition ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + light + water
-          disease ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + fungicide + light + water + dew + temp
-          dew ~ log_plot_biomass
-          temp ~ log_plot_biomass
+          competition ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + disease + inter_disease + light + water
+          disease ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + fungicide + light + water
+          inter_disease ~ log_Mv_density + log_Ev_seedling_density + log_Ev_adult_density + fungicide + light + water
+          jun_Mv_severity ~ may_edge_severity
+          jul_Mv_severity ~ jun_edge_severity
+          early_aug_Mv_severity ~ jul_edge_severity
+          late_aug_Mv_severity ~ early_aug_edge_severity
+          jun_Ev_severity ~ may_edge_severity
+          jul_Ev_severity ~ jun_edge_severity
+          early_aug_Ev_severity ~ jul_edge_severity
+          late_aug_Ev_severity ~ early_aug_edge_severity
 
           # correlations
           log_stem_seeds ~~ log_flower_seeds + log_biomass
           log_flower_seeds ~~ log_biomass
+          disease ~~ inter_disease
 
           # constraints
           fitness ~~ 1*fitness
-          disease ~~ 1*disease'
+          disease ~~ 1*disease
+          inter_disease ~~ 1*inter_disease'
 
 # fit model
 mvFit1 <- sem(mvMod1, data = mvDat,  
@@ -291,9 +303,4 @@ summary(mvFit1, fit.measures = T, standardized = T)
 modificationIndices(mvFit1, sort. = TRUE, minimum.value = 3)
 
 #### start here: 
-# add in edge severity
 # figure out how to improve model fit
-
-# use edge data collected one month before in-plot severity sampling
-# constrain latent variables feeding into composite variable to have equal weights
-# composites don't have error term
