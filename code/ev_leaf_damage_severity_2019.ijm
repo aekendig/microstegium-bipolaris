@@ -3,7 +3,6 @@
 // go to Options...
 // make sure "Black Background" is not selected
 
-
 // strip extension off image title
 // will leave "f" if it takes off .tif first and it's a .tiff
 function getTitleStripExtension() { 
@@ -18,22 +17,22 @@ function getTitleStripExtension() {
 } 
 
 //enter home folder (errors in path names will result in the error "No window with the title 'Summary' found"
-home="/Users/AmyKendig/Dropbox (UFL)/big-oaks-field-experiment-2018-2019/leaf-scans/leaf-scans-jun-2019-density-exp";
+home="/Users/AmyKendig/Dropbox (UFL)/big-oaks-field-experiment-2018-2019/leaf-scans/leaf-scans-sep-2019-density-exp";
 //enter input folder path
-input=home + "/scans/mv-2"; 
+input=home + "/scans/ev-2"; 
 //enter output image folder path
 outputIm=home + "/image-output";
 //enter output text results folder path
 outputRes=home + "/text-output";
 //enter file name for text results
-outputResTxt=outputRes + "/mv_2_leaf_scan_text_output_jun_2019_density_exp.tsv";
+outputResTxt=outputRes + "/ev_2_leaf_scan_text_output_sep_2019_density_exp.tsv";
 
 suffix1=".tiff"; //Store potential suffixes as variables
 suffix2=".tif";
 
 processFolder(input);
 
-// saves results for all images in a single file (moved from function processFolder) 
+// saves results for all images in a single file
 selectWindow("Summary"); 
 saveAs("Results", outputResTxt);
 
@@ -56,7 +55,7 @@ function processFile(input, outputIm, outputRes, file) {
 	setBatchMode(true); // prevent image windows from opening while the script is running
 	print("Processing: " + input + File.separator + file); // updates on progress
 	open(input + "/" + file); // open file
-
+	
 	run("Set Scale...", "distance=0 global"); // measure in pixes
   	id = getTitle(); // get original image id
 	RGBpic=getTitleStripExtension(); // get image name without extension
@@ -81,7 +80,7 @@ function processFile(input, outputIm, outputRes, file) {
 	max[1]=255; // saturation is 3 to 255
 	filter[1]="pass";
 	min[2]=20;
-	max[2]=245; // brightness is 0 to 245
+	max[2]=245; // brightness is 20 to 245
 	filter[2]="pass";
 	for (i=0;i<3;i++){
 	  selectWindow(""+i);
@@ -114,7 +113,6 @@ function processFile(input, outputIm, outputRes, file) {
 	roiManager("Delete"); // clear ROI Manager for next image
 	run("Duplicate...", "title=lesions:"+RGBpic); // picture to isolate lesions from leaf
 	run("Duplicate...", "title=output:"+RGBpic); // picture to save lesion image
-	
 	selectWindow("lesions:"+RGBpic);
 	// color threshold function (Lab) to select lesions and ignore leaf
 	min=newArray(3);

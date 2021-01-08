@@ -2,7 +2,7 @@
 
 # file: mv_seeds_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 7/7/20
+# date last edited: 1/8/21
 # goal: create a dataset of Mv seeds per plant
 
 
@@ -17,7 +17,7 @@ library(tidyverse)
 # import data
 bio_seeds <- read_csv("./data/mv_biomass_seeds_2019_density_exp.csv")
 bag_seeds <- read_csv("./data/mv_bag_seeds_2019_density_exp.csv")
-bio_seeds_conv <- read_csv("./intermediate-data/mv_biomass_seeds_counted_2019_density_exp.csv")
+bio_seeds_conv <- read_csv("./intermediate-data/mv_biomass_seeds_counted_2019_density_exp.csv") # intermediate because counted seeds were manually entered into subset of seeds/biomass dataset, checked after December error checking
 bag_notes <- read_csv("./data/focal_disease_sep_2019_density_exp.csv")
 
 

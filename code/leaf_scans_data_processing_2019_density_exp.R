@@ -2,9 +2,9 @@
 
 # file: leaf_scans_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/26/20
+# date last edited: 1/8/21
 # goal: combine raw 2019 leaf scan data and check for errors
-# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm
+# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity_2019.ijm
 
 
 #### set-up ####
@@ -188,7 +188,7 @@ dt_sep2 <- full_join(dt_sep, full_join(ls_ev_sep2, ls_mv_sep2)) %>%
 filter(dt_may2, is.na(scan)) %>% select(field_notes) %>% unique() # missing from field data
 filter(dt_may2, is.na(scan) & !is.na(area)) # D1 9W Ev R8 doesn't have field info, didn't see uncropped scan - removed. Uncropped scan for D2 4F Ev A has the plot cut off, but I'm not sure what other plot it could be. This leaf may have come from D2 5F because the two scans were done together - switched. D2 8F Ev A is R2, this leaf was labelled twice - removed.
 filter(dt_may2, scan == 0 & !is.na(area)) # no unexpected scans
-filter(dt_may2, scan == 1 & is.na(area)) # scan missing for D2 5F Ev A (uncropped scan indicates that bag was empty)
+filter(dt_may2, scan == 1 & is.na(area)) # scan missing for D2 5F Ev A (uncropped scan indicates that bag was empty) - replaced with D2 4F
 
 filter(dt_jun2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
 filter(dt_jun2, scan == 0 & !is.na(area)) # no unexpected scans
@@ -196,7 +196,7 @@ filter(dt_jun2, scan == 1 & is.na(area)) # scans missing for D4 6W Mv3 and D3 9F
 
 filter(dt_jul2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
 filter(dt_jul2, is.na(scan) & is.na(field_notes)) %>% select(plant) %>% unique()
-filter(dt_jul2, scan == 0 & !is.na(area)) # unexpected scans: D3 8F Ev3 (no uncropped scans available to check, but this plant had 7 leaves, so it's possible the scan = 0 is a mistake)
+filter(dt_jul2, scan == 0 & !is.na(area)) # unexpected scans: D3 8F Ev3 (no uncropped scans available to check, but this plant had 7 leaves, so it's possible the scan = 0 is a mistake) and D4 9F Ev1 (had 7 leaves, scan = 0 may be mistake)
 filter(dt_jul2, scan == 1 & is.na(area)) # missing scans: D3 4W Mv2, D1 6F EvA, D1 7F Ev1 (no uncropped scans available to check)
 
 filter(dt_early_aug2, is.na(scan)) %>% select(field_notes) %>% unique() # none missing from field data
@@ -268,6 +268,13 @@ data.frame()
 
 #### check values ####
 
+# text values
+unique(datw$site)
+unique(datw$plot)
+unique(datw$treatment)
+unique(datw$sp)
+unique(datw$ID)
+
 # leaf area
 datw %>%
   ggplot(aes(x = leaf_area.pix)) +
@@ -296,6 +303,14 @@ datw_edge %>%
   ggplot(aes(x = lesion_area.pix/leaf_area.pix)) +
   geom_histogram() +
   facet_wrap(~sp, scales = "free")
+
+
+#### fungicide effects ####
+
+ggplot(datw, aes(x = treatment, y = lesion_area.pix/leaf_area.pix)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", size = 2, fun.data = "mean_cl_boot") +
+  facet_grid(sp ~ month)
 
 
 #### save data ####
