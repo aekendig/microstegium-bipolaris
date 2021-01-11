@@ -264,6 +264,11 @@ ggpairs(mvDat %>%
 
 #### fit model ####
 
+# to do:
+# define meta-model constructs and relationships (Fig. 3 in Grace et al. 2010)
+# reconsider latent variables
+# add reliability estimates for soil moisture (measured multiple times within plot)
+
 # plant fitness as a latent variable: Maddox and Antonovics 1983
 
 # define model
