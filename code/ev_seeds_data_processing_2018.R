@@ -2,7 +2,7 @@
 
 # file: ev_seeds_data_processing_2018
 # author: Amy Kendig, Chris Wojan
-# date last edited: 3/3/20
+# date last edited: 1/20/21
 # goal: edit Ev seed data and check for errors
 # background: spikelet counts for all samples, seed counts for a subset
 
@@ -171,13 +171,13 @@ dc <- full_join(d2, df)
 dc %>%
   filter((!is.na(spikelets) | !is.na(seeds)) & seeds_collected == 1) %>%
   dim() 
-# 395
+# 397
 
 # records in which they weren't recorded
 dcc <- dc %>%
   filter((!is.na(spikelets) | !is.na(seeds)) & (is.na(seeds_collected) | seeds_collected == 0) & !(month %in% c("July", "October")))
 dim(dcc)
-# 14
+# 12
 data.frame(dcc)
 # recording mistakes or mislabelled seed bags
 
@@ -185,7 +185,7 @@ data.frame(dcc)
 dcm <- dc %>%
   filter(is.na(spikelets) & seeds_collected == 1)
 dim(dcm)
-# 11
+# 9
 data.frame(dcm)
 # one is okay
 

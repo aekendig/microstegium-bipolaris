@@ -2,7 +2,7 @@
 
 # file: ev_seeds_data_processing_2019
 # author: Chris Wojan, Amy Kendig
-# date last edited: 4/24/20
+# date last edited: 1/20/21
 # goal: edit Ev seed data and check for errors
 # background: spikelet counts for all samples, seed counts for a subset
 
