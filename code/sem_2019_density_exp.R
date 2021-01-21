@@ -2,7 +2,7 @@
 
 # file: sem_2019_density_exp
 # author: Amy Kendig
-# date last edited: 1/20/21
+# date last edited: 1/21/21
 # goal: fit SEM to focal plot-level data
 
 
@@ -17,6 +17,7 @@ library(lavaan)
 library(GGally)
 library(lavaan.survey)
 library(semPower)
+library(lavaanPlot)
 
 # import plot information
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
@@ -264,10 +265,7 @@ dat <- mvDat %>%
   full_join(plotDens) %>%
   full_join(plotBioD2Dat) %>%
   full_join(edgeSevD2Dat) %>%
-  mutate(fungicide = ifelse(treatment == "water", 0, 1),
-         log_mv_biomass = log(Mv_seedling_biomass + 1),
-         log_evS_biomass = log(Ev_seedling_biomass + 1),
-         log_evA_biomass = log(Ev_adult_biomass + 1))
+  mutate(fungicide = ifelse(treatment == "water", 0, 1))
 
 
 #### visualizations ####
@@ -412,8 +410,7 @@ mod2 <- '# latent variables
           ev_biomass_A ~~ ev_seeds_A
           
           mv_resources ~~ mv_disease + ev_resources
-          ev_disease ~~ ev_resources + mv_disease
-          '
+          ev_disease ~~ ev_resources + mv_disease'
 
 # fit model
 fit2 <- sem(mod2, data = dat,  
@@ -432,17 +429,679 @@ summary(pow2)
 modificationIndices(fit2, sort. = TRUE, minimum.value = 3)
 # I don't think any make sense to add in
 
-# links to remove?
-summary(fit2, fit.measures = T, standardized = T)
-# correlations:
-# mv and ev fitness
-# mv and ev disease (interested in reporting that though, suggests limited transmission)
-# resources and disease for each (interested in reporting, part of theoretical model)
-# all others significant and within-individual
-# regressions
-# all are part of main question
+# visualize
+lavaanPlot(model = fit2,
+           node_options = list(shape = "box", fontname = "Helvetica"), 
+           edge_options = list(color = "grey"), 
+           coefs = TRUE,
+           covs = TRUE)
 
-#### start here: remove non-significant links and test with anova (Grace et al. 2020) ####
+
+#### remove links in model ####
+
+# remove interspecific disease correlation (P = 0.997, Std.all = -0.001)
+mod3 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3 + ev_biomass_A
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          mv_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          ev_biomass_A ~~ ev_seeds_A
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit3 <- sem(mod3, data = dat,  
+            missing = "fiml")
+anova(fit2, fit3) # not sig diff
+summary(fit3, fit.measures = T, standardized = T)
+
+# remove intraspecific Ev adult competition (P = 0.937, Std.all = 0.01)
+mod4 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3 + ev_biomass_A
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          mv_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          ev_biomass_A ~~ ev_seeds_A
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit4 <- sem(mod4, data = dat,  
+            missing = "fiml")
+anova(fit3, fit4) # not sig diff
+summary(fit4, fit.measures = T, standardized = T)
+
+# remove Ev adult density from Mv disease (P = 0.799, Std.all = -0.033)
+mod5 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3 + ev_biomass_A
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          mv_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          ev_biomass_A ~~ ev_seeds_A
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit5 <- sem(mod5, data = dat,  
+            missing = "fiml")
+anova(fit4, fit5) # not sig diff
+summary(fit5, fit.measures = T, standardized = T)
+
+# remove Ev seedling density from Mv disease (P = 0.781, Std.all = -0.034)
+mod6 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3 + ev_biomass_A
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          mv_disease ~ fungicide + Mv_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          ev_biomass_A ~~ ev_seeds_A
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit6 <- sem(mod6, data = dat,  
+            missing = "fiml")
+anova(fit5, fit6) # not sig diff
+summary(fit6, fit.measures = T, standardized = T)
+
+# remove Ev adult density from Mv resources (P = 0.678, Std.all = 0.040)
+mod7 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3 + ev_biomass_A
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density
+          mv_disease ~ fungicide + Mv_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          ev_biomass_A ~~ ev_seeds_A
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit7 <- sem(mod7, data = dat,  
+            missing = "fiml")
+anova(fit6, fit7) # not sig diff
+summary(fit7, fit.measures = T, standardized = T)
+
+# remove Ev adult biomass as an indicator for Ev resources (P = 0.670, Std.all = 0.047) and its correlation with seeds 
+mod8 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density
+          mv_disease ~ fungicide + Mv_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit8 <- sem(mod8, data = dat,  
+            missing = "fiml")
+anova(fit7, fit8) # warning about comparison, but there was a big decrease in AIC, BIC, and Chisq
+summary(fit8, fit.measures = T, standardized = T)
+
+# remove Ev seedling density from Ev disease (P = 0.646, Std.all = 0.065)
+mod9 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density
+          mv_disease ~ fungicide + Mv_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density + Ev_adult_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit9 <- sem(mod9, data = dat,  
+            missing = "fiml")
+anova(fit8, fit9) # not significantly different
+summary(fit9, fit.measures = T, standardized = T)
+
+# remove Ev adult density from Ev disease (P = 0.548, Std.all = 0.080)
+mod10 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density + Ev_seedling_density
+          mv_disease ~ fungicide + Mv_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit10 <- sem(mod10, data = dat,  
+            missing = "fiml")
+anova(fit9, fit10) # warning because Ev adult density has been completely removed, lower AIC, BIC, and Chisq
+summary(fit10, fit.measures = T, standardized = T)
+
+# remove Ev seedling density from Mv resources (P = 0.547, Std.all = 0.069)
+mod11 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide + Mv_seedling_density
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit11 <- sem(mod11, data = dat,  
+             missing = "fiml")
+anova(fit10, fit11) # no significant difference
+summary(fit11, fit.measures = T, standardized = T)
+
+# remove Mv seedling density from Mv disease (P = 0.529, Std.all = -0.073)
+mod12 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density + Ev_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit12 <- sem(mod12, data = dat,  
+             missing = "fiml")
+anova(fit11, fit12) # no significant difference
+summary(fit12, fit.measures = T, standardized = T)
+
+# remove Ev seedling density from Ev resources (P = 0.469, Std.all = 0.065)
+mod13 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ mv_disease + ev_resources
+          ev_disease ~~ ev_resources'
+fit13 <- sem(mod13, data = dat,  
+             missing = "fiml")
+anova(fit12, fit13) # warning because Ev seedling density removed from the model, AIC, BIC, and Chisq went down
+summary(fit13, fit.measures = T, standardized = T)
+
+# remove correlation between Mv resources and disease (P = 0.203, Std.all = 0.133)
+mod14 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources + mv_disease
+          
+          ev_resources ~ Mv_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources'
+fit14 <- sem(mod14, data = dat,  
+             missing = "fiml")
+anova(fit13, fit14) # no significant difference
+summary(fit14, fit.measures = T, standardized = T)
+
+# remove mv disease from mv fitness (P = 0.149, Std.all = -0.099)
+mod15 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources
+          
+          ev_resources ~ Mv_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources'
+fit15 <- sem(mod15, data = dat,  
+             missing = "fiml")
+anova(fit14, fit15) # no significant difference
+summary(fit15, fit.measures = T, standardized = T)
+
+lavaanPlot(model = fit15,
+           node_options = list(shape = "box", fontname = "Helvetica"), 
+           edge_options = list(color = "grey"), 
+           coefs = TRUE,
+           covs = TRUE)
+
+# fix the correlation between Mv disease and Ev fitness (P = 0.7, Std.all = -0.057)
+mod16 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources
+          
+          ev_resources ~ Mv_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources
+          mv_disease ~~ 0*ev_fitness'
+fit16 <- sem(mod16, data = dat,  
+             missing = "fiml")
+anova(fit15, fit16) # no significant difference
+summary(fit16, fit.measures = T, standardized = T)
+
+# fix the correlation between Mv and Ev fitness (P = 0.149, Std.all = -0.23)
+mod17 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources
+          
+          ev_resources ~ Mv_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources
+          
+          # constraints
+          mv_disease ~~ 0*ev_fitness
+          mv_fitness ~~ 0*ev_fitness'
+fit17 <- sem(mod17, data = dat,  
+             missing = "fiml")
+anova(fit16, fit17) # no significant difference
+summary(fit17, fit.measures = T, standardized = T)
+
+# fix the correlation between Mv fitness and Mv disease (P = 0.15, Std.all = -0.21)
+mod18 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources
+          
+          ev_resources ~ Mv_seedling_density
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources
+          
+          # constraints
+          mv_disease ~~ 0*ev_fitness
+          mv_fitness ~~ 0*ev_fitness + 0*mv_disease'
+fit18 <- sem(mod18, data = dat,  
+             missing = "fiml")
+anova(fit17, fit18) # no significant difference
+summary(fit18, fit.measures = T, standardized = T)
+
+# remove the effect of Mv density of Ev resources (P = 0.135, Std.all = -0.177)
+mod19 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources
+          
+          ev_disease ~ fungicide + Mv_seedling_density
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources
+          
+          # constraints
+          mv_disease ~~ 0*ev_fitness
+          mv_fitness ~~ 0*ev_fitness + 0*mv_disease'
+fit19 <- sem(mod19, data = dat,  
+             missing = "fiml")
+anova(fit18, fit19) # no significant difference
+summary(fit19, fit.measures = T, standardized = T)
+
+# remove the effect of Mv density of Ev disease (P = 0.214, Std.all = -0.155)
+mod20 <- '# latent variables
+          mv_resources =~ mv_biomass_1 + mv_biomass_2 + mv_biomass_3
+          mv_fitness =~ mv_seeds_1 + mv_seeds_2 + mv_seeds_3
+          mv_disease =~ mv_severity_1 + mv_severity_2 + mv_severity_3
+          
+          ev_resources =~ ev_biomass_1 + ev_biomass_2 + ev_biomass_3
+          ev_fitness =~ ev_seeds_1 + ev_seeds_2 + ev_seeds_3 + ev_seeds_A
+          ev_disease =~ ev_severity_1 + ev_severity_2 + ev_severity_3 + ev_severity_A
+          
+          # regressions
+          mv_resources ~ Mv_seedling_density
+          mv_disease ~ fungicide
+          mv_fitness ~ mv_resources
+          
+          ev_disease ~ fungicide
+          ev_fitness ~ ev_resources + ev_disease
+          
+          # correlations
+          mv_biomass_1 ~~ mv_seeds_1
+          mv_biomass_2 ~~ mv_seeds_2
+          mv_biomass_3 ~~ mv_seeds_3
+          
+          ev_biomass_1 ~~ ev_seeds_1
+          ev_biomass_2 ~~ ev_seeds_2
+          ev_biomass_3 ~~ ev_seeds_3
+          
+          mv_resources ~~ ev_resources
+          ev_disease ~~ ev_resources
+          
+          # constraints
+          mv_disease ~~ 0*ev_fitness
+          mv_fitness ~~ 0*ev_fitness + 0*mv_disease'
+fit20 <- sem(mod20, data = dat,  
+             missing = "fiml")
+anova(fit19, fit20) # no significant difference
+summary(fit20, fit.measures = T, standardized = T)
+
+# visualize
+lavaanPlot(model = fit20,
+           node_options = list(shape = "box", fontname = "Helvetica"), 
+           edge_options = list(color = "grey"), 
+           coefs = TRUE,
+           covs = TRUE)
+
 
 #### fit biomass model ####
 modb <- '# latent variables
