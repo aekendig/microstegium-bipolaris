@@ -2,7 +2,7 @@
 
 # file: all_survival_data_processing_2018
 # author: Amy Kendig
-# date last edited: 3/3/20
+# date last edited: 1/21/21
 # goal: calculate Ev survival for summer 2018 and winter 2018/2019
 
 

@@ -2,7 +2,7 @@
 
 # file: covariate_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 4/22/20
+# date last edited: 1/21/21
 # goal: create a dataset of covariates for the density experiment
 
 
@@ -302,7 +302,8 @@ summary(spi_mv_mod3)
 #### remove covariates with treatment effects ####
 
 co4 <- co2 %>%
-  select(-c(mv_eau.g, mv_inf_jul.prop))
+  select(-mv_eau.g)
+# added July disease back in because I wanted it for an analysis
 
 
 #### output intermediate data ####

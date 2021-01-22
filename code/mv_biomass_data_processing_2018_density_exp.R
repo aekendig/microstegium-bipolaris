@@ -2,7 +2,7 @@
 
 # file: mv_biomass_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 3/13/20
+# date last edited: 1/21/21
 # goal: edit Mv seed data and check for errors
 # background: data collected in Keith's lab, notes indicate confusion over sample labels
 

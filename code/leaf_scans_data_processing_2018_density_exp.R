@@ -2,7 +2,7 @@
 
 # file: leaf_scans_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 7/9/20
+# date last edited: 1/21/21
 # goal: combine raw 2018 leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm, ev_leaf_damage_severity.ijm
 
