@@ -2,7 +2,7 @@
 
 # file: temp_humidity_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 1/8/21
+# date last edited: 2/3/21
 # goal: process data from temperature and humdity loggers
 
 
@@ -95,7 +95,8 @@ day_dat <- dat3 %>%
             temp_max = max(temp),
             hum_avg = mean(hum_prop),
             hum_min = min(hum_prop),
-            hum_max = max(hum_prop))
+            hum_max = max(hum_prop),
+            hrs_10_35 = sum(temp > 10 & temp < 35))
 
 ggplot(day_dat, aes(x = day, y = temp_avg, color = site)) +
   geom_point() +
@@ -282,7 +283,8 @@ dy_temp_dat <- dat5 %>%
   summarise(temp_avg = mean(temp),
             temp_min = min(temp),
             temp_max = max(temp),
-            hind_max = max(heat_ind)) %>%
+            hind_max = max(heat_ind),
+            hrs_10_35 = sum(temp > 10 & temp < 35)) %>%
   ungroup() %>%
   mutate(month = case_when(day < as.Date("2019-07-29") ~ "early_aug",
                            day >= as.Date("2019-07-29") & day < as.Date("2019-08-28") ~ "late_aug",
@@ -313,10 +315,12 @@ mo_dat <- dy_hum_dat %>%
                         temp_min_se = sd(temp_min)/sqrt(length(temp_min)),
                         temp_max_se = sd(temp_max)/sqrt(length(temp_max)),
                         hind_max_se = sd(hind_max)/sqrt(length(hind_max)),
+                        hrs_10_35_se = sd(hrs_10_35)/sqrt(length(hrs_10_35)),
                         temp_avg = mean(temp_avg),
                         temp_min = mean(temp_min),
                         temp_max = mean(temp_max),
-                        hind_max = mean(hind_max)) %>%
+                        hind_max = mean(hind_max),
+                        hrs_10_35 = mean(hrs_10_35)) %>%
               ungroup())
 
 
