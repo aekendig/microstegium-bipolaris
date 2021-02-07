@@ -201,8 +201,6 @@ ggplot(disDat, aes(x = site, y = asr_Ev_aug_severity)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2)
 
-#### start here ####
-
 # site effects
 ggplot(datSeeds, aes(x = site, y = log_seeds)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
@@ -227,6 +225,7 @@ ggplot(datSeeds, aes(x = site, y = survival)) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
 # Ev have no variation in survival
+# mv has high survival at two sites
 
 # plot effects
 ggplot(datSeeds, aes(x = plot_f, y = log_seeds)) +
@@ -255,7 +254,7 @@ ggplot(datSeeds, aes(x = log_seeds)) +
   facet_wrap(~ plant_type, scales = "free")
 # could make seeds a binary variable for Ev seedlings
 
-ggplot(datSeeds, aes(x = log_biomass)) +
+ggplot(datSeeds, aes(x = log_growth)) +
   geom_histogram() +
   facet_wrap(~ plant_type, scales = "free")
 
@@ -362,3 +361,172 @@ dis_mod7 <- psem(
 summary(dis_mod7)
 # no omitted links
 # good model fit (P = 0.476)
+
+
+#### Mv seeds models ####
+
+# Mv dat
+mvDatSeeds <- datSeeds %>%
+  filter(sp == "Mv")
+
+# check random effects
+mv_seeds_lme1 <- lme(log_seeds ~ log_growth + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds)
+summary(mv_seeds_lme1)
+mv_surv_lm1 <- glm(survival ~ log_growth + asr_severity, family = binomial, data = mvDatSeeds)
+summary(mv_surv_lm1)
+mv_growth_lme1 <- lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatSeeds)
+summary(mv_growth_lme1)
+mv_severity_lme1 <- lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatSeeds)
+summary(mv_severity_lme1)
+
+# initial fit
+mv_seeds_mod1 <- psem(
+  lme(log_seeds ~ log_growth + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds),
+  glm(survival ~ log_growth + asr_severity, data = mvDatSeeds),
+  lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatSeeds),
+  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatSeeds),
+  log_growth%~~%asr_severity
+)
+
+# model summary
+summary(mv_seeds_mod1)
+# better R-squared with random effects
+# d sep test: Mv density effect on seeds
+# Fisher's C: P = 0.045, poor fit
+# correlation not significant
+
+# update model
+mv_seeds_mod2 <- psem(
+  lme(log_seeds ~ log_growth + asr_severity + Mv_seedling_density, random = ~ 1 | plot_f, data = mvDatSeeds),
+  glm(survival ~ log_growth + asr_severity, data = mvDatSeeds),
+  lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatSeeds),
+  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatSeeds),
+  log_growth%~~%asr_severity
+)
+
+# summary
+summary(mv_seeds_mod2)
+# all omitted paths are supported
+# better fit by Fisher's C (P = 0.373)
+# random effects improve the R-squared values
+# growth increases seeds
+# Mv density reduces seeds
+# fungicide reduces disease
+
+
+#### Ev seedling seeds models ####
+
+# Ev seedling dat
+evSDatSeeds <- datSeeds %>%
+  filter(sp == "Ev" & age == "seedling")
+
+# check random effects
+evS_seeds_lme1 <- lme(log_seeds ~ log_growth + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds)
+summary(evS_seeds_lme1)
+evS_growth_lme1 <- lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatSeeds)
+summary(evS_growth_lme1)
+evS_severity_lme1 <- lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds)
+summary(evS_severity_lme1)
+
+# initial fit
+evS_seeds_mod1 <- psem(
+  lme(log_seeds ~ log_growth + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds),
+  lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatSeeds),
+  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
+  log_growth%~~%asr_severity
+)
+
+# model summary
+summary(evS_seeds_mod1)
+# better R-squared with random effects
+# d sep test: fungicide directly affects growth
+# Fisher's C: P = 0.009, poor fit
+
+evS_seeds_mod2 <- psem(
+  lme(log_seeds ~ log_growth + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds),
+  lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
+  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
+  log_growth%~~%asr_severity
+)
+
+# model summary
+summary(evS_seeds_mod2)
+# better R-squared with random effects
+# d sep test: all omitted paths supported
+# Fisher's C: P = 0.141, good fit
+# fungicide increases growth
+
+# binomial model
+
+# add column to data
+evSDatSeeds2 <- evSDatSeeds %>%
+  mutate(seeds_bin = as.numeric(log_seeds > 0))
+
+# check model
+evS_seeds_lme2 <- glmer(seeds_bin ~ log_growth + asr_severity + (1|plot_f), family = binomial, data = evSDatSeeds2)
+summary(evS_seeds_lme2)
+
+# initial fit
+evS_bin_mod1 <- psem(
+  glmer(seeds_bin ~ log_growth + asr_severity + (1|plot_f), family = binomial, data = evSDatSeeds2),
+  lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatSeeds2),
+  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
+  log_growth%~~%asr_severity
+)
+
+# model summary
+summary(evS_bin_mod1)
+# better R-squared with random effects
+# d sep test: fungicide directly affects growth and seeds
+# Fisher's C: P = 0.004, poor fit
+
+# update model
+evS_bin_mod2 <- psem(
+  glmer(seeds_bin ~ log_growth + asr_severity + fungicide + (1|plot_f), family = binomial, data = evSDatSeeds2),
+  lme(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
+  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
+  log_growth%~~%asr_severity
+)
+
+# model summary
+summary(evS_bin_mod2)
+# better R-squared with random effects
+# d sep test: all omitted links supported
+# Fisher's C: P = 0.33, good fit
+# fungicide increases growth and reduces seeds
+
+
+#### Ev adult seeds models ####
+
+# Ev adult dat
+evADatSeeds <- datSeeds %>%
+  filter(sp == "Ev" & age == "adult")
+
+# initial fit
+evA_seeds_mod1 <- psem(
+  lm(log_seeds ~ log_growth + asr_severity, data = evADatSeeds),
+  lm(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = evADatSeeds),
+  lm(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatSeeds),
+  log_growth%~~%asr_severity
+)
+
+# model summary
+summary(evA_seeds_mod1)
+# d sep test: Ev seedling density affects seeds
+# Fisher's C: P = 0.126, good fit
+
+# update model
+evA_seeds_mod2 <- psem(
+  lm(log_seeds ~ log_growth + asr_severity + Ev_seedling_density, data = evADatSeeds),
+  lm(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = evADatSeeds),
+  lm(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatSeeds),
+  log_growth%~~%asr_severity
+)
+
+summary(evA_seeds_mod2)
+# d sep test: support for all omitted links
+# Fisher's C: P = 0.404, good fit
+# severity increases seeds
+# Ev seedling density increases seeds
+
+#### start here: remove soil moisture from disease model, update graphs based on results ###

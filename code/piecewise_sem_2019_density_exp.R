@@ -556,7 +556,6 @@ summary(evS_bin_mod2)
 # different from continuous seeds: severity doesn't affect seeds
 
 
-
 #### Ev adult seeds models ####
 
 # Ev adult dat
