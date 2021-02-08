@@ -184,6 +184,7 @@ mvDat <- mvSeedD2Dat %>%
   mutate(log_seeds = log(seeds + 1),
          log_biomass = log(biomass_weight.g),
          asr_severity = asin(sqrt(early_aug_severity_adj)),
+         asr_jul_severity = asin(sqrt(jul_severity)),
          asr_survival = asin(sqrt(survival)))
 
 evDat <- evSeedD2Datb %>%
@@ -199,6 +200,7 @@ evDat <- evSeedD2Datb %>%
   mutate(log_seeds = log(seeds + 1),
          log_biomass = log(biomass_weight.g),
          asr_severity = asin(sqrt(early_aug_severity_adj)),
+         asr_jul_severity = asin(sqrt(jul_severity)),
          asr_survival = asin(sqrt(survival)))
 
 # combine
@@ -206,6 +208,15 @@ datSeeds <- mvDat %>%
   select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_severity, asr_survival) %>%
   full_join(evDat %>%
               select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_severity, asr_survival)) %>%
+  mutate(plant_type = paste(sp, age, sep = "_"),
+         fungicide = ifelse(treatment == "water", 0, 1),
+         plot_f = paste(site, plot, substring(treatment, 1, 1), sep = "")) %>%
+  drop_na()
+
+datJuly <- mvDat %>%
+  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_jul_severity, asr_survival) %>%
+  full_join(evDat %>%
+              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_jul_severity, asr_survival)) %>%
   mutate(plant_type = paste(sp, age, sep = "_"),
          fungicide = ifelse(treatment == "water", 0, 1),
          plot_f = paste(site, plot, substring(treatment, 1, 1), sep = "")) %>%
@@ -455,6 +466,38 @@ summary(mv_seeds_mod2)
 # fungicide reduces disease
 # severity reduces survival
 
+# use July severity
+
+# Mv dat
+mvDatJuly <- datJuly %>%
+  filter(sp == "Mv")
+
+# initial fit
+mv_july_mod1 <- psem(
+  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = mvDatJuly),
+  lme(asr_survival ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = mvDatJuly),
+  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatJuly),
+  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatJuly),
+  log_biomass%~~%asr_jul_severity
+)
+
+# model summary
+summary(mv_july_mod1)
+# Mv seedlings affect seeds
+
+# update model
+mv_july_mod2 <- psem(
+  lme(log_seeds ~ log_biomass + asr_jul_severity + Mv_seedling_density, random = ~ 1 | plot_f, data = mvDatJuly),
+  lme(asr_survival ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = mvDatJuly),
+  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatJuly),
+  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatJuly),
+  log_biomass%~~%asr_jul_severity
+)
+
+# model summary
+summary(mv_july_mod2)
+# almost identical to mv_seeds_mod2 except there's no effect of fungicide
+
 
 #### Ev seedling seeds models ####
 
@@ -555,6 +598,58 @@ summary(evS_bin_mod2)
 # survival and seeds negatively correlated
 # different from continuous seeds: severity doesn't affect seeds
 
+# July severity data
+
+# Ev seedling dat
+evSDatJuly <- datJuly %>%
+  filter(sp == "Ev" & age == "seedling")
+
+# initial fit
+evS_july_mod1 <- psem(
+  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(asr_survival ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
+  log_biomass%~~%asr_jul_severity
+)
+
+# model summary
+summary(evS_july_mod1)
+# fungicide affects biomass and survival
+# seeds affect survival
+
+# update model
+evS_july_mod2 <- psem(
+  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(asr_survival ~ log_biomass + asr_jul_severity + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
+  log_biomass%~~%asr_jul_severity,
+  log_seeds%~~%asr_survival
+)
+
+# model summary
+summary(evS_july_mod2)
+# Ev seedling density increases survival
+
+# update model
+evS_july_mod3 <- psem(
+  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(asr_survival ~ log_biomass + asr_jul_severity + fungicide + Ev_seedling_density, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
+  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
+  log_biomass%~~%asr_jul_severity,
+  log_seeds%~~%asr_survival
+)
+
+# model summary
+summary(evS_july_mod3)
+# differences from evS_seeds_mod2 (same, but with Aug severity):
+# severity reduced survival
+# severity negatively correlated with biomass
+# Ev seedling density increases survival
+
+
 
 #### Ev adult seeds models ####
 
@@ -596,3 +691,21 @@ summary(evA_seeds_mod2)
 # Fisher's C: P = 0.59, good fit
 # biomass increases seeds
 # biomass and severity are positively correlated
+
+# July severity data
+
+# Ev adult dat
+evADatJuly <- datJuly %>%
+  filter(sp == "Ev" & age == "adult")
+
+# initial fit
+evA_july_mod1 <- psem(
+  lm(log_seeds ~ log_biomass + asr_jul_severity, data = evADatJuly),
+  lm(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = evADatJuly),
+  lm(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatJuly),
+  log_biomass%~~%asr_jul_severity
+)
+
+# model summary
+summary(evA_july_mod1)
+# same as evA_seeds_mod1
