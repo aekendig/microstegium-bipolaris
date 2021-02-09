@@ -2,7 +2,7 @@
 
 # file: piecewise_sem_2019_density_exp
 # author: Amy Kendig
-# date last edited: 2/4/21
+# date last edited: 2/9/21
 # goal: fit piecewise SEM to focal plot-level data
 
 
@@ -12,11 +12,12 @@
 rm(list=ls())
 
 # load packages
+library(car)
 library(tidyverse)
 library(piecewiseSEM)
 library(lme4)
-library(nlme)
 library(GGally)
+
 
 # import plot information
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
@@ -67,7 +68,7 @@ focD2Dat <- plotsD %>%
               mutate(sp = "Ev"))
 
 # focal survival
-survD2Dat <- survD2Dat %>%
+survD2Dat2 <- survD2Dat %>%
   filter(focal == 1) %>%
   group_by(site, plot, treatment, sp, ID) %>%
   summarise(survival = 1/(length(unique(replace_date)) + 1)) %>%
@@ -91,8 +92,10 @@ sevD2Dat2 <- sevD2Dat %>%
   mutate(age = ifelse(ID == "A", "adult", "seedling"))
 
 filter(sevD2Dat2, is.na(early_aug_severity) & !is.na(early_aug_severity_adj)) %>%
-  nrow()
-# replaced 8 missing values
+  nrow() # replaced 8 missing values with the adjustment
+
+range(sevD2Dat2$jul_severity, na.rm = T) # includes 0 and 1
+range(sevD2Dat2$early_aug_severity_adj, na.rm = T) # includes 0 
 
 # plot-scale severity
 plotSevD2Dat <- sevD2Dat2 %>%
@@ -105,10 +108,18 @@ plotSevD2Dat <- sevD2Dat2 %>%
               values_from = c(jul_severity, early_aug_severity, early_aug_severity_adj),
               names_glue = "{sp}_{.value}")
 
+sum(is.na(plotSevD2Dat$Ev_jul_severity)) # 0
+range(plotSevD2Dat$Ev_jul_severity)
 sum(is.na(plotSevD2Dat$Ev_early_aug_severity)) # 3
+range(plotSevD2Dat$Ev_early_aug_severity, na.rm = T) 
 sum(is.na(plotSevD2Dat$Ev_early_aug_severity_adj)) # 1
+range(plotSevD2Dat$Ev_early_aug_severity_adj, na.rm = T) 
+sum(is.na(plotSevD2Dat$Mv_jul_severity)) # 0
+range(plotSevD2Dat$Mv_jul_severity) # includes 0
 sum(is.na(plotSevD2Dat$Mv_early_aug_severity)) # 0
+range(plotSevD2Dat$Mv_early_aug_severity) # includes 0
 sum(is.na(plotSevD2Dat$Mv_early_aug_severity_adj)) # 0
+range(plotSevD2Dat$Mv_early_aug_severity_adj) # includes 0
 
 # edge severity
 edgeSevD2Dat <- mvEdgeSevD2Dat %>%
@@ -117,8 +128,11 @@ edgeSevD2Dat <- mvEdgeSevD2Dat %>%
   select(month, site, plot, treatment, edge_severity) %>%
   filter(month == "jul")
 
+sum(is.na(edgeSevD2Dat$edge_severity)) # 0
+range(edgeSevD2Dat$edge_severity) 
+
 # seeds
-evSeedD2Datb <- evSeedD2Dat %>%
+evSeedD2Dat2 <- evSeedD2Dat %>%
   group_by(site, plot, treatment, sp, ID) %>%
   summarise(seeds = sum(seeds)) %>%
   ungroup() %>%
@@ -160,13 +174,13 @@ disDat <- plotSevD2Dat %>%
   filter(treatment == "water") %>%
   left_join(envD2Dat2 %>%
               select(-month)) %>%
-  mutate(asr_Ev_aug_severity = asin(sqrt(Ev_early_aug_severity)),
-         asr_Mv_aug_severity = asin(sqrt(Mv_early_aug_severity)),
-         asr_Ev_jul_severity = asin(sqrt(Ev_jul_severity)),
-         asr_Mv_jul_severity = asin(sqrt(Mv_jul_severity)),
+  drop_na() %>%
+  mutate(Ev_aug_severity_t = logit(Ev_early_aug_severity, adjust = 0.001),
+         Mv_aug_severity_t = logit(Mv_early_aug_severity, adjust = 0.001),
+         Ev_jul_severity_t = logit(Ev_jul_severity, adjust = 0.001),
+         Mv_jul_severity_t = logit(Mv_jul_severity, adjust = 0.001),
          log_dew = log(dew_intensity),
-         asr_edge_severity = asin(sqrt(edge_severity))) %>%
-  drop_na()
+         edge_severity_t = logit(edge_severity, adjust = 0.001))
 
 mvDat <- mvSeedD2Dat %>%
   select(site, plot, treatment, sp, plant, seeds) %>%
@@ -176,22 +190,22 @@ mvDat <- mvSeedD2Dat %>%
               select(site, plot, treatment, sp, plant, biomass_weight.g) %>%
               rename("ID" = "plant") %>%
               mutate(ID = as.character(ID))) %>%
-  full_join(survD2Dat %>%
+  full_join(survD2Dat2 %>%
               filter(sp == "Mv")) %>%
   full_join(sevD2Dat2 %>%
               filter(sp == "Mv")) %>%
   full_join(plotDens) %>%
   mutate(log_seeds = log(seeds + 1),
          log_biomass = log(biomass_weight.g),
-         asr_severity = asin(sqrt(early_aug_severity_adj)),
-         asr_jul_severity = asin(sqrt(jul_severity)),
-         asr_survival = asin(sqrt(survival)))
+         jul_severity_t = logit(jul_severity, adjust = 0.001),
+         aug_severity_t = logit(early_aug_severity_adj, adjust = 0.001),
+         survival_t = logit(survival, adjust = 0.001))
 
-evDat <- evSeedD2Datb %>%
+evDat <- evSeedD2Dat2 %>%
   full_join(evBioD2Dat %>%
               select(site, plot, treatment, sp, ID, weight) %>%
               mutate(age = ifelse(ID == "A", "adult", "seedling"))) %>%
-  full_join(survD2Dat %>%
+  full_join(survD2Dat2 %>%
               filter(sp == "Ev")) %>%
   full_join(sevD2Dat2 %>%
               filter(sp == "Ev")) %>%
@@ -199,24 +213,24 @@ evDat <- evSeedD2Datb %>%
   rename("biomass_weight.g" = "weight") %>%
   mutate(log_seeds = log(seeds + 1),
          log_biomass = log(biomass_weight.g),
-         asr_severity = asin(sqrt(early_aug_severity_adj)),
-         asr_jul_severity = asin(sqrt(jul_severity)),
-         asr_survival = asin(sqrt(survival)))
+         jul_severity_t = logit(jul_severity, adjust = 0.001),
+         aug_severity_t = logit(early_aug_severity_adj, adjust = 0.001),
+         survival_t = logit(survival, adjust = 0.001))
 
 # combine
-datSeeds <- mvDat %>%
-  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_severity, asr_survival) %>%
+datJuly <- mvDat %>%
+  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, jul_severity_t, survival_t) %>%
   full_join(evDat %>%
-              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_severity, asr_survival)) %>%
+              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, jul_severity_t, survival_t)) %>%
   mutate(plant_type = paste(sp, age, sep = "_"),
          fungicide = ifelse(treatment == "water", 0, 1),
          plot_f = paste(site, plot, substring(treatment, 1, 1), sep = "")) %>%
   drop_na()
 
-datJuly <- mvDat %>%
-  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_jul_severity, asr_survival) %>%
+datAug <- mvDat %>%
+  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, aug_severity_t, survival_t) %>%
   full_join(evDat %>%
-              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, asr_jul_severity, asr_survival)) %>%
+              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, aug_severity_t, survival_t)) %>%
   mutate(plant_type = paste(sp, age, sep = "_"),
          fungicide = ifelse(treatment == "water", 0, 1),
          plot_f = paste(site, plot, substring(treatment, 1, 1), sep = "")) %>%
@@ -227,246 +241,141 @@ datJuly <- mvDat %>%
 
 # correlations in disease data
 disDat %>%
-  select(asr_Ev_jul_severity, asr_Mv_jul_severity, asr_Ev_aug_severity, asr_Mv_aug_severity, log_dew, hrs_10_35, asr_edge_severity) %>%
+  select(Ev_jul_severity_t, Mv_jul_severity_t, Ev_aug_severity_t, Mv_aug_severity_t, log_dew, hrs_10_35, edge_severity_t) %>%
   ggpairs()
 # Ev and Mv July severity correlated
 # hrs 10 to 35 very limited in values
-
-# disease histogram
-ggplot(disDat, aes(x = asr_Mv_aug_severity)) +
-  geom_histogram()
-
-ggplot(disDat, aes(x = asr_Ev_aug_severity)) +
-  geom_histogram()
+# Mv july severity very low
 
 # disease random effects
-ggplot(disDat, aes(x = site, y = asr_Mv_aug_severity)) +
+ggplot(disDat, aes(x = site, y = Mv_aug_severity_t)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2)
+# higher in D4
 
-ggplot(disDat, aes(x = site, y = asr_Ev_aug_severity)) +
+ggplot(disDat, aes(x = site, y = Ev_aug_severity_t)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2)
+# lower in D4
 
 # site effects
-ggplot(datSeeds, aes(x = site, y = log_seeds)) +
+ggplot(datJuly, aes(x = site, y = log_seeds)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
 # Ev produce more seeds at D3, Mv at D1
 
-ggplot(datSeeds, aes(x = site, y = log_biomass)) +
+ggplot(datJuly, aes(x = site, y = log_biomass)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
 # same as seeds
 
-ggplot(datSeeds, aes(x = site, y = asr_severity)) +
+ggplot(datJuly, aes(x = site, y = survival_t)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
-# Ev seedlings have higher disease at D3 and Mv the highest at D4
+# lower at D4 for both seedlings
 
-ggplot(datSeeds, aes(x = site, y = asr_survival)) +
+ggplot(datJuly, aes(x = site, y = jul_severity_t)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
+# all tend to have higher at D4
+
+ggplot(datAug, aes(x = site, y = aug_severity_t)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
+  facet_wrap(~ plant_type)
+# Mv has higher at D4, Ev seedlings lower at D1
 
 # plot effects
-ggplot(datSeeds, aes(x = plot_f, y = log_seeds)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
-  facet_wrap(~ plant_type)
-# Ev produce more seeds at D3, Mv at D1
-
-ggplot(datSeeds, aes(x = plot_f, y = log_biomass)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
-  facet_wrap(~ plant_type)
-# same as seeds
-
-ggplot(datSeeds, aes(x = plot_f, y = asr_severity)) +
+ggplot(datJuly, aes(x = plot_f, y = log_seeds)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
 
-ggplot(datSeeds, aes(x = plot_f, y = asr_survival)) +
+ggplot(datJuly, aes(x = plot_f, y = log_biomass)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
   facet_wrap(~ plant_type)
-# adults have very little variation
+
+ggplot(datJuly, aes(x = plot_f, y = survival_t)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
+  facet_wrap(~ plant_type)
+
+ggplot(datJuly, aes(x = plot_f, y = jul_severity_t)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
+  facet_wrap(~ plant_type)
+
+ggplot(datAug, aes(x = plot_f, y = aug_severity_t)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  stat_summary(geom = "point", fun.data = "mean_cl_boot", size = 2) +
+  facet_wrap(~ plant_type)
 
 # distributions
-ggplot(datSeeds, aes(x = log_seeds)) +
+ggplot(datJuly, aes(x = log_seeds)) +
   geom_histogram() +
   facet_wrap(~ plant_type, scales = "free")
 # could make seeds a binary variable for Ev seedlings
 
-ggplot(datSeeds, aes(x = log_biomass)) +
+ggplot(datJuly, aes(x = log_biomass)) +
   geom_histogram() +
   facet_wrap(~ plant_type, scales = "free")
 
-ggplot(datSeeds, aes(x = asr_severity)) +
+ggplot(datJuly, aes(x = jul_severity_t)) +
+  geom_histogram() +
+  facet_wrap(~ plant_type, scales = "free")
+# Mv has a lot of zeros
+
+ggplot(datAug, aes(x = aug_severity_t)) +
   geom_histogram() +
   facet_wrap(~ plant_type, scales = "free")
 
 
 #### fit disease model ####
 
-# check random effects
-dis_lme1 <- lme(asr_Mv_aug_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + asr_Ev_jul_severity + asr_Mv_jul_severity + asr_edge_severity + log_dew, random = ~ 1 | site, data = disDat)
-summary(dis_lme1)
-dis_lme2 <- lme(asr_Ev_aug_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + asr_Ev_jul_severity + asr_Mv_jul_severity + asr_edge_severity + log_dew, random = ~ 1 | site, data = disDat)
-summary(dis_lme2)
-evsev_lme1 <- lme(asr_Ev_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat)
-summary(evsev_lme1)
-mvsev_lme1 <- lme(asr_Mv_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat)
-summary(mvsev_lme1)
-dew_lme1 <- lme(log_dew ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat)
-summary(dew_lme1)
-
 # initial fit
 dis_mod1 <- psem(
-  lme(asr_Mv_aug_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + asr_Ev_jul_severity + asr_Mv_jul_severity + asr_edge_severity + log_dew, random = ~ 1 | site, data = disDat),
-  lme(asr_Ev_aug_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + asr_Ev_jul_severity + asr_Mv_jul_severity + asr_edge_severity + log_dew, random = ~ 1 | site, data = disDat),
-  lme(asr_Ev_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat),
-  lme(asr_Mv_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat),
-  lme(log_dew ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat),
-  asr_Ev_jul_severity %~~% asr_Mv_jul_severity,
-  asr_Ev_aug_severity %~~% asr_Mv_aug_severity
+  lmer(Mv_aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + Ev_jul_severity_t + Mv_jul_severity_t + edge_severity_t + log_dew + (1 | site), data = disDat),
+  lmer(Ev_aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + Ev_jul_severity_t + Mv_jul_severity_t + edge_severity_t + log_dew + (1 | site), data = disDat),
+  lmer(Ev_jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1 | site), data = disDat),
+  lmer(Mv_jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1 | site), data = disDat),
+  lmer(log_dew ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1 | site), data = disDat),
+  Ev_jul_severity_t %~~% Mv_jul_severity_t,
+  Ev_aug_severity_t %~~% Mv_aug_severity_t
 )
 
 # summary
 summary(dis_mod1)
 # edge severity predicts Mv july severity (add correlation)
 # random effects improve R-squared values
-# good fit (P = 0.216)
+# P = 0.042
 
 # update model
 dis_mod2 <- psem(
-  lme(asr_Mv_aug_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + asr_Ev_jul_severity + asr_Mv_jul_severity + asr_edge_severity + log_dew, random = ~ 1 | site, data = disDat),
-  lme(asr_Ev_aug_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + asr_Ev_jul_severity + asr_Mv_jul_severity + asr_edge_severity + log_dew, random = ~ 1 | site, data = disDat),
-  lme(asr_Ev_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat),
-  lme(asr_Mv_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat),
-  lme(log_dew ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | site, data = disDat),
-  asr_Ev_jul_severity %~~% asr_Mv_jul_severity,
-  asr_Ev_aug_severity %~~% asr_Mv_aug_severity,
-  asr_edge_severity %~~% asr_Mv_jul_severity
+  lmer(Mv_aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + Ev_jul_severity_t + Mv_jul_severity_t + edge_severity_t + log_dew + (1 | site), data = disDat),
+  lmer(Ev_aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + Ev_jul_severity_t + Mv_jul_severity_t + edge_severity_t + log_dew + (1 | site), data = disDat),
+  lmer(Ev_jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1 | site), data = disDat),
+  lmer(Mv_jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1 | site), data = disDat),
+  lmer(log_dew ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1 | site), data = disDat),
+  Ev_jul_severity_t %~~% Mv_jul_severity_t,
+  Ev_aug_severity_t %~~% Mv_aug_severity_t,
+  edge_severity_t %~~% Mv_jul_severity_t
 )
 
 # summary
 summary(dis_mod2)
 # no missing links
-# good model fit (P = 0.653)
+# good model fit (P = 0.541)
 # dew intensity increase August Mv severity
 # July Mv severity decreased August Ev severity, but edge Mv severity increased it
-# correlations significant and positive
+# august and edge correlations significant and positive
 
 
-#### fit seeds model ####
-
-# abandoned this approach - poor model fit
-
-# check random effects
-seeds_lme1 <- lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = datSeeds)
-summary(seeds_lme1)
-surv_lme1 <- lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = datSeeds)
-summary(seeds_lme1)
-biomass_lme1 <- lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = datSeeds)
-summary(biomass_lme1)
-# very small random effect sd
-severity_lme1 <- lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = datSeeds)
-summary(severity_lme1)
-
-# initial fit
-seeds_mod1 <- psem(
-  lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = datSeeds),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = datSeeds),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = datSeeds),
-  log_biomass%~~%asr_severity
-)
-
-# model summary
-summary(seeds_mod1)
-# small increase in R-squared with log_seeds and none with biomass
-# d sep test: fungicide direct effect on seeds
-# Fisher's C: P = 0.03, not great fit
-
-# update model
-seeds_mod2 <- psem(
-  lme(log_seeds ~ log_biomass + asr_severity + fungicide, random = ~ 1 | plot_f, data = datSeeds),
-  lm(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = datSeeds),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = datSeeds),
-  log_biomass%~~%asr_severity
-)
-
-# summary
-summary(seeds_mod2)
-# all omitted paths are supported
-# better fit by Fisher's C
-# random effects improve the R-squared values
-
-# multi-group model
-seeds_mod3 <- multigroup(seeds_mod2, group = "plant_type")
-
-# summary
-seeds_mod3
-# poor model fit
-# the negative effect of severity on seeds could be because Ev have higher severity in August, but produce fewer seeds
-
-
-#### Mv seeds models ####
-
-# Mv dat
-mvDatSeeds <- datSeeds %>%
-  filter(sp == "Mv")
-
-# check random effects
-mv_seeds_lme1 <- lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds)
-summary(mv_seeds_lme1)
-mv_surv_lme1 <- lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds)
-summary(mv_surv_lme1)
-mv_biomass_lme1 <- lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatSeeds)
-summary(mv_biomass_lme1)
-mv_severity_lme1 <- lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatSeeds)
-summary(mv_severity_lme1)
-
-# initial fit
-mv_seeds_mod1 <- psem(
-  lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds),
-  lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatSeeds),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatSeeds),
-  log_biomass%~~%asr_severity
-)
-
-# model summary
-summary(mv_seeds_mod1)
-# better R-squared with random effects
-# d sep test: Mv density effect on seeds
-# Fisher's C: P = 0.079, okay fit
-# correlation not significant
-
-# update model
-mv_seeds_mod2 <- psem(
-  lme(log_seeds ~ log_biomass + asr_severity + Mv_seedling_density, random = ~ 1 | plot_f, data = mvDatSeeds),
-  lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = mvDatSeeds),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatSeeds),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatSeeds),
-  log_biomass%~~%asr_severity
-)
-
-# summary
-summary(mv_seeds_mod2)
-# all omitted paths are supported
-# better fit by Fisher's C (P = 0.462)
-# random effects improve the R-squared values
-# biomass increases seeds
-# Mv density reduces seeds
-# fungicide reduces disease
-# severity reduces survival
-
-# use July severity
+#### Mv July model ####
 
 # Mv dat
 mvDatJuly <- datJuly %>%
@@ -474,131 +383,82 @@ mvDatJuly <- datJuly %>%
 
 # initial fit
 mv_july_mod1 <- psem(
-  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = mvDatJuly),
-  lme(asr_survival ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = mvDatJuly),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatJuly),
-  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatJuly),
-  log_biomass%~~%asr_jul_severity
+  lmer(log_seeds ~ log_biomass + jul_severity_t + (1|site/plot_f), data = mvDatJuly),
+  lmer(survival_t ~ log_biomass + jul_severity_t + (1|site/plot_f), data = mvDatJuly),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|plot_f), data = mvDatJuly),
+  lmer(jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = mvDatJuly),
+  log_biomass%~~%jul_severity_t
 )
+# error from biomass model (boundary fit is singular) and site variance was very low - removed from random effects
 
 # model summary
 summary(mv_july_mod1)
 # Mv seedlings affect seeds
+# p = 0.011
+# better R-squared with random effects
 
 # update model
 mv_july_mod2 <- psem(
-  lme(log_seeds ~ log_biomass + asr_jul_severity + Mv_seedling_density, random = ~ 1 | plot_f, data = mvDatJuly),
-  lme(asr_survival ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = mvDatJuly),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = mvDatJuly),
-  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = mvDatJuly),
-  log_biomass%~~%asr_jul_severity
+  lmer(log_seeds ~ log_biomass + jul_severity_t + Mv_seedling_density + (1|site/plot_f), data = mvDatJuly),
+  lmer(survival_t ~ log_biomass + jul_severity_t + (1|site/plot_f), data = mvDatJuly),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|plot_f), data = mvDatJuly),
+  lmer(jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = mvDatJuly),
+  log_biomass%~~%jul_severity_t
 )
 
 # model summary
 summary(mv_july_mod2)
-# almost identical to mv_seeds_mod2 except there's no effect of fungicide
+# no missing links
+# P = 0.279
+# biomass increased seeds
+# Mv density reduced seeds
+# severity reduced survival
+# Mv density reduced severity
+# severity and biomass positively correlated
 
 
-#### Ev seedling seeds models ####
+#### Mv August model ####
 
-# Ev seedling dat
-evSDatSeeds <- datSeeds %>%
-  filter(sp == "Ev" & age == "seedling")
-
-# check random effects
-evS_seeds_lme1 <- lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds)
-summary(evS_seeds_lme1)
-evS_surv_lme1 <- lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds)
-summary(evS_surv_lme1)
-evS_biomass_lme1 <- lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatSeeds)
-summary(evS_biomass_lme1)
-evS_severity_lme1 <- lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds)
-summary(evS_severity_lme1)
+# Mv dat
+mvDatAug <- datAug %>%
+  filter(sp == "Mv")
 
 # initial fit
-evS_seeds_mod1 <- psem(
-  lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds),
-  lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatSeeds),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
-  log_biomass%~~%asr_severity
+mv_aug_mod1 <- psem(
+  lmer(log_seeds ~ log_biomass + aug_severity_t + (1|site/plot_f), data = mvDatAug),
+  lmer(survival_t ~ log_biomass + aug_severity_t + (1|site/plot_f), data = mvDatAug),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|plot_f), data = mvDatAug),
+  lmer(aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = mvDatAug),
+  log_biomass%~~%aug_severity_t
 )
+# error from biomass model (boundary fit is singular) and site variance was very low - removed from random effects
 
 # model summary
-summary(evS_seeds_mod1)
+summary(mv_aug_mod1)
+# Mv seedlings affect seeds
+# p = 0.02
 # better R-squared with random effects
-# d sep test: fungicide directly affects biomass and survival, seeds related to survival
-# Fisher's C: P = 0.003, poor fit
-
-evS_seeds_mod2 <- psem(
-  lme(log_seeds ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds),
-  lme(asr_survival ~ log_biomass + asr_severity + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds),
-  log_biomass%~~%asr_severity,
-  log_seeds%~~%asr_survival
-)
-
-# model summary
-summary(evS_seeds_mod2)
-# better R-squared with random effects
-# d sep test: all omitted paths supported
-# Fisher's C: P = 0.3, good fit
-# biomass increases seeds
-# severity increases seeds
-# fungicide increases survival and biomass
-# Mv density decreases biomass
-# fungicide decreases severity
-# survival and seeds negatively correlated
-
-# binomial model
-
-# add column to data
-evSDatSeeds2 <- evSDatSeeds %>%
-  mutate(seeds_bin = as.numeric(log_seeds > 0))
-
-# check model
-evS_seeds_lme2 <- glmer(seeds_bin ~ log_biomass + asr_severity + (1|plot_f), family = binomial, data = evSDatSeeds2)
-summary(evS_seeds_lme2)
-
-# initial fit
-evS_bin_mod1 <- psem(
-  glmer(seeds_bin ~ log_biomass + asr_severity + (1|plot_f), family = binomial, data = evSDatSeeds2),
-  lme(asr_survival ~ log_biomass + asr_severity, random = ~ 1 | plot_f, data = evSDatSeeds2),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatSeeds2),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
-  log_biomass%~~%asr_severity
-)
-
-# model summary
-summary(evS_bin_mod1)
-# better R-squared with random effects
-# d sep test: fungicide directly affects biomass and survival, seeds related to survival
-# Fisher's C: P = 0.01, poor fit
 
 # update model
-evS_bin_mod2 <- psem(
-  glmer(seeds_bin ~ log_biomass + asr_severity + (1|plot_f), family = binomial, data = evSDatSeeds2),
-  lme(asr_survival ~ log_biomass + asr_severity + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
-  lme(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatSeeds2),
-  log_biomass%~~%asr_severity,
-  asr_survival%~~%seeds_bin
+mv_aug_mod2 <- psem(
+  lmer(log_seeds ~ log_biomass + aug_severity_t + Mv_seedling_density + (1|site/plot_f), data = mvDatAug),
+  lmer(survival_t ~ log_biomass + aug_severity_t + (1|site/plot_f), data = mvDatAug),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|plot_f), data = mvDatAug),
+  lmer(aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = mvDatAug),
+  log_biomass%~~%aug_severity_t
 )
 
 # model summary
-summary(evS_bin_mod2)
-# better R-squared with random effects
-# d sep test: fungicide directly affects biomass and survival, seeds related to survival
-# Fisher's C: P = 0.404, good fit
-# biomass increases seeds
-# fungicide increases survival and biomass
-# Mv density decreases biomass
-# fungicide decreases severity
-# survival and seeds negatively correlated
-# different from continuous seeds: severity doesn't affect seeds
+summary(mv_aug_mod2)
+# no missing links
+# P = 0.331
+# biomass increased seeds
+# Mv density reduced seeds
+# fungicide reduced severity
+# severity and biomass positively correlated
 
-# July severity data
+
+#### Ev seedling July model ####
 
 # Ev seedling dat
 evSDatJuly <- datJuly %>%
@@ -606,106 +466,132 @@ evSDatJuly <- datJuly %>%
 
 # initial fit
 evS_july_mod1 <- psem(
-  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(asr_survival ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
-  log_biomass%~~%asr_jul_severity
+  lmer(log_seeds ~ log_biomass + jul_severity_t + (1|site/plot_f), data = evSDatJuly),
+  lmer(survival_t ~ log_biomass + jul_severity_t + (1|site/plot_f), data = evSDatJuly),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|site/plot_f), data = evSDatJuly),
+  lmer(jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatJuly),
+  log_biomass%~~%jul_severity_t
 )
 
 # model summary
 summary(evS_july_mod1)
+# Ev seedling density affects survival
 # fungicide affects biomass and survival
-# seeds affect survival
+# seeds are related to survival
+# p = 0.0
+# better R-squared with random effects
 
 # update model
 evS_july_mod2 <- psem(
-  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(asr_survival ~ log_biomass + asr_jul_severity + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
-  log_biomass%~~%asr_jul_severity,
-  log_seeds%~~%asr_survival
+  lmer(log_seeds ~ log_biomass + jul_severity_t + (1|site/plot_f), data = evSDatJuly),
+  lmer(survival_t ~ log_biomass + jul_severity_t + Ev_seedling_density + fungicide + (1|site/plot_f), data = evSDatJuly),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatJuly),
+  lmer(jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatJuly),
+  log_biomass%~~%jul_severity_t,
+  log_seeds%~~%survival_t
 )
 
 # model summary
 summary(evS_july_mod2)
-# Ev seedling density increases survival
-
-# update model
-evS_july_mod3 <- psem(
-  lme(log_seeds ~ log_biomass + asr_jul_severity, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(asr_survival ~ log_biomass + asr_jul_severity + fungicide + Ev_seedling_density, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
-  lme(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, random = ~ 1 | plot_f, data = evSDatJuly),
-  log_biomass%~~%asr_jul_severity,
-  log_seeds%~~%asr_survival
-)
-
-# model summary
-summary(evS_july_mod3)
-# differences from evS_seeds_mod2 (same, but with Aug severity):
-# severity reduced survival
-# severity negatively correlated with biomass
-# Ev seedling density increases survival
+# no missing links
+# P = 0.592
+# biomass increased seeds
+# severity decreased survival
+# Ev seedling density increased survival
+# fungicide increased survival and biomass
+# Mv seedling density reduced biomass
+# biomass and severity negatively correlated
+# seeds and survival negatively correlated
 
 
+#### Ev seedling August model ####
 
-#### Ev adult seeds models ####
-
-# Ev adult dat
-evADatSeeds <- datSeeds %>%
-  filter(sp == "Ev" & age == "adult")
+# Ev seedling dat
+evSDatAug <- datAug %>%
+  filter(sp == "Ev" & age == "seedling")
 
 # initial fit
-evA_seeds_mod1 <- psem(
-  lm(log_seeds ~ log_biomass + asr_severity, data = evADatSeeds),
-  lm(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = evADatSeeds),
-  lm(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatSeeds),
-  log_biomass%~~%asr_severity
+evS_aug_mod1 <- psem(
+  lmer(log_seeds ~ log_biomass + aug_severity_t + (1|site/plot_f), data = evSDatAug),
+  lmer(survival_t ~ log_biomass + aug_severity_t + (1|site/plot_f), data = evSDatAug),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|site/plot_f), data = evSDatAug),
+  lmer(aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatAug),
+  log_biomass%~~%aug_severity_t
 )
 
 # model summary
-summary(evA_seeds_mod1)
-# d sep test: no missing links
-# Fisher's C: P = 0.394, good fit
-# biomass increases seeds
-# biomass and severity are positively correlated
+summary(evS_aug_mod1)
+# fungicide affects biomass and survival
+# seeds are related to survival
+# p = 0.0
+# better R-squared with random effects
 
-# binomial model
-
-# add column to data
-evADatSeeds2 <- evADatSeeds %>%
-  mutate(seeds_bin = as.numeric(log_seeds > 0))
-
-# refit model
-evA_seeds_mod2 <- psem(
-  glm(seeds_bin ~ log_biomass + asr_severity, family = binomial, data = evADatSeeds2),
-  lm(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = evADatSeeds2),
-  lm(asr_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatSeeds2),
-  log_biomass%~~%asr_severity
+# update model
+evS_aug_mod2 <- psem(
+  lmer(log_seeds ~ log_biomass + aug_severity_t + (1|site/plot_f), data = evSDatAug),
+  lmer(survival_t ~ log_biomass + aug_severity_t + fungicide + (1|site/plot_f), data = evSDatAug),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatAug),
+  lmer(aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatAug),
+  log_biomass%~~%aug_severity_t,
+  log_seeds%~~%survival_t
 )
 
-summary(evA_seeds_mod2)
-# d sep test: no missing links
-# Fisher's C: P = 0.59, good fit
-# biomass increases seeds
-# biomass and severity are positively correlated
+# model summary
+summary(evS_aug_mod2)
+# no missing links
+# P = 0.278
+# biomass increased seeds
+# severity increased seeds
+# fungicide increased survival and biomass
+# Mv seedling density reduced biomass
+# fungicide reduced severity
+# seeds and survival negatively correlated
 
-# July severity data
+
+#### Ev adult July model ####
 
 # Ev adult dat
 evADatJuly <- datJuly %>%
   filter(sp == "Ev" & age == "adult")
+# only three individuals didn't survive
 
 # initial fit
 evA_july_mod1 <- psem(
-  lm(log_seeds ~ log_biomass + asr_jul_severity, data = evADatJuly),
-  lm(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density, data = evADatJuly),
-  lm(asr_jul_severity ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatJuly),
-  log_biomass%~~%asr_jul_severity
+  lmer(log_seeds ~ log_biomass + jul_severity_t + (1|site), data = evADatJuly),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|site), data = evADatJuly),
+  lmer(jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site), data = evADatJuly),
+  log_biomass%~~%jul_severity_t
 )
 
 # model summary
 summary(evA_july_mod1)
-# same as evA_seeds_mod1
+# no missing links
+# p = 0.57
+# better R-squared with random effects
+# biomass increased seeds
+# Ev adult density reduced severity
+# biomass and severity correlated
+
+
+#### Ev adult August model ####
+
+# Ev adult data
+evADatAug <- datAug %>%
+  filter(sp == "Ev" & age == "adult")
+
+# initial fit
+evA_aug_mod1 <- psem(
+  lmer(log_seeds ~ log_biomass + aug_severity_t + (1|site), data = evADatAug),
+  lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|site), data = evADatAug),
+  lm(aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide, data = evADatAug),
+  log_biomass%~~%aug_severity_t
+)
+# error from severity model (boundary fit is singular) and site variance was very low - removed from random effects
+
+# model summary
+summary(evA_aug_mod1)
+# no missing links
+# p = 0.371
+# better R-squared with random effects
+# biomass increased seeds
+# biomass and severity correlated
