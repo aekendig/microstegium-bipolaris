@@ -101,6 +101,14 @@ dat <- full_join(dat18, dat19) %>%
   filter(!is.na(gigantea)) %>%
   mutate(giganteaN = ifelse(gigantea == "Yes", 1, 0))
 
+# pyricularia data
+coDat <- aug18 %>%
+  filter(!is.na(symptoms) & !is.na(gigantea)) %>%
+  mutate(gigantea_isolated = replace_na(gigantea_isolated, 0),
+         Pyricularia_isolated = replace_na(Pyricularia_isolated, 0),
+         small_Bipolaris_isolated = replace_na(small_Bipolaris_isolated, 0),
+         Curvularia_isolated = replace_na(Curvularia_isolated, 0))
+
 
 #### analysis ####
 
@@ -115,3 +123,8 @@ dat %>%
   summarise(gig = sum(giganteaN),
             n = n()) %>%
   mutate(prop = gig/n)
+
+
+#### output ####
+write_csv(dat, "intermediate-data/eyespot_bipolaris_gigantea_identification.csv")
+write_csv(coDat, "intermediate-data/bipolaris_gigantea_other_pathogens_identification.csv")
