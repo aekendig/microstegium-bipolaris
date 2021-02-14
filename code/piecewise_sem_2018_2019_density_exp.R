@@ -50,6 +50,12 @@ mvEdgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_ex
 envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv") # covariate_data_processing_2018_density_exp
 envD2Dat <- read_csv("intermediate-data/temp_humidity_monthly_2019_density_exp.csv") # temp_humidity_data_processing_2019_density_exp
 
+# inverse-logit function (B. Bolker, https://stackoverflow.com/questions/23845283/logit-transformation-backwards)
+inv.logit <- function(f,a) {
+  a <- (1-2*a)
+  (a*(1+exp(f))+(exp(f)-1))/(2*a*(1+exp(f)))
+}
+
 
 #### edit data ####
 
@@ -325,18 +331,18 @@ evD2Dat <- evSeedD2Dat2 %>%
 
 # combine July data
 datD1July <- mvD1Dat %>%
-  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_growth, jul_severity_t, survival) %>%
+  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_growth, jul_severity, jul_severity_t, survival) %>%
   full_join(evD1Dat %>%
-              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_growth, jul_severity_t, survival)) %>%
+              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_growth, jul_severity, jul_severity_t, survival)) %>%
   mutate(plant_type = paste(sp, age, sep = "_"),
          fungicide = ifelse(treatment == "water", 0, 1),
          plot_f = paste(site, plot, substring(treatment, 1, 1), sep = "")) %>%
   drop_na()
 
 datD2July <- mvD2Dat %>%
-  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, jul_severity_t, survival_t) %>%
+  select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, jul_severity, jul_severity_t, survival, survival_t) %>%
   full_join(evD2Dat %>%
-              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, jul_severity_t, survival_t)) %>%
+              select(site, plot, treatment, sp, ID, age, Mv_seedling_density, Ev_seedling_density, Ev_adult_density, log_seeds, log_biomass, jul_severity, jul_severity_t, survival, survival_t)) %>%
   mutate(plant_type = paste(sp, age, sep = "_"),
          fungicide = ifelse(treatment == "water", 0, 1),
          plot_f = paste(site, plot, substring(treatment, 1, 1), sep = "")) %>%
@@ -381,7 +387,7 @@ dis_y1_mod1 <- psem(
 # error from Ev severity (boundary fit is singular) and site variance was very low - removed from random effects
 
 # summary
-summary(dis_y1_mod1)
+# summary(dis_y1_mod1)
 # edge severity predicts Mv july severity (add correlation)
 # random effects improve R-squared values except for Ev August severity
 # poor fit (P = 0.006)
@@ -398,7 +404,7 @@ dis_y1_mod2 <- psem(
 )
 
 # summary
-summary(dis_y1_mod2)
+# summary(dis_y1_mod2)
 # no missing links
 # P = 0.686
 # edge severity positively correlated with Mv july severity
@@ -420,7 +426,7 @@ dis_y2_mod1 <- psem(
 )
 
 # summary
-summary(dis_y2_mod1)
+# summary(dis_y2_mod1)
 # edge severity predicts Mv july severity (add correlation)
 # random effects improve R-squared values
 # P = 0.042
@@ -438,7 +444,7 @@ dis_y2_mod2 <- psem(
 )
 
 # summary
-summary(dis_y2_mod2)
+# summary(dis_y2_mod2)
 # no missing links
 # good model fit (P = 0.541)
 # dew intensity increase August Mv severity
@@ -462,7 +468,7 @@ mv_july_y1_mod1 <- psem(
 )
 
 # model summary
-summary(mv_july_y1_mod1)
+# summary(mv_july_y1_mod1)
 # Mv seedling affects seeds
 # P = 0.037
 # random effects improved R-squared
@@ -477,7 +483,7 @@ mv_july_y1_mod2 <- psem(
 )
 
 # model summary
-summary(mv_july_y1_mod2)
+# summary(mv_july_y1_mod2)
 # P = 0.406
 # growth increased seeds
 # severity increased seeds
@@ -501,7 +507,7 @@ mv_july_y2_mod1 <- psem(
 # error from biomass model (boundary fit is singular) and site variance was very low - removed from random effects
 
 # model summary
-summary(mv_july_y2_mod1)
+# summary(mv_july_y2_mod1)
 # Mv seedlings affect seeds
 # p = 0.011
 # better R-squared with random effects
@@ -516,7 +522,7 @@ mv_july_y2_mod2 <- psem(
 )
 
 # model summary
-summary(mv_july_y2_mod2)
+# summary(mv_july_y2_mod2)
 # no missing links
 # P = 0.279
 # biomass increased seeds
@@ -543,7 +549,7 @@ mv_aug_y1_mod1 <- psem(
 # error from survival model (boundary fit is singular) and plot variance was very low - removed from random effects
 
 # model summary
-summary(mv_aug_y1_mod1)
+# summary(mv_aug_y1_mod1)
 # Mv density affects seeds
 # P = 0.03
 # random effects increase R-squared
@@ -558,7 +564,7 @@ mv_aug_y1_mod2 <- psem(
 )
 
 # model summary
-summary(mv_aug_y1_mod2)
+# summary(mv_aug_y1_mod2)
 # P = 0.372
 # growth increased seeds
 # Mv density decreases seeds
@@ -583,7 +589,7 @@ mv_aug_y2_mod1 <- psem(
 # error from biomass model (boundary fit is singular) and site variance was very low - removed from random effects
 
 # model summary
-summary(mv_aug_y2_mod1)
+# summary(mv_aug_y2_mod1)
 # Mv seedlings affect seeds
 # p = 0.02
 # better R-squared with random effects
@@ -598,7 +604,7 @@ mv_aug_y2_mod2 <- psem(
 )
 
 # model summary
-summary(mv_aug_y2_mod2)
+# summary(mv_aug_y2_mod2)
 # no missing links
 # P = 0.331
 # biomass increased seeds
@@ -625,7 +631,7 @@ evS_july_y1_mod1 <- psem(
 # boundary is singular error, not sure where it came from, but tried removing site from survival random effects
 
 # model summary
-summary(evS_july_y1_mod1)
+# summary(evS_july_y1_mod1)
 # warnings
 # Mv seedling density affects seeds and survival
 # Ev adult density affects seeds
@@ -643,7 +649,7 @@ evS_july_y1_mod2 <- psem(
 )
 
 # model summary
-summary(evS_july_y1_mod2)
+# summary(evS_july_y1_mod2)
 # warnings gone
 # P = 0.628
 # severity increased seeds
@@ -663,7 +669,7 @@ evS_july_y1_mod3 <- psem(
 )
 
 # model summary
-summary(evS_july_y1_mod3)
+# summary(evS_july_y1_mod3)
 # warnings returned - decided to leave in
 
 
@@ -683,7 +689,7 @@ evS_july_y2_mod1 <- psem(
 )
 
 # model summary
-summary(evS_july_y2_mod1)
+# summary(evS_july_y2_mod1)
 # Ev seedling density affects survival
 # fungicide affects biomass and survival
 # seeds are related to survival
@@ -701,7 +707,7 @@ evS_july_y2_mod2 <- psem(
 )
 
 # model summary
-summary(evS_july_y2_mod2)
+# summary(evS_july_y2_mod2)
 # no missing links
 # P = 0.592
 # biomass increased seeds
@@ -731,7 +737,7 @@ evS_aug_y1_mod1 <- psem(
 # singular boundary error from growth model and site random effects very small
 
 # model summary
-summary(evS_aug_y1_mod1)
+# summary(evS_aug_y1_mod1)
 # warnings
 # fungicide affected growth
 # P = 0.081
@@ -747,7 +753,7 @@ evS_aug_y1_mod2 <- psem(
 )
 
 # model summary
-summary(evS_aug_y1_mod2)
+# summary(evS_aug_y1_mod2)
 # warnings
 
 # try removing random effects from survival, don't increase R-squared much
@@ -760,7 +766,7 @@ evS_aug_y1_mod3 <- psem(
 )
 
 # model summary
-summary(evS_aug_y1_mod3)
+# summary(evS_aug_y1_mod3)
 # fungicide increased growth
 
 
@@ -780,7 +786,7 @@ evS_aug_y2_mod1 <- psem(
 )
 
 # model summary
-summary(evS_aug_y2_mod1)
+# summary(evS_aug_y2_mod1)
 # fungicide affects biomass and survival
 # seeds are related to survival
 # p = 0.0
@@ -797,7 +803,7 @@ evS_aug_y2_mod2 <- psem(
 )
 
 # model summary
-summary(evS_aug_y2_mod2)
+# summary(evS_aug_y2_mod2)
 # no missing links
 # P = 0.278
 # biomass increased seeds
@@ -823,7 +829,7 @@ evA_july_y1_mod1 <- psem(
 )
 
 # model summary
-summary(evA_july_y1_mod1)
+# summary(evA_july_y1_mod1)
 # Ev seedling density affected seeds
 # P = 0.102
 # random effects increased R-squared
@@ -837,7 +843,7 @@ evA_july_y1_mod2 <- psem(
 )
 
 # model summary
-summary(evA_july_y1_mod2)
+# summary(evA_july_y1_mod2)
 # P = 0.305
 # Ev seedling increased seeds
 # Mv decreased growth
@@ -860,7 +866,7 @@ evA_july_y2_mod1 <- psem(
 )
 
 # model summary
-summary(evA_july_y2_mod1)
+# summary(evA_july_y2_mod1)
 # no missing links
 # p = 0.57
 # better R-squared with random effects
@@ -885,7 +891,7 @@ evA_aug_y1_mod1 <- psem(
 # error from severity model (boundary fit is singular) and site variance was very low - removed from random effects
 
 # model summary
-summary(evA_aug_y1_mod1)
+# summary(evA_aug_y1_mod1)
 # Ev seedlings affected seeds
 # P = 0.37
 # random effects only increased R-squared of seeds (nearly zero for growth)
@@ -899,7 +905,7 @@ evA_aug_y1_mod2 <- psem(
 )
 
 # model summary
-summary(evA_aug_y1_mod2)
+# summary(evA_aug_y1_mod2)
 # P = 0.906
 # severity increased seeds
 # Ev density increased seeds
@@ -921,7 +927,7 @@ evA_aug_y2_mod1 <- psem(
 # error from severity model (boundary fit is singular) and site variance was very low - removed from random effects
 
 # model summary
-summary(evA_aug_y2_mod1)
+# summary(evA_aug_y2_mod1)
 # no missing links
 # p = 0.371
 # better R-squared with random effects
@@ -942,14 +948,21 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 9))
 
 # color palette
-col_pal = c("#FFC20A", "#0C7BDC")
+col_pal = c("black", "gray")
+line_pal1 = c("solid", "dashed")
+line_pal2 = c("dashed", "solid")
 
 
-#### A: Mv density and Mv seeds, August models ####
+#### fig: Mv density and Mv seeds, August models ####
 
 # models
+summary(mv_aug_y1_mod2, intercepts = T)
 mv_seeds_aug_y1_mod <- lmer(log_seeds ~ log_growth + aug_severity_t + Mv_seedling_density + (1|site/plot_f), data = mvDatD1Aug)
+summary(mv_seeds_aug_y1_mod)
+
+summary(mv_aug_y2_mod2, intercepts = T)
 mv_seeds_aug_y2_mod <- lmer(log_seeds ~ log_biomass + aug_severity_t + Mv_seedling_density + (1|site/plot_f), data = mvDatD2Aug)
+summary(mv_seeds_aug_y2_mod)
 
 # predictions
 mv_seeds_aug_y1_dat <- tibble(Mv_seedling_density = 3:67) %>%
@@ -983,4 +996,335 @@ mvDatD1Aug %>%
         legend.title = element_blank())
 
 
-#### START HERE B: Mv density and Ev S seeds, August models ####
+#### fig: Mv density and Ev S seeds, July models ####
+
+# models
+summary(evS_july_y1_mod3, intercepts = T)
+evS_seeds_jul_y1_mod <- lmer(log_seeds ~ log_growth + jul_severity_t + Mv_seedling_density + (1|site/plot_f), data = evSDatD1July)
+summary(ev_seeds_jul_y1_mod)
+
+summary(evS_july_y2_mod2, intercepts = T)
+# int: 1.5653
+# compound path mediated by biomass (product of coefficients)
+(evS_seeds_jul_y2_coef <- -0.0078*1.0463)
+summary(lmer(log_seeds ~ jul_severity_t + Mv_seedling_density + (1|site/plot_f), data = evSDatD2July))
+
+# predictions
+evS_seeds_jul_y1_dat <- tibble(Mv_seedling_density = 3:67) %>%
+  mutate(log_growth = mean(evSDatD1July$log_growth),
+         jul_severity_t = mean(evSDatD1July$jul_severity_t)) %>%
+  mutate(log_seeds = predict(evS_seeds_jul_y1_mod, newdata = ., re.form = NA))
+
+evS_seeds_jul_y2_dat <- tibble(Mv_seedling_density = 3:67) %>%
+  mutate(log_seeds = 1.5653 + evS_seeds_jul_y2_coef * Mv_seedling_density)
+
+evS_seeds_jul_dat <- evS_seeds_jul_y1_dat %>%
+  mutate(year = "Year 1") %>%
+  full_join(evS_seeds_jul_y2_dat %>%
+              mutate(year = "Year 2"))
+
+# figure
+evSDatD1July %>% 
+  mutate(year = "Year 1") %>%
+  full_join(evSDatD2July %>%
+              mutate(year = "Year 2")) %>%
+  ggplot(aes(x = Mv_seedling_density, y = log_seeds, color = year)) +
+  geom_point(alpha = 0.5) + 
+  geom_line(data = evS_seeds_jul_dat) +
+  xlab("Microstegium density") +
+  ylab("log(Elymus seedling seeds)") +
+  scale_color_manual(values = col_pal) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.85),
+        legend.title = element_blank())
+
+
+#### fig: Mv density and Ev A growth, July models ####
+
+# models
+summary(evA_july_y1_mod2, intercepts = T) 
+evA_growth_jul_y1_mod <- lmer(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|site), data = evADatD1July)
+summary(evA_growth_jul_y1_mod)
+
+summary(evA_july_y2_mod1, intercepts = T) 
+evA_growth_jul_y2_mod <- lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + (1|site), data = evADatD2July)
+summary(evA_growth_jul_y2_mod)
+
+# predictions
+evA_growth_jul_y1_dat <- tibble(Mv_seedling_density = 3:67) %>%
+  mutate(Ev_seedling_density = mean(evSDatD1July$Ev_seedling_density),
+         Ev_adult_density = mean(evSDatD1July$Ev_adult_density)) %>%
+  mutate(log_growth = predict(evA_growth_jul_y1_mod, newdata = ., re.form = NA))
+
+evA_growth_jul_y2_dat <- tibble(Mv_seedling_density = 3:67) %>%
+  mutate(Ev_seedling_density = mean(evSDatD2July$Ev_seedling_density),
+         Ev_adult_density = mean(evSDatD2July$Ev_adult_density)) %>%
+  mutate(log_growth = predict(evA_growth_jul_y2_mod, newdata = ., re.form = NA))
+
+evA_growth_jul_dat <- evA_growth_jul_y1_dat %>%
+  mutate(year = "Year 1") %>%
+  full_join(evA_growth_jul_y2_dat %>%
+              mutate(year = "Year 2"))
+
+# figure
+evADatD1July %>% 
+  mutate(year = "Year 1") %>%
+  full_join(evADatD2July %>%
+              mutate(year = "Year 2",
+                     log_growth = log_biomass)) %>%
+  ggplot(aes(x = Mv_seedling_density, y = log_growth, color = year)) +
+  geom_point(alpha = 0.5) + 
+  geom_line(data = evA_growth_jul_dat, aes(linetype = year)) +
+  xlab("Microstegium density") +
+  ylab("log(Elymus adult growth)") +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal1) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.85),
+        legend.title = element_blank())
+
+
+#### fig: severity and Mv survival, July models ####
+
+# models
+summary(mv_july_y1_mod2, intercepts = T)
+mv_surv_jul_y1_mod <- glmer(survival ~ log_growth + jul_severity_t + (1|site/plot_f), data = mvDatD1July, family = binomial)
+summary(mv_surv_jul_y1_mod)
+
+summary(mv_july_y2_mod2, intercepts = T)
+mv_surv_jul_y2_mod <- lmer(survival_t ~ log_biomass + jul_severity_t + (1|site/plot_f), data = mvDatD2July)
+summary(mv_surv_jul_y2_mod)
+
+# predictions
+mv_surv_jul_y1_dat <- tibble(jul_severity = seq(min(mvDatD1July$jul_severity), max(mvDatD1July$jul_severity), length.out = 100)) %>%
+  mutate(log_growth = mean(mvDatD1July$log_growth),
+         jul_severity_t = logit(jul_severity, adjust = 0.001)) %>%
+  mutate(survival = predict(mv_surv_jul_y1_mod, newdata = ., type = "response", re.form = NA))
+
+mv_surv_jul_y2_dat <- tibble(jul_severity = seq(min(mvDatD2July$jul_severity), max(mvDatD2July$jul_severity), length.out = 100)) %>%
+  mutate(log_biomass = mean(mvDatD2July$log_biomass),
+         jul_severity_t = logit(jul_severity, adjust = 0.001)) %>%
+  mutate(survival = predict(mv_surv_jul_y2_mod, newdata = ., re.form = NA) %>%
+           inv.logit(., a = 0.001))
+
+mv_surv_jul_dat <- mv_surv_jul_y1_dat %>%
+  mutate(year = "Year 1") %>%
+  full_join(mv_surv_jul_y2_dat %>%
+              mutate(year = "Year 2"))
+
+# figure
+mvDatD1July %>% 
+  mutate(year = "Year 1") %>%
+  full_join(mvDatD2July %>%
+              mutate(year = "Year 2")) %>%
+  ggplot(aes(x = jul_severity, y = survival, color = year)) +
+  geom_point(alpha = 0.5) + 
+  geom_line(data = mv_surv_jul_dat, aes(linetype = year)) +
+  xlab("July disease severity") +
+  ylab("Mv survival") +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal2) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.85),
+        legend.title = element_blank())
+
+
+#### fig: severity and Ev S survival, July models ####
+
+# models
+summary(evS_july_y1_mod3, intercepts = T)
+evS_surv_jul_y1_mod <- glmer(survival ~ log_growth + jul_severity_t + Mv_seedling_density + (1|plot_f), data = evSDatD1July, family = binomial)
+summary(evS_surv_jul_y1_mod)
+
+summary(evS_july_y2_mod2, intercepts = T)
+evS_surv_jul_y2_mod <- lmer(survival_t ~ log_biomass + jul_severity_t + Ev_seedling_density + fungicide + (1|site/plot_f), data = evSDatD2July)
+summary(evS_surv_jul_y2_mod)
+
+# predictions
+evS_surv_jul_y1_dat <- tibble(jul_severity = seq(min(evSDatD1July$jul_severity), max(evSDatD1July$jul_severity), length.out = 100)) %>%
+  mutate(log_growth = mean(evSDatD1July$log_growth),
+         Mv_seedling_density = mean(evSDatD1July$Mv_seedling_density),
+         jul_severity_t = logit(jul_severity, adjust = 0.001)) %>%
+  mutate(survival = predict(evS_surv_jul_y1_mod, newdata = ., type = "response", re.form = NA))
+
+evS_surv_jul_y2_dat <- tibble(jul_severity = seq(min(evSDatD2July$jul_severity), max(evSDatD2July$jul_severity), length.out = 100)) %>%
+  mutate(log_biomass = mean(evSDatD2July$log_biomass),
+         Ev_seedling_density = mean(evSDatD2July$Ev_seedling_density),
+         fungicide = 0,
+         jul_severity_t = logit(jul_severity, adjust = 0.001)) %>%
+  mutate(survival = predict(evS_surv_jul_y2_mod, newdata = ., re.form = NA) %>%
+           inv.logit(., a = 0.001))
+
+evS_surv_jul_dat <- evS_surv_jul_y1_dat %>%
+  mutate(year = "Year 1") %>%
+  full_join(evS_surv_jul_y2_dat %>%
+              mutate(year = "Year 2"))
+
+# figure
+evSDatD1July %>% 
+  mutate(year = "Year 1") %>%
+  full_join(evSDatD2July %>%
+              mutate(year = "Year 2")) %>%
+  ggplot(aes(x = jul_severity, y = survival, color = year)) +
+  geom_point(alpha = 0.5) + 
+  geom_line(data = evS_surv_jul_dat, aes(linetype = year)) +
+  xlab("July disease severity") +
+  ylab("Ev seedling survival") +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal1) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.35),
+        legend.title = element_blank())
+
+
+#### fig: fungicide and Ev S growth, August models ####
+
+# models
+summary(evS_aug_y1_mod3, intercepts = T)
+evS_growth_aug_y1_mod <- lmer(log_growth ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|plot_f), data = evSDatD1Aug)
+summary(evS_growth_aug_y1_mod)
+
+summary(evS_aug_y2_mod2, intercepts = T)
+evS_growth_aug_y2_mod <- lmer(log_biomass ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatD2Aug)
+summary(evS_growth_aug_y2_mod)
+
+# predictions
+evS_growth_aug_y1_dat <- tibble(fungicide = c(0, 1),
+                                treatment = c("water (control)", "fungicide") %>%
+                                  fct_rev()) %>%
+  mutate(Mv_seedling_density = mean(evSDatD1Aug$Mv_seedling_density),
+         Ev_seedling_density = mean(evSDatD1Aug$Ev_seedling_density),
+         Ev_adult_density = mean(evSDatD1Aug$Ev_adult_density)) %>%
+  mutate(log_growth = predict(evS_growth_aug_y1_mod, newdata = ., re.form = NA))
+
+evS_growth_aug_y2_dat <- tibble(fungicide = c(0, 1),
+                                treatment = c("water (control)", "fungicide") %>%
+                                  fct_rev()) %>%
+  mutate(Mv_seedling_density = mean(evSDatD2Aug$Mv_seedling_density),
+         Ev_seedling_density = mean(evSDatD2Aug$Ev_seedling_density),
+         Ev_adult_density = mean(evSDatD2Aug$Ev_adult_density)) %>%
+  mutate(log_growth = predict(evS_growth_aug_y2_mod, newdata = ., re.form = NA))
+
+evS_growth_aug_dat <- evS_growth_aug_y1_dat %>%
+  mutate(year = "Year 1") %>%
+  full_join(evS_growth_aug_y2_dat %>%
+              mutate(year = "Year 2"))
+
+# figure
+evSDatD1Aug %>% 
+  mutate(year = "Year 1",
+         treatment = recode(treatment, water = "water (control)") %>%
+           fct_rev()) %>%
+  full_join(evSDatD2Aug %>%
+              mutate(year = "Year 2",
+                     log_growth = log_biomass,
+                     treatment = recode(treatment, water = "water (control)") %>%
+                       fct_rev())) %>%
+  ggplot(aes(x = treatment, y = log_growth, color = year)) +
+  # geom_point(alpha = 0.5) + 
+  stat_summary(geom = "errorbar", fun.data = mean_se, position = position_dodge(0.1), width = 0) +
+  stat_summary(geom = "point", fun.data = mean_se, position = position_dodge(0.1), size = 2) +
+  # stat_summary(data = evS_growth_aug_dat, geom = "point", fun.data = mean_se, position = position_dodge(0.1), size = 4, alpha = 0.5) +
+  xlab("Treatment") +
+  ylab("log(Ev seedling growth)") +
+  scale_color_manual(values = col_pal) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.35),
+        legend.title = element_blank())
+
+
+#### fig: Ev density and Ev S severity, July Year 1 model ####
+
+# model
+summary(evS_july_y1_mod3, intercepts = T)
+evS_sev_jul_y1_mod <- lmer(jul_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + fungicide + (1|site/plot_f), data = evSDatD1July)
+summary(evS_sev_jul_y1_mod)
+
+# predictions
+evS_sev_jul_y1_evS_dat <- tibble(Ev_seedling_density = seq(min(evSDatD1July$Ev_seedling_density), max(evSDatD1July$Ev_seedling_density), length.out = 100)) %>%
+  mutate(fungicide = 0,
+         Mv_seedling_density = mean(evSDatD1July$Mv_seedling_density),
+         Ev_adult_density = mean(evSDatD1July$Ev_adult_density)) %>%
+  mutate(jul_severity = predict(evS_sev_jul_y1_mod, newdata = ., re.form = NA) %>%
+           inv.logit(., a = 0.001))
+
+evS_sev_jul_y1_evA_dat <- tibble(Ev_adult_density = seq(min(evSDatD1July$Ev_adult_density), max(evSDatD1July$Ev_adult_density), length.out = 100)) %>%
+  mutate(fungicide = 0,
+         Mv_seedling_density = mean(evSDatD1July$Mv_seedling_density),
+         Ev_seedling_density = mean(evSDatD1July$Ev_seedling_density)) %>%
+  mutate(jul_severity = predict(evS_sev_jul_y1_mod, newdata = ., re.form = NA) %>%
+           inv.logit(., a = 0.001))
+
+evS_sev_jul_y1_dat <- evS_sev_jul_y1_evS_dat %>%
+  mutate(Density = "seedling",
+         Ev_density = Ev_seedling_density) %>%
+  full_join(evS_sev_jul_y1_evA_dat %>%
+              mutate(Density = "adult",
+                     Ev_density = Ev_adult_density))
+
+# figure
+evSDatD1July %>% 
+  mutate(Density = "seedling",
+         Ev_density = Ev_seedling_density) %>%
+  full_join(evSDatD1July %>%
+              mutate(Density = "adult",
+                     Ev_density = Ev_adult_density)) %>%
+  ggplot(aes(x = Ev_density, y = jul_severity, color = Density)) +
+  geom_point(alpha = 0.5) + 
+  geom_line(data = evS_sev_jul_y1_dat) +
+  xlab("Ev density") +
+  ylab("Ev seedling July disease severity") +
+  scale_color_manual(values = col_pal) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.85))
+
+
+#### fig: plot edge and severity, year 2 disease ####
+
+# model
+summary(dis_y2_mod2, intercepts = T)
+ev_dis_aug_y2_mod <- lmer(Ev_aug_severity_t ~ Mv_seedling_density + Ev_seedling_density + Ev_adult_density + Ev_jul_severity_t + Mv_jul_severity_t + edge_severity_t + log_dew + (1 | site), data = disD2Dat)
+summary(ev_dis_aug_y2_mod)
+cor.test(~ Mv_jul_severity_t + edge_severity_t, data = disD2Dat)
+mv_dis_jul_y2_int <- -5.2667
+mv_dis_jul_y2_coef <- 0.4499 # from SEM
+
+# predictions
+ev_dis_aug_y2_dat <- tibble(edge_severity = seq(min(disD2Dat$edge_severity), max(disD2Dat$edge_severity), length.out = 100)) %>%
+  mutate(edge_severity_t = logit(edge_severity, adjust = 0.001),
+         Mv_seedling_density = mean(disD2Dat$Mv_seedling_density),
+         Ev_seedling_density = mean(disD2Dat$Ev_seedling_density),
+         Ev_adult_density = mean(disD2Dat$Ev_adult_density),
+         Ev_jul_severity_t = mean(disD2Dat$Ev_jul_severity_t),
+         Mv_jul_severity_t = mean(disD2Dat$Mv_jul_severity_t),
+         log_dew = mean(disD2Dat$log_dew),
+         Species_month = "Ev August") %>%
+  mutate(severity = predict(ev_dis_aug_y2_mod, newdata = ., re.form = NA) %>%
+           inv.logit(., a = 0.001))
+
+mv_dis_jul_y2_dat <- tibble(edge_severity = seq(min(disD2Dat$edge_severity), max(disD2Dat$edge_severity), length.out = 100)) %>%
+  mutate(edge_severity_t = logit(edge_severity, adjust = 0.001),
+         Mv_jul_severity_t = mv_dis_jul_y2_int + mv_dis_jul_y2_coef * edge_severity_t,
+         severity = inv.logit(Mv_jul_severity_t, a = 0.001),
+         Species_month = "Mv July")
+
+dis_y2_dat <- full_join(ev_dis_aug_y2_dat, mv_dis_jul_y2_dat)
+
+# figure
+# figure
+disD2Dat %>% 
+  mutate(Species_month = "Ev August",
+         severity = Ev_early_aug_severity) %>%
+  full_join(disD2Dat %>% 
+              mutate(Species_month = "Mv July",
+                     severity = Mv_jul_severity)) %>%
+  ggplot(aes(x = edge_severity, y = severity, color = Species_month)) +
+  geom_point(alpha = 0.5) + 
+  geom_line(data = dis_y2_dat) +
+  xlab("Edge Mv July disease severity") +
+  ylab("Disease severity") +
+  scale_color_manual(values = col_pal) +
+  fig_theme +
+  theme(legend.position = c(0.85, 0.85))
+# the Mv is so much lower - don't include
+# Ev from both years (not sig year 1)? or with Mv July also on the x-axis (negative)?
