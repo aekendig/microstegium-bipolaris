@@ -38,6 +38,9 @@ rsconnect/
 # Data
 /data/
 /intermediate-data/
+
+# Large files
+output/severity_change_model_2019_density_exp.rda
 output/annual_perennial_kortessis_relative_abundance_parameters_2019_density_exp.csv
 output/annual_perennial_kortessis_relative_abundance_time_series_2019_density_exp.csv
 output/annual_perennial_model_comparison_2019_density_exp.csv
