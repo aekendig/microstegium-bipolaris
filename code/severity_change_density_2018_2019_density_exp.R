@@ -2,7 +2,7 @@
 
 # file: severity_change_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/4/21
+# date last edited: 3/10/21
 # goal: analyses of severity change as a function of density
 
 
@@ -20,9 +20,8 @@ library(tidybayes) # for mean_hdi
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 # import severity change data
-sevChgD1Dat <- read_csv("intermediate-data/severity_change_model_ran_slopes_2018_density_exp.csv")
-sevChgD2Dat <- read_csv("intermediate-data/severity_change_model_ran_slopes_2019_density_exp.csv")
-# both: severity_change_2018_2019_density_exp.R
+sevChgDat <- read_csv("intermediate-data/severity_change_model_ran_slopes_2018_2019_density_exp.csv")
+# severity_change_2018_2019_density_exp.R
 sevD1Dat <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
 # leaf_scans_data_processing_2018_density_exp.R
 sevD2Dat <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv") 
@@ -106,34 +105,6 @@ plotBioD2Dat <- bgBioD2Dat %>%
          Ev_adult_biomass = Ev_adult_biomass + Ev_adult_biomass_foc) %>%
   select(-c(Mv_seedling_biomass_foc, Ev_seedling_biomass_foc, Ev_adult_biomass_foc))
 
-# severity change
-# parse severity plant IDs
-sevChgD1Dat2 <- sevChgD1Dat %>%
-  rowwise() %>%
-  mutate(sp = strsplit(plant, "_")[[1]][1],
-         age = strsplit(plant, "_")[[1]][2],
-         site = strsplit(plant, "_")[[1]][3],
-         plot = strsplit(plant, "_")[[1]][4] %>%
-           as.numeric(),
-         treatment = strsplit(plant, "_")[[1]][5],
-         ID = strsplit(plant, "_")[[1]][6]) %>%
-  ungroup() %>%
-  rename(sev_chg = slope) %>%
-  select(-c(error, lower, upper))
-
-sevChgD2Dat2 <- sevChgD2Dat %>%
-  rowwise() %>%
-  mutate(sp = strsplit(plant, "_")[[1]][1],
-         age = strsplit(plant, "_")[[1]][2],
-         site = strsplit(plant, "_")[[1]][3],
-         plot = strsplit(plant, "_")[[1]][4] %>%
-           as.numeric(),
-         treatment = strsplit(plant, "_")[[1]][5],
-         ID = strsplit(plant, "_")[[1]][6]) %>%
-  ungroup() %>%
-  rename(sev_chg = slope) %>%
-  select(-c(error, lower, upper))
-
 # raw severity
 sevD1Dat2 <- sevD1Dat %>%
   filter(month == "sep") %>%
@@ -150,69 +121,105 @@ sevD2Dat2 <- sevD2Dat %>%
   select(site, plot, treatment, sp, age, ID, severity, severity_01)
 
 # combine and separate data
-mvD1Dat <- plotDens %>%
-  filter(plot %in% 1:4) %>%
-  left_join(sevChgD1Dat2 %>%
-              full_join(sevD1Dat2)) %>%
-  mutate(plant_group = paste(sp, age, sep = "_") %>%
-           fct_rev(),
-         fungicide = ifelse(treatment == "fungicide", 1, 0))
-
-mvD2Dat <- plotDens %>%
-  filter(plot %in% 1:4) %>%
+dat <- sevChgDat %>%
+  rename(sev_chg = slope) %>%
+  full_join(sevD1Dat2 %>%
+              mutate(year = 2018)) %>%
+  full_join(sevD2Dat2 %>%
+              mutate(year = 2019)) %>%
+  left_join(plotDens) %>%
   left_join(plotBioD2Dat) %>%
-  left_join(sevChgD2Dat2 %>%
-              full_join(sevD2Dat2)) %>%
   mutate(plant_group = paste(sp, age, sep = "_") %>%
            fct_rev(),
          fungicide = ifelse(treatment == "fungicide", 1, 0))
 
+mvD1Dat <- dat %>%
+  filter(plot %in% 1:4 & year == 2018)
 
-#### visualizations ####
+mvD2Dat <- dat %>%
+  filter(plot %in% 1:4 & year == 2019)
 
-# 2018 Mv density
+evSD1Dat <- dat %>%
+  filter(plot %in% c(1, 5:7) & year == 2018)
+
+evSD2Dat <- dat %>%
+  filter(plot %in% c(1, 5:7) & year == 2019)
+
+evAD1Dat <- dat %>%
+  filter(plot %in% c(1, 8:10) & year == 2018)
+
+evAD2Dat <- dat %>%
+  filter(plot %in% c(1, 8:10) & year == 2019)
+
+
+#### initial visualizations ####
+
+# histogram
+ggplot(dat, aes(x = sev_chg)) +
+  geom_histogram() +
+  facet_grid(year ~ plant_group, scales = "free")
+
+# plot-scale
+ggplot(dat, aes(as.factor(plot), sev_chg, color = treatment)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  facet_grid(year ~ plant_group, scales = "free")
+
+# Mv density
 ggplot(mvD1Dat, aes(Mv_seedling_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   facet_wrap(~ plant_group, scales = "free")
 
-ggplot(mvD1Dat, aes(Mv_seedling_density, severity, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
-  stat_summary(geom = "line", fun = "mean") +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
-
-# 2019 Mv density
 ggplot(mvD2Dat, aes(Mv_seedling_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   facet_wrap(~ plant_group, scales = "free")
 
-ggplot(mvD2Dat, aes(Mv_seedling_density, severity, color = treatment)) +
+# Ev seedling density
+ggplot(evSD1Dat, aes(Ev_seedling_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   facet_wrap(~ plant_group, scales = "free")
 
-# 2019 Mv density, fungicide only
-ggplot(mvD2Dat %>% filter(treatment == "water"), aes(Mv_seedling_density, severity, color = plant_group)) +
+ggplot(evSD2Dat, aes(Ev_seedling_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
-  theme_bw()
-
-# 2019 Mv biomass
-ggplot(mvD2Dat, aes(Mv_seedling_biomass, sev_chg, color = treatment)) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x) +
   facet_wrap(~ plant_group, scales = "free")
 
-ggplot(mvD2Dat, aes(Mv_seedling_biomass, severity, color = treatment)) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x) +
+# EvA density
+ggplot(evAD1Dat, aes(Ev_adult_density, sev_chg, color = treatment)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
+  stat_summary(geom = "line", fun = "mean") +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
   facet_wrap(~ plant_group, scales = "free")
+
+ggplot(evAD2Dat, aes(Ev_adult_density, sev_chg, color = treatment)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
+  stat_summary(geom = "line", fun = "mean") +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  facet_wrap(~ plant_group, scales = "free")
+
+# biomass
+ggplot(dat, aes(Mv_seedling_biomass, sev_chg, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(year ~ plant_group, scales = "free")
+
+ggplot(dat, aes(Ev_seedling_biomass, sev_chg, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(year ~ plant_group, scales = "free")
+
+ggplot(dat, aes(Ev_adult_biomass, sev_chg, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(year ~ plant_group, scales = "free")
+
 
 # 2019 site variation
 ggplot(mvD2Dat, aes(site, sev_chg, color = treatment)) +
