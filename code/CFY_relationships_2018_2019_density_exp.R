@@ -355,15 +355,16 @@ mvD2Dat %>%
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0) +
   geom_point()
 
-# why do we see a treatment effect for plot biomass, but not individual?
+# does plant biomass match plot biomass?
 mvD2Dat %>%
   filter(plot %in% 1:4) %>%
-  group_by(Mv_seedling_density, treatment, site, Mv_seedling_biomass) %>%
+  group_by(plot, Mv_seedling_density, treatment, site, Mv_seedling_biomass) %>%
   summarise(biomass_weight.g = mean(biomass_weight.g, na.rm = T) * Mv_seedling_density) %>%
   ungroup() %>%
+  unique() %>%
   ggplot(aes(x = Mv_seedling_biomass, y = biomass_weight.g, color = treatment)) +
   geom_abline(intercept = 0, slope = 1) +
-  geom_point() +
+  geom_point(aes(shape = as.factor(plot))) +
   facet_wrap(~ site)
 
 # survival by density, treatments and sites separated
@@ -434,6 +435,11 @@ mvD2Dat %>%
   facet_wrap(~ plot, scales = "free")
 # need to look at this after accounting for density effects on severity and biomass
 
+# seeds by biomass
+ggplot(mvD2Dat, aes(biomass_weight.g, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
 
 #### EvS-EvS figures ####
 
@@ -469,6 +475,18 @@ evD2Dat %>%
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "point", fun = "mean")
+
+# does plant biomass match plot biomass?
+evD2Dat %>%
+  filter(age == "seedling" & plot %in% c(1, 5:7)) %>%
+  group_by(plot, Ev_seedling_density, treatment, site, Ev_seedling_biomass) %>%
+  summarise(biomass_weight.g = mean(biomass_weight.g, na.rm = T) * Ev_seedling_density) %>%
+  ungroup() %>%
+  unique() %>%
+  ggplot(aes(x = Ev_seedling_biomass, y = biomass_weight.g, color = treatment)) +
+  geom_abline(intercept = 0, slope = 1) +
+  geom_point(aes(shape = as.factor(plot))) +
+  facet_wrap(~ site)
 
 # severity change by density, treatments and sites separated
 evD2Dat %>%
@@ -522,6 +540,18 @@ evD2Dat %>%
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "point", fun = "mean")
+
+# does plant biomass match plot biomass?
+evD2Dat %>%
+  filter(age == "adult" & plot %in% c(1, 5:7)) %>%
+  group_by(plot, Ev_adult_density, treatment, site, Ev_adult_biomass) %>%
+  summarise(biomass_weight.g = mean(biomass_weight.g, na.rm = T) * Ev_adult_density) %>%
+  ungroup() %>%
+  unique() %>%
+  ggplot(aes(x = Ev_adult_biomass, y = biomass_weight.g, color = treatment)) +
+  geom_abline(intercept = 0, slope = 1) +
+  geom_point(aes(shape = as.factor(plot))) +
+  facet_wrap(~ site)
 
 # severity change by density, treatments and sites separated
 evD2Dat %>%

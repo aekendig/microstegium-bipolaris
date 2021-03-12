@@ -2,7 +2,7 @@
 
 # file: plant_growth_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/4/21
+# date last edited: 3/11/21
 # goal: analyses of plant growth as a function of density
 
 
@@ -57,7 +57,8 @@ mvD2Dat <- plotDens %>%
          plant_group = paste(sp, age) %>%
            fct_rev(),
          pg_trt = paste(substr(sp, 1, 1), substr(age, 1, 1), substr(treatment, 1, 1), sep = "_") %>%
-           fct_rev())
+           fct_rev(),
+         treatment = dplyr::recode(treatment, "water" = "water (control)"))
 
 
 #### visualizations ####
@@ -112,8 +113,8 @@ mvD2Dat2 %>%
   group_by(pg_trt) %>%
   summarise(bio = mean(biomass_weight.g))
 
-x <- seq(-1, 25, length.out = 100)
-y <- dgamma(x, shape = 7, scale = 1) # note that this scale is 1/(stan scale)
+x <- seq(-1, 2, length.out = 100)
+y <- dgamma(x, shape = 2, scale = 1) # note that this scale is 1/(stan scale)
 plot(x, y, type = "l")
 
 # alpha prior
@@ -205,21 +206,61 @@ mvD2Sim <- mvMvD2Sim %>%
               mutate(plant_group = "Ev seedling")) %>%
   full_join(mvEvAD2Sim %>%
               mutate(plant_group = "Ev adult")) %>%
-  mutate(plant_group = fct_rev(plant_group))
+  mutate(plant_group = fct_rev(plant_group),
+         treatment = dplyr::recode(treatment, "water" = "water (control)"))
 
-# use fungicide treatment
-mvFunD2Sim <- mvD2Sim %>%
-  filter(treatment == "fungicide")
+# labels
+labDat <- mvD2Sim %>%
+  group_by(plant_group) %>%
+  summarise(biomass_weight.g = max(upper)) %>%
+  ungroup() %>%
+  mutate(treatment = "fungicide")
 
-mvFunD2Dat <- mvD2Dat %>%
-  filter(treatment == "fungicide")
-
-ggplot(mvFunD2Dat, aes(x = Mv_seedling_density, y = biomass_weight.g, color = plant_group, fill = plant_group)) +
+pdf("output/plant_growth_density_2019_density_exp.pdf", width = 10.5, height = 5)
+ggplot(mvD2Dat, aes(x = Mv_seedling_density, y = biomass_weight.g, color = treatment, fill = treatment)) +
+  geom_ribbon(data = mvD2Sim, aes(y = pred, ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_line(data = mvD2Sim, aes(y = pred)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
-  geom_ribbon(data = mvFunD2Sim, aes(y = pred, ymin = lower, ymax = upper), alpha = 0.5, color = NA) +
-  geom_line(data = mvFunD2Sim, aes(y = pred)) +
-  theme_bw()
+  geom_text(data = labDat, x = 0, hjust = 0, color = "black", aes(label = plant_group), size = 5) +
+  facet_wrap(~plant_group, scales = "free") +
+  xlab("Mv seedling density") +
+  ylab("Plant biomass (g)") +
+  scale_color_viridis_d(end = 0.6, name = "Treatment") +
+  scale_fill_viridis_d(end = 0.6, name = "Treatment") +
+  theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12, color = "black"),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        legend.position = c(0.22, 0.85),
+        strip.background = element_blank(),
+        strip.text = element_blank())
+dev.off()
+
+
+#### values for text ####
+
+mvD2Sim %>%
+  filter(Mv_seedling_density == 67) %>%
+  mutate(treatment = dplyr::recode(treatment, "water (control)" = "water")) %>%
+  select(-c(lower, upper)) %>%
+  pivot_wider(names_from = treatment,
+              values_from = pred) %>%
+  mutate(diff = (fungicide - water)/water)
+
+mvD2Dat %>%
+  filter(Mv_seedling_density == 67) %>%
+  mutate(treatment = dplyr::recode(treatment, "water (control)" = "water")) %>%
+  select(site, plot, treatment, ID, plant_group, biomass_weight.g) %>%
+  pivot_wider(names_from = treatment,
+              values_from = biomass_weight.g) %>%
+  filter(!is.na(fungicide) & !(is.na(water))) %>%
+  group_by(plant_group) %>%
+  summarise(diff = (mean(fungicide) - mean(water)) / mean(water))
 
 
 #### output ####

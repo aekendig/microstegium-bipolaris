@@ -2,7 +2,7 @@
 
 # file: mv_seeds_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 1/8/21
+# date last edited: 1/8/21 (re-run 3/11/21 because biomass data updated)
 # goal: create a dataset of Mv seeds per plant
 
 

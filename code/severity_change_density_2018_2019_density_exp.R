@@ -2,7 +2,7 @@
 
 # file: severity_change_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/10/21
+# date last edited: 3/11/21
 # goal: analyses of severity change as a function of density
 
 
@@ -102,7 +102,8 @@ plotBioD2Dat <- bgBioD2Dat %>%
               rename(Ev_adult_biomass_foc = weight)) %>%
   mutate(Mv_seedling_biomass = Mv_seedling_biomass + Mv_seedling_biomass_foc,
          Ev_seedling_biomass = Ev_seedling_biomass + Ev_seedling_biomass_foc,
-         Ev_adult_biomass = Ev_adult_biomass + Ev_adult_biomass_foc) %>%
+         Ev_adult_biomass = Ev_adult_biomass + Ev_adult_biomass_foc,
+         total_biomass = Mv_seedling_biomass + Ev_seedling_biomass + Ev_adult_biomass) %>%
   select(-c(Mv_seedling_biomass_foc, Ev_seedling_biomass_foc, Ev_adult_biomass_foc))
 
 # raw severity
@@ -131,25 +132,36 @@ dat <- sevChgDat %>%
   left_join(plotBioD2Dat) %>%
   mutate(plant_group = paste(sp, age, sep = "_") %>%
            fct_rev(),
-         fungicide = ifelse(treatment == "fungicide", 1, 0))
-
-mvD1Dat <- dat %>%
-  filter(plot %in% 1:4 & year == 2018)
+         fungicide = ifelse(treatment == "fungicide", 1, 0),
+         plot_ID = paste(site, plot, substr(treatment, 1, 1), sep = "_"))
 
 mvD2Dat <- dat %>%
-  filter(plot %in% 1:4 & year == 2019)
+  filter(plant_group == "Mv_seedling" & year == 2019 & !is.na(sev_chg)) %>%
+  mutate(mv_bio_s = scale(Mv_seedling_biomass)[,1],
+         evS_bio_s = scale(Ev_seedling_biomass)[,1],
+         evA_bio_s = scale(Ev_adult_biomass)[,1],
+         tot_bio_s = scale(total_biomass)[,1])
 
-evSD1Dat <- dat %>%
-  filter(plot %in% c(1, 5:7) & year == 2018)
+mvD1Dat <- dat %>%
+  filter(plant_group == "Mv_seedling" & year == 2018 & !is.na(sev_chg)) %>%
+  mutate(mv_bio_s = scale(Mv_seedling_biomass)[,1],
+         evS_bio_s = scale(Ev_seedling_biomass)[,1],
+         evA_bio_s = scale(Ev_adult_biomass)[,1],
+         tot_bio_s = scale(total_biomass)[,1])
 
 evSD2Dat <- dat %>%
-  filter(plot %in% c(1, 5:7) & year == 2019)
-
-evAD1Dat <- dat %>%
-  filter(plot %in% c(1, 8:10) & year == 2018)
+  filter(plant_group == "Ev_seedling" & year == 2019 & !is.na(sev_chg)) %>%
+  mutate(mv_bio_s = scale(Mv_seedling_biomass)[,1],
+         evS_bio_s = scale(Ev_seedling_biomass)[,1],
+         evA_bio_s = scale(Ev_adult_biomass)[,1],
+         tot_bio_s = scale(total_biomass)[,1])
 
 evAD2Dat <- dat %>%
-  filter(plot %in% c(1, 8:10) & year == 2019)
+  filter(plant_group == "Ev_adult" & year == 2019 & !is.na(sev_chg)) %>%
+  mutate(mv_bio_s = scale(Mv_seedling_biomass)[,1],
+         evS_bio_s = scale(Ev_seedling_biomass)[,1],
+         evA_bio_s = scale(Ev_adult_biomass)[,1],
+         tot_bio_s = scale(total_biomass)[,1])
 
 
 #### initial visualizations ####
@@ -166,68 +178,65 @@ ggplot(dat, aes(as.factor(plot), sev_chg, color = treatment)) +
   facet_grid(year ~ plant_group, scales = "free")
 
 # Mv density
-ggplot(mvD1Dat, aes(Mv_seedling_density, sev_chg, color = treatment)) +
+dat %>%
+  filter(plot %in% 1:4) %>%
+  ggplot(aes(Mv_seedling_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
-
-ggplot(mvD2Dat, aes(Mv_seedling_density, sev_chg, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
-  stat_summary(geom = "line", fun = "mean") +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
+  facet_wrap(year ~ plant_group, scales = "free")
 
 # Ev seedling density
-ggplot(evSD1Dat, aes(Ev_seedling_density, sev_chg, color = treatment)) +
+dat %>%
+  filter(plot %in% c(1, 5:7)) %>%
+  ggplot(aes(Ev_seedling_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
-
-ggplot(evSD2Dat, aes(Ev_seedling_density, sev_chg, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
-  stat_summary(geom = "line", fun = "mean") +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
+  facet_wrap(year ~ plant_group, scales = "free")
 
 # EvA density
-ggplot(evAD1Dat, aes(Ev_adult_density, sev_chg, color = treatment)) +
+dat %>%
+  filter(plot %in% c(1, 8:10)) %>%
+  ggplot(aes(Ev_adult_density, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
+  facet_wrap(year ~ plant_group, scales = "free")
 
-ggplot(evAD2Dat, aes(Ev_adult_density, sev_chg, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
-  stat_summary(geom = "line", fun = "mean") +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
-
-# biomass
-ggplot(dat, aes(Mv_seedling_biomass, sev_chg, color = treatment)) +
+# Mv biomass
+dat %>%
+  filter(plot %in% 1:4) %>%
+  ggplot(aes(Mv_seedling_biomass, sev_chg, color = treatment)) +
   geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(year ~ plant_group, scales = "free")
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_wrap(year ~ plant_group, scales = "free")
 
-ggplot(dat, aes(Ev_seedling_biomass, sev_chg, color = treatment)) +
+# Ev seedling biomass
+dat %>%
+  filter(plot %in% c(1, 5:7)) %>%
+  ggplot(aes(Ev_seedling_biomass, sev_chg, color = treatment)) +
   geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(year ~ plant_group, scales = "free")
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_wrap(year ~ plant_group, scales = "free")
 
-ggplot(dat, aes(Ev_adult_biomass, sev_chg, color = treatment)) +
+# EvA biomass
+dat %>%
+  filter(plot %in% c(1, 8:10)) %>%
+  ggplot(aes(Ev_adult_biomass, sev_chg, color = treatment)) +
   geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(year ~ plant_group, scales = "free")
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_wrap(year ~ plant_group, scales = "free")
 
+# total biomass
+dat %>%
+  ggplot(aes(total_biomass, sev_chg, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_wrap(year ~ plant_group, scales = "free")
 
 # 2019 site variation
-ggplot(mvD2Dat, aes(site, sev_chg, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ plant_group, scales = "free")
-
-ggplot(mvD2Dat, aes(site, severity, color = treatment)) +
+ggplot(dat, aes(site, sev_chg, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
   stat_summary(geom = "point", fun = "mean", size = 2) +
   facet_wrap(~ plant_group, scales = "free")
@@ -237,31 +246,375 @@ ggplot(plotBioD2Dat %>% filter(plot %in% 1:4), aes(site, Mv_seedling_biomass, co
   stat_summary(geom = "point", fun = "mean", size = 2)
 
 
-#### Mv biomass model ####
-
-# remove missing data
-# add plot ID
-# scale biomass
-mvD2Dat2 <- mvD2Dat %>%
-  filter(!is.na(severity)) %>%
-  mutate(plot_ID = paste(site, plot, substr(treatment, 1, 1), sep = "_"),
-         bio_scaled = scale(Mv_seedling_biomass))
+#### Mv 2019 model ####
 
 # intercept prior
-mvD2Dat2 %>%
-  filter(treatment == "water" & plant_group == "Mv_seedling") %>%
-  summarise(sev = mean(severity_01))
-# 0.34
+mvD2Dat %>%
+  filter(treatment == "water") %>%
+  summarise(sev_chg = mean(sev_chg))
+# 0.57
 
-# 2019 model
-mvSevD2Mod <- brm(severity_01 ~ bio_scaled * fungicide * plant_group + (1|plot_ID), 
-                data = mvD2Dat2, family = "beta",
-                prior <- c(prior(normal(0, 1), class = Intercept),
-                           prior(normal(0, 1), class = b)), # use default priors for phi and random effects
-                iter = 6000, warmup = 1000, chains = 3)
-prior_summary(mvSevD2Mod)
-summary(mvSevD2Mod)
-# no significant effects of biomass
-pp_check(mvSevD2Mod, nsamples = 100)
+# model
+mvSevChgD2Mod <- brm(sev_chg ~ fungicide * (mv_bio_s + evS_bio_s + evA_bio_s) + (1|plot_ID), 
+                data = mvD2Dat, family = "normal",
+                prior <- c(prior(normal(0.6, 1), class = Intercept),
+                           prior(normal(0, 1), class = b)), # use default priors for sigma and random effect
+                iter = 6000, warmup = 1000, chains = 3, cores = 2)
+summary(mvSevChgD2Mod)
+pp_check(mvSevChgD2Mod, nsamples = 100)
+plot(mvSevChgD2Mod)
 
-#### start here : fit above model with severity change and normal distribution ####
+# simulated data
+mvMvD2Sim <- mvD2Dat %>%
+  select(treatment, fungicide, mv_bio_s, Mv_seedling_biomass) %>%
+  unique() %>%
+  mutate(evS_bio_s = 0,
+         evA_bio_s = 0) %>%
+  mutate(pred = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+mvEvSD2Sim <- mvD2Dat %>%
+  select(treatment, fungicide, evS_bio_s, Ev_seedling_biomass) %>%
+  unique() %>%
+  mutate(mv_bio_s = 0,
+         evA_bio_s = 0) %>%
+  mutate(pred = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+mvEvAD2Sim <- mvD2Dat %>%
+  select(treatment, fungicide, evA_bio_s, Ev_adult_biomass) %>%
+  unique() %>%
+  mutate(mv_bio_s = 0,
+         evS_bio_s = 0) %>%
+  mutate(pred = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(mvSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+# figures
+ggplot(mvD2Dat, aes(x = Mv_seedling_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = mvMvD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = mvMvD2Sim, aes(y = pred))
+
+ggplot(mvD2Dat, aes(x = Ev_seedling_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = mvEvSD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = mvEvSD2Sim, aes(y = pred))
+
+ggplot(mvD2Dat, aes(x = Ev_adult_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = mvEvAD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = mvEvAD2Sim, aes(y = pred))
+
+# total biomass model
+mvSevChgD2Mod2 <- brm(sev_chg ~ fungicide * tot_bio_s + (1|plot_ID), 
+                     data = mvD2Dat, family = "normal",
+                     prior <- c(prior(normal(0.6, 1), class = Intercept),
+                                prior(normal(0, 1), class = b)), # use default priors for sigma and random effect
+                     iter = 6000, warmup = 1000, chains = 3, cores = 2)
+summary(mvSevChgD2Mod2)
+pp_check(mvSevChgD2Mod2, nsamples = 100)
+plot(mvSevChgD2Mod2)
+
+# compare with separate biomass model
+mvSevChgD2Loo <- loo(mvSevChgD2Mod, reloo = T)
+mvSevChgD2Loo2 <- loo(mvSevChgD2Mod2, reloo = T)
+loo_compare(mvSevChgD2Loo, mvSevChgD2Loo2)
+# model 2 is a better fit
+
+# simulated data
+mvD2Sim <- mvD2Dat %>%
+  select(treatment, fungicide, tot_bio_s, total_biomass) %>%
+  unique() %>%
+  mutate(pred = fitted(mvSevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(mvSevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(mvSevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+
+#### Ev seedling 2019 model ####
+
+# intercept prior
+evSD2Dat %>%
+  filter(treatment == "water") %>%
+  summarise(sev_chg = mean(sev_chg))
+# 0.62
+
+# model
+evSSevChgD2Mod <- update(mvSevChgD2Mod, newdata = evSD2Dat)
+summary(evSSevChgD2Mod)
+pp_check(evSSevChgD2Mod, nsamples = 100)
+plot(evSSevChgD2Mod)
+
+# simulated data
+evSMvD2Sim <- evSD2Dat %>%
+  select(treatment, fungicide, mv_bio_s, Mv_seedling_biomass) %>%
+  unique() %>%
+  mutate(evS_bio_s = 0,
+         evA_bio_s = 0) %>%
+  mutate(pred = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+evSEvSD2Sim <- evSD2Dat %>%
+  select(treatment, fungicide, evS_bio_s, Ev_seedling_biomass) %>%
+  unique() %>%
+  mutate(mv_bio_s = 0,
+         evA_bio_s = 0) %>%
+  mutate(pred = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+evSEvAD2Sim <- evSD2Dat %>%
+  select(treatment, fungicide, evA_bio_s, Ev_adult_biomass) %>%
+  unique() %>%
+  mutate(mv_bio_s = 0,
+         evS_bio_s = 0) %>%
+  mutate(pred = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evSSevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+# figures
+ggplot(evSD2Dat, aes(x = Mv_seedling_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = evSMvD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = evSMvD2Sim, aes(y = pred))
+
+ggplot(evSD2Dat, aes(x = Ev_seedling_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = evSEvSD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = evSEvSD2Sim, aes(y = pred))
+
+ggplot(evSD2Dat, aes(x = Ev_adult_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = evSEvAD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = evSEvAD2Sim, aes(y = pred))
+
+# total biomass model
+evSSevChgD2Mod2 <- update(mvSevChgD2Mod2, newdata = evSD2Dat)
+summary(evSSevChgD2Mod2)
+pp_check(evSSevChgD2Mod2, nsamples = 100)
+plot(evSSevChgD2Mod2)
+
+# compare with separate biomass model
+evSSevChgD2Loo <- loo(evSSevChgD2Mod, reloo = T)
+evSSevChgD2Loo2 <- loo(evSSevChgD2Mod2, reloo = T)
+loo_compare(evSSevChgD2Loo, evSSevChgD2Loo2)
+# model 1 is a better fit
+
+# simulated data
+evSD2Sim <- evSD2Dat %>%
+  select(treatment, fungicide, tot_bio_s, total_biomass) %>%
+  unique() %>%
+  mutate(pred = fitted(evSSevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evSSevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evSSevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+
+#### Ev adult 2019 model ####
+
+# intercept prior
+evAD2Dat %>%
+  filter(treatment == "water") %>%
+  summarise(sev_chg = mean(sev_chg))
+# 0.72
+
+# model
+evASevChgD2Mod <- brm(sev_chg ~ fungicide * (mv_bio_s + evS_bio_s + evA_bio_s), 
+                      data = evAD2Dat, family = "normal",
+                      prior <- c(prior(normal(0.6, 1), class = Intercept),
+                                 prior(normal(0, 1), class = b)), # use default priors for sigma
+                      iter = 6000, warmup = 1000, chains = 3, cores = 2)
+summary(evASevChgD2Mod)
+pp_check(evASevChgD2Mod, nsamples = 100)
+plot(evASevChgD2Mod)
+
+# simulated data
+evAMvD2Sim <- evAD2Dat %>%
+  select(treatment, fungicide, mv_bio_s, Mv_seedling_biomass) %>%
+  unique() %>%
+  mutate(evS_bio_s = 0,
+         evA_bio_s = 0) %>%
+  mutate(pred = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+evAEvSD2Sim <- evAD2Dat %>%
+  select(treatment, fungicide, evS_bio_s, Ev_seedling_biomass) %>%
+  unique() %>%
+  mutate(mv_bio_s = 0,
+         evA_bio_s = 0) %>%
+  mutate(pred = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+evAEvAD2Sim <- evAD2Dat %>%
+  select(treatment, fungicide, evA_bio_s, Ev_adult_biomass) %>%
+  unique() %>%
+  mutate(mv_bio_s = 0,
+         evS_bio_s = 0) %>%
+  mutate(pred = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evASevChgD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+# figures
+ggplot(evAD2Dat, aes(x = Mv_seedling_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = evAMvD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = evAMvD2Sim, aes(y = pred))
+
+ggplot(evAD2Dat, aes(x = Ev_seedling_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = evAEvSD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = evAEvSD2Sim, aes(y = pred))
+
+ggplot(evAD2Dat, aes(x = Ev_adult_biomass, y = sev_chg, color = treatment)) +
+  geom_point() +
+  geom_ribbon(data = evAEvAD2Sim, aes(y = pred, ymin = pred_lower, ymax = pred_upper, fill = treatment), color = NA, alpha = 0.5) +
+  geom_line(data = evAEvAD2Sim, aes(y = pred))
+
+# total biomass model
+evASevChgD2Mod2 <- brm(sev_chg ~ fungicide * tot_bio_s, 
+                       data = evAD2Dat, family = "normal",
+                       prior <- c(prior(normal(0.6, 1), class = Intercept),
+                                  prior(normal(0, 1), class = b)), # use default priors for sigma
+                       iter = 6000, warmup = 1000, chains = 3, cores = 2)
+summary(evASevChgD2Mod2)
+pp_check(evASevChgD2Mod2, nsamples = 100)
+plot(evASevChgD2Mod2)
+
+# compare with separate biomass model
+evASevChgD2Loo <- loo(evASevChgD2Mod, reloo = T)
+evASevChgD2Loo2 <- loo(evASevChgD2Mod2, reloo = T)
+loo_compare(evASevChgD2Loo, evASevChgD2Loo2)
+# model 2 is a better fit
+
+# simulated data
+evAD2Sim <- evAD2Dat %>%
+  select(treatment, fungicide, tot_bio_s, total_biomass) %>%
+  unique() %>%
+  mutate(pred = fitted(evASevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Estimate"],
+         pred_lower = fitted(evASevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Q2.5"],
+         pred_upper = fitted(evASevChgD2Mod2, type = "response", newdata = ., re_formula = NA)[, "Q97.5"])
+
+
+#### figure ####
+
+# combine data
+simDat <- mvMvD2Sim %>%
+              mutate(plant_group = "Mv seedling",
+                     bio_group = "Mv seedling") %>%
+              rename(biomass = Mv_seedling_biomass) %>%
+  full_join(evSMvD2Sim %>%
+              mutate(plant_group = "Ev seedling",
+                     bio_group = "Mv seedling") %>%
+              rename(biomass = Mv_seedling_biomass)) %>%
+  full_join(evAMvD2Sim %>%
+              mutate(plant_group = "Ev adult",
+                     bio_group = "Mv seedling") %>%
+              rename(biomass = Mv_seedling_biomass)) %>%
+  full_join(mvEvSD2Sim %>%
+              mutate(plant_group = "Mv seedling",
+                     bio_group = "Ev seedling") %>%
+              rename(biomass = Ev_seedling_biomass)) %>%
+  full_join(evSEvSD2Sim %>%
+              mutate(plant_group = "Ev seedling",
+                     bio_group = "Ev seedling") %>%
+              rename(biomass = Ev_seedling_biomass)) %>%
+  full_join(evAEvSD2Sim %>%
+              mutate(plant_group = "Ev adult",
+                     bio_group = "Ev seedling") %>%
+              rename(biomass = Ev_seedling_biomass)) %>%
+  full_join(mvEvAD2Sim %>%
+              mutate(plant_group = "Mv seedling",
+                     bio_group = "Ev adult") %>%
+              rename(biomass = Ev_adult_biomass)) %>%
+  full_join(evSEvAD2Sim %>%
+              mutate(plant_group = "Ev seedling",
+                     bio_group = "Ev adult") %>%
+              rename(biomass = Ev_adult_biomass)) %>%
+  full_join(evAEvAD2Sim %>%
+              mutate(plant_group = "Ev adult",
+                     bio_group = "Ev adult") %>%
+              rename(biomass = Ev_adult_biomass)) %>%
+  mutate(plant_group = fct_rev(plant_group),
+         bio_group= fct_rev(bio_group))
+
+# figure
+pdf("output/severity_change_biomass_2019_density_exp.pdf", width = 10.5, height = 5)
+simDat %>%
+  filter(treatment == "water") %>%
+ggplot(aes(biomass, pred, group = plant_group)) +
+  geom_ribbon(aes(ymin = pred_lower, ymax = pred_upper, fill = plant_group), alpha = 0.5, color = NA) +
+  geom_line(aes(color = plant_group), size = 1.5) +
+  facet_wrap(~bio_group, scales = "free_x", strip.position = "bottom") +
+  xlab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  ylab("Change in disease severity") +
+  scale_color_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  scale_fill_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12, color = "black"),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        legend.position = c(0.075, 0.85),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 14),
+        strip.placement = "outside")
+dev.off()
+
+simDat %>%
+  filter(treatment == "fungicide") %>%
+  ggplot(aes(biomass, pred, group = interaction(yearF, plant_group))) +
+  geom_ribbon(aes(ymin = pred_lower, ymax = pred_upper, fill = plant_group), alpha = 0.5, color = NA) +
+  geom_line(aes(color = plant_group, linetype = yearF)) +
+  facet_wrap(~bio_group, scales = "free_x") +
+  xlab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  ylab("Change in disease severity") +
+  scale_color_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  scale_fill_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  scale_linetype_manual(values = c("dashed", "solid"), name = "Year") +
+  theme_bw()
+# type of biomass doesn't matter much
+
+# total biomass figure
+simTotDat <- mvD1Sim %>%
+  mutate(year = 2018,
+         plant_group = "Mv seedling") %>%
+  full_join(mvD2Sim %>%
+              mutate(year = 2019,
+                     plant_group = "Mv seedling")) %>%
+  full_join(evSD2Sim %>%
+              mutate(year = 2019,
+                     plant_group = "Ev seedling")) %>%
+  full_join(evAD2Sim %>%
+              mutate(year = 2019,
+                     plant_group = "Ev adult")) %>%
+  mutate(plant_group = fct_rev(plant_group),
+         yearF = as.factor(year))
+
+simTotDat %>%
+  filter(treatment == "water") %>%
+  ggplot(aes(total_biomass, pred, group = interaction(yearF, plant_group))) +
+  geom_ribbon(aes(ymin = pred_lower, ymax = pred_upper, fill = plant_group), alpha = 0.5, color = NA) +
+  geom_line(aes(color = plant_group, linetype = yearF)) +
+  xlab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  ylab("Change in disease severity") +
+  scale_color_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  scale_fill_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  scale_linetype_manual(values = c("dashed", "solid"), name = "Year") +
+  theme_bw()
+
+
+#### output ####
+
+save(mvSevChgD2Mod, file = "output/mv_severity_change_group_biomass_model_2019_density_exp.rda")
+save(mvSevChgD2Mod2, file = "output/mv_severity_change_total_biomass_model_2019_density_exp.rda")
+save(evSSevChgD2Mod, file = "output/ev_seedling_severity_change_group_biomass_model_2019_density_exp.rda")
+save(evSSevChgD2Mod2, file = "output/ev_seedling_severity_change_total_biomass_model_2019_density_exp.rda")
+save(evASevChgD2Mod, file = "output/ev_adult_severity_change_group_biomass_model_2019_density_exp.rda")
+save(evASevChgD2Mod2, file = "output/ev_adult_severity_change_total_biomass_model_2019_density_exp.rda")

@@ -661,7 +661,7 @@ sevRanSlopes <- mvSevD1RanSlopes %>%
   ungroup() 
 
 
-#### figure ####
+#### month figure ####
 
 # combine simulation data
 sevSim <- mvSevD1Sim %>%
@@ -723,6 +723,97 @@ ggplot(sevDat2, aes(month_num, severity_01, group = interaction(yearF, treatment
         legend.position = c(0.1, 0.7),
         strip.background = element_blank(),
         strip.text = element_blank())
+dev.off()
+
+
+#### edge figure ####
+
+# simulation data
+mvEdgeD2Sim <- mvSevD2Dat %>%
+  select(edge_severity, edge_sev_s) %>%
+  unique() %>%
+  mutate(month_num = 2,
+         fungicide = 0) %>%
+  mutate(pred_severity = fitted(mvSevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"] %>%
+           backtransform01(),
+         pred_lower = fitted(mvSevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"] %>%
+           backtransform01(),
+         pred_upper = fitted(mvSevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"] %>%
+           backtransform01())
+
+evSEdgeD2Sim <- evSSevD2Dat %>%
+  select(edge_severity, edge_sev_s) %>%
+  unique() %>%
+  mutate(month_num = 2,
+         fungicide = 0) %>%
+  mutate(pred_severity = fitted(evSSevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"] %>%
+           backtransform01(),
+         pred_lower = fitted(evSSevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"] %>%
+           backtransform01(),
+         pred_upper = fitted(evSSevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"] %>%
+           backtransform01())
+
+evAEdgeD2Sim <- evASevD2Dat %>%
+  select(edge_severity, edge_sev_s) %>%
+  unique() %>%
+  mutate(month_num = 2,
+         fungicide = 0) %>%
+  mutate(pred_severity = fitted(evASevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Estimate"] %>%
+           backtransform01(),
+         pred_lower = fitted(evASevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q2.5"] %>%
+           backtransform01(),
+         pred_upper = fitted(evASevD2Mod, type = "response", newdata = ., re_formula = NA)[, "Q97.5"] %>%
+           backtransform01())
+
+# combine simulations
+edgeD2Sim <- mvEdgeD2Sim %>%
+  mutate(plant_group = "Mv seedling") %>%
+  full_join(evSEdgeD2Sim %>%
+              mutate(plant_group = "Ev seedling")) %>%
+  full_join(evAEdgeD2Sim %>%
+              mutate(plant_group = "Ev adult")) %>%
+  mutate(plant_group = fct_rev(plant_group))
+
+# figure with data
+sevD2Dat2 %>%
+  left_join(edgeSevD2Dat3) %>%
+  filter(month == "late_aug" & treatment == "water") %>%
+  mutate(plant_group = str_replace(plant_group, "_", " ") %>%
+           fct_rev()) %>%
+  ggplot(aes(edge_severity, severity)) +
+  geom_point() +
+  geom_ribbon(data = edgeD2Sim, aes(y = pred_severity, ymin = pred_lower, ymax = pred_upper), alpha = 0.5, color = NA) +
+  geom_line(data = edgeD2Sim, aes(y = pred_severity)) +
+  geom_text(x = 0, y = 1, check_overlap = T, hjust = 0, aes(label = plant_group), size = 5) +
+  facet_wrap(~plant_group) +
+  xlab("Ambient disease severity") +
+  ylab("Disease severity") +
+  theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12, color = "black"),
+        axis.title = element_text(size = 14),
+        strip.background = element_blank(),
+        strip.text = element_blank())
+
+# figure without
+pdf("output/severity_edge_2019_density_exp.pdf", width = 6, height = 5)
+ggplot(edgeD2Sim, aes(edge_severity, severity)) +
+  geom_ribbon(aes(y = pred_severity, ymin = pred_lower, ymax = pred_upper, fill = plant_group), alpha = 0.5, color = NA) +
+  geom_line(aes(y = pred_severity, color = plant_group), size = 1.5) +
+  xlab("Ambient Mv disease severity") +
+  ylab("Disease severity") +
+  scale_color_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  scale_fill_manual(values = c("#BEBEBE", "#A5BDBE", "#407879"), name = "Plant group") +
+  theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12, color = "black"),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12))
 dev.off()
 
 
