@@ -2,7 +2,7 @@
 
 # file: piecewise_sem_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 2/9/21
+# date last edited: 3/15/21
 # goal: fit piecewise SEM to focal plot-level data
 
 
@@ -45,10 +45,16 @@ sevD1Dat <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
 # leaf_scans_data_processing_2018_density_exp.R
 sevD2Dat <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv") # leaf_scans_data_processing_2019_density_exp.R
 mvEdgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv") # leaf_scans_data_processing_2019_density_exp.R
+sevChgDat <- read_csv("intermediate-data/severity_change_model_ran_slopes_2018_2019_density_exp.csv")
+# severity_change_2018_2019_density_exp.R
 
 # import environmental variables
 envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv") # covariate_data_processing_2018_density_exp
 envD2Dat <- read_csv("intermediate-data/temp_humidity_monthly_2019_density_exp.csv") # temp_humidity_data_processing_2019_density_exp
+
+# import plot biomass
+plotBioD2Dat <- read_csv("intermediate-data/plot_biomass_density_2019_density_exp.csv")
+# plot_biomass_Density_2019_density_exp.R
 
 # inverse-logit function (B. Bolker, https://stackoverflow.com/questions/23845283/logit-transformation-backwards)
 inv.logit <- function(f,a) {
@@ -259,6 +265,31 @@ disD2Dat <- plotSevD2Dat %>%
          log_dew = log(dew_intensity),
          edge_severity_t = logit(edge_severity, adjust = 0.001))
 
+disChgD2Dat <- sevChgDat %>%
+  filter(year == 2019 & treatment == "water") %>%
+  group_by(site, plot, plant_group) %>%
+  summarise(sev_chg = mean(slope)) %>%
+  ungroup() %>%
+  left_join(envD2Dat %>%
+              select(site, plot, treatment, month, dew_intensity2) %>%
+              rename(dew_intensity = dew_intensity2) %>%
+              filter(month == "sep") %>%
+              mutate(dew_c = scale(dew_intensity, center = T, scale = F)[,1])) %>%
+  left_join(plotBioD2Dat %>%
+              mutate(total_biomass = Mv_seedling_biomass + Ev_seedling_biomass + Ev_adult_biomass,
+                     bio_c = scale(total_biomass, center = T, scale = F)[,1])) %>%
+  drop_na()
+
+# split disease change by plant group
+mvDisChgD2Dat <- disChgD2Dat %>%
+  filter(plant_group == "Mv_seedling")
+
+evSDisChgD2Dat <- disChgD2Dat %>%
+  filter(plant_group == "Ev_seedling")
+
+evADisChgD2Dat <- disChgD2Dat %>%
+  filter(plant_group == "Ev_adult")
+
 # combine Mv data
 mvD1Dat <- mvSeedD1Dat2 %>%
   full_join(growthD1Dat %>%
@@ -372,6 +403,14 @@ datD2Aug <- mvD2Dat %>%
 
 # see separate year R scripts
 
+# dew intensity over time
+envD2Dat %>%
+  select(site, plot, month, dew_intensity2) %>%
+  pivot_wider(names_from = month,
+              values_from = dew_intensity2) %>%
+  select(-c(site, plot)) %>%
+  ggpairs() # sep is best correlated with all others
+
 
 #### fit Y1 disease model ####
 
@@ -450,6 +489,47 @@ dis_y2_mod2 <- psem(
 # dew intensity increase August Mv severity
 # July Mv severity decreased August Ev severity, but edge Mv severity increased it
 # august and edge correlations significant and positive
+
+
+#### Mv disease change model ####
+
+# initial fit
+mv_dis_chg_mod1 <- psem(
+  lmer(sev_chg ~ bio_c + dew_c + (1|site), data = mvDisChgD2Dat),
+  lmer(dew_c ~ bio_c + (1|site), data = mvDisChgD2Dat)
+)
+
+# summary
+summary(mv_dis_chg_mod1)
+# no missing links to test because it's a just identified model
+# report R-squared and p-values as indicators of model fit
+# random effects increased R-squared
+
+
+#### Ev seedling disease change model ####
+
+# initial fit
+evS_dis_chg_mod1 <- psem(
+  lmer(sev_chg ~ total_biomass + dew_intensity + (1|site), data = evSDisChgD2Dat),
+  lmer(dew_intensity ~ total_biomass + (1|site), data = evSDisChgD2Dat)
+)
+
+# summary
+summary(evS_dis_chg_mod1)
+# only biomass effect on dew intensity significant
+
+
+#### Ev adult disease change model ####
+
+# initial fit
+evA_dis_chg_mod1 <- psem(
+  lm(sev_chg ~ total_biomass + dew_intensity, data = evADisChgD2Dat),
+  lmer(dew_intensity ~ total_biomass + (1|site), data = evADisChgD2Dat)
+)
+# error when site included in severity change model
+
+# summary
+summary(evA_dis_chg_mod1)
 
 
 #### Mv July Y1 model ####
@@ -1541,3 +1621,44 @@ sem_fig <- plot_grid(mv_seeds_dens_fig,
 pdf("output/piecewise_sem_2018_2019_fig.pdf", width = 7, height = 7)
 sem_fig
 dev.off()
+
+
+#### fig: total biomass and severity change ####
+
+# functions for lmer boostrap error
+predFun <- function(mod, dat){
+  fit <- bootMer(mod, 
+                 function(x) predict(x, newdata = dat, re.form = NA), 
+                 nsim = 250, type = "parametric")
+  
+  return(fit)
+}
+
+# data
+mvDisChgBioDat <- mvDisChgD2Dat %>%
+  mutate(bio_bin = cut_interval(total_biomass, n = 4) %>%
+           as.character(),
+         dew_c = 0) %>%
+  group_by(bio_bin) %>%
+  mutate(min_interval = parse_number(strsplit(bio_bin, ",")[[1]])[1],
+         max_interval = parse_number(strsplit(bio_bin, ",")[[1]])[2],
+         bio_mid = (max_interval + min_interval) / 2) %>%
+  ungroup() 
+
+# models
+summary(mv_dis_chg_mod1)
+mv_dis_chg_bio_mod <- lmer(sev_chg ~ bio_c + (1|site), data = mvDisChgD2Dat) # total effect of biomass
+mv_dis_chg_bio_boot <- predFun(mv_dis_chg_bio_mod, mvDisChgBioDat)
+
+# biomass groups and predictions
+mvDisChgBioDat2 <- mvDisChgBioDat %>%
+  mutate(pred = apply(mv_dis_chg_bio_boot$t, 2, function(x) as.numeric(quantile(x, probs=.5, na.rm = T))),
+         lwr = apply(mv_dis_chg_bio_boot$t, 2, function(x) as.numeric(quantile(x, probs=.025, na.rm = T))),
+         upr = apply(mv_dis_chg_bio_boot$t, 2, function(x) as.numeric(quantile(x, probs=.975, na.rm = T))))
+
+# figure
+ggplot(mvDisChgBioDat2, aes(bio_mid, sev_chg)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  geom_ribbon(aes(x = total_biomass, y = pred, ymin = lwr, ymax = upr), alpha = 0.5) +
+  geom_line(aes(x = total_biomass, y = pred))

@@ -49,7 +49,7 @@ filter(seedD2Dat, is.na(seeds)) %>%
 # remove missing data
 mvSeedD1Dat <- seedD1Dat %>%
   left_join(plotDens1) %>%
-  mutate(seeds = bag_seeds,
+  mutate(seeds = seeds_per_bag, # should include soil seeds too
          log_seeds = log(seeds + 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotr = ifelse(treatment == "fungicide", plot + 10, plot),
@@ -70,6 +70,36 @@ mvSeedDat <- full_join(mvSeedD1Dat, mvSeedD2Dat)
 
 
 #### initial visualizations ####
+
+# seed heads 
+ggplot(mvSeedD2Dat, aes(background_density, flowers, color = treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  facet_wrap(~background, scales = "free") +
+  theme_bw()
+
+ggplot(mvSeedD2Dat, aes(treatment, flowers, color = treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  theme_bw()
+
+mvSeedD2Dat %>%
+  group_by(site, plot, background_density, background, treatment) %>%
+  summarise(seed_heads_m2 = mean(flowers) * (mv_seedling_density + 3)) %>%
+  ggplot(aes(background_density, seed_heads_m2, color = treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  facet_wrap(~background, scales = "free") +
+  theme_bw()
+
+# cleistogamous vs. chasmogamous
+mvSeedD2Dat %>%
+  mutate(seed_ratio = flower_seeds/stem_seeds) %>%
+  ggplot(aes(background_density, seed_ratio, color = treatment)) +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  facet_wrap(~background, scales = "free") +
+  theme_bw()
 
 # non-transformed seeds
 ggplot(mvSeedDat, aes(background_density, seeds, color = treatment)) +
