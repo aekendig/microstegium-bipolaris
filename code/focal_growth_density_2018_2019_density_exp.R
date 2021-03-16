@@ -1,8 +1,8 @@
 ##### info ####
 
-# file: plant_growth_density_2018_2019_density_exp
+# file: focal_growth_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/11/21
+# date last edited: 3/16/21
 # goal: analyses of plant growth as a function of density
 
 
@@ -55,8 +55,13 @@ mvD2Dat <- plotDens %>%
                           rename(biomass_weight.g = weight))) %>%
   mutate(age = ifelse(ID == "A", "adult", "seedling"),
          plant_group = paste(sp, age) %>%
-           fct_rev(),
-         pg_trt = paste(substr(sp, 1, 1), substr(age, 1, 1), substr(treatment, 1, 1), sep = "_") %>%
+           fct_rev())
+
+evSD1Dat <- plotDens %>%
+  filter(plot %in% c(1, 5:7)) %>%
+  left_join(growthD1Dat) %>%
+  mutate(age = ifelse(ID == "A", "adult", "seedling"),
+         plant_group = paste(sp, age) %>%
            fct_rev())
 
 evSD2Dat <- plotDens %>%
@@ -68,8 +73,13 @@ evSD2Dat <- plotDens %>%
                           rename(biomass_weight.g = weight))) %>%
   mutate(age = ifelse(ID == "A", "adult", "seedling"),
          plant_group = paste(sp, age) %>%
-           fct_rev(),
-         pg_trt = paste(substr(sp, 1, 1), substr(age, 1, 1), substr(treatment, 1, 1), sep = "_") %>%
+           fct_rev())
+
+evAD1Dat <- plotDens %>%
+  filter(plot %in% c(1, 8:10)) %>%
+  left_join(growthD1Dat) %>%
+  mutate(age = ifelse(ID == "A", "adult", "seedling"),
+         plant_group = paste(sp, age) %>%
            fct_rev())
 
 evAD2Dat <- plotDens %>%
@@ -81,24 +91,70 @@ evAD2Dat <- plotDens %>%
                           rename(biomass_weight.g = weight))) %>%
   mutate(age = ifelse(ID == "A", "adult", "seedling"),
          plant_group = paste(sp, age) %>%
-           fct_rev(),
-         pg_trt = paste(substr(sp, 1, 1), substr(age, 1, 1), substr(treatment, 1, 1), sep = "_") %>%
            fct_rev())
 
 # remove plot 1 (large environmental effect)
+mvD1Dat2 <- mvD1Dat %>%
+  filter(plot != 1)
+evSD1Dat2 <- evSD1Dat %>%
+  filter(plot != 1)
+evAD1Dat2 <- evAD1Dat %>%
+  filter(plot != 1)
+
 mvD2Dat2 <- mvD2Dat %>%
+  filter(plot != 1)
+evSD2Dat2 <- evSD2Dat %>%
+  filter(plot != 1)
+evAD2Dat2 <- evAD2Dat %>%
   filter(plot != 1)
 
 # split by species (couldn't specify appropriate priors with them all together)
+mvMvD1Dat <- mvD1Dat2 %>%
+  filter(plant_group == "Mv seedling")
+evSMvD1Dat <- mvD1Dat2 %>%
+  filter(plant_group == "Ev seedling")
+evAMvD1Dat <- mvD1Dat2 %>%
+  filter(plant_group == "Ev adult")
+
+mvEvSD1Dat <- evSD1Dat2 %>%
+  filter(plant_group == "Mv seedling")
+evSEvSD1Dat <- evSD1Dat2 %>%
+  filter(plant_group == "Ev seedling")
+evAEvSD1Dat <- evSD1Dat2 %>%
+  filter(plant_group == "Ev adult")
+
+mvEvAD1Dat <- evAD1Dat2 %>%
+  filter(plant_group == "Mv seedling")
+evSEvAD1Dat <- evAD1Dat2 %>%
+  filter(plant_group == "Ev seedling")
+evAEvAD1Dat <- evAD1Dat2 %>%
+  filter(plant_group == "Ev adult")
+
 mvMvD2Dat <- mvD2Dat2 %>%
   filter(plant_group == "Mv seedling")
-mvEvSD2Dat <- mvD2Dat2 %>%
+evSMvD2Dat <- mvD2Dat2 %>%
   filter(plant_group == "Ev seedling")
-mvEvAD2Dat <- mvD2Dat2 %>%
+evAMvD2Dat <- mvD2Dat2 %>%
+  filter(plant_group == "Ev adult")
+
+mvEvSD2Dat <- evSD2Dat2 %>%
+  filter(plant_group == "Mv seedling")
+evSEvSD2Dat <- evSD2Dat2 %>%
+  filter(plant_group == "Ev seedling")
+evAEvSD2Dat <- evSD2Dat2 %>%
+  filter(plant_group == "Ev adult")
+
+mvEvAD2Dat <- evAD2Dat2 %>%
+  filter(plant_group == "Mv seedling")
+evSEvAD2Dat <- evAD2Dat2 %>%
+  filter(plant_group == "Ev seedling")
+evAEvAD2Dat <- evAD2Dat2 %>%
   filter(plant_group == "Ev adult")
 
 
 #### visualizations ####
+
+#### start here ####
 
 # 2018 Mv density height and tiller
 ggplot(mvD1Dat, aes(Mv_seedling_density, height_growth, color = treatment)) +

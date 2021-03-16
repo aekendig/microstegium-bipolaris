@@ -483,10 +483,11 @@ mv_fig <- ggplot(mvPlotD2Dat2, aes(Mv_seedling_density, Mv_seedling_biomass, gro
   geom_line(data = mvBioDensSim2, aes(y = pred, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0, position = position_dodge(1), aes(color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2,  position = position_dodge(1), aes(color = treatment)) +
-  xlab(expression(paste(italic("M. vimineum"), " density (", m^-2, ")", sep = ""))) +
-  ylab(expression(paste(italic("M. vimineum"), " biomass (g ", m^-2, ")", sep = ""))) +
-  scale_color_viridis_d(end = 0.6, name = "Treatment") +
-  scale_fill_viridis_d(end = 0.6, name = "Treatment") +
+  annotate(geom = "text", x = 0, y = max(mvBioDensSim2$upper), label = "M. vimineum", fontface = "italic", hjust = 0, size = 3) +
+  xlab(expression(paste("Density (", m^-2, ")", sep = ""))) +
+  ylab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  scale_color_viridis_d(end = 0.5, name = "Treatment") +
+  scale_fill_viridis_d(end = 0.5, name = "Treatment") +
   fig_theme
 
 evS_fig <- ggplot(evSPlotD2Dat2, aes(Ev_seedling_density, Ev_seedling_biomass, group = treatment)) +
@@ -494,28 +495,27 @@ evS_fig <- ggplot(evSPlotD2Dat2, aes(Ev_seedling_density, Ev_seedling_biomass, g
   geom_line(data = evSBioDensSim2, aes(y = pred, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0, position = position_dodge(0.3), aes(color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2,  position = position_dodge(0.3), aes(color = treatment)) +
-  xlab(expression(paste(italic("E. virginicus"), " seedling density (", m^-2, ")", sep = ""))) +
-  ylab(expression(paste(italic("E. virginicus"), " seedling biomass (g ", m^-2, ")", sep = ""))) +
-  scale_color_viridis_d(end = 0.6) +
-  scale_fill_viridis_d(end = 0.6) +
+  annotate(geom = "text", x = 0, y = max(evSBioDensSim2$upper), label = expression(paste(italic("E. virginicus"), " seedling", sep = "")), hjust = 0, size = 3) +
+  xlab(expression(paste("Density (", m^-2, ")", sep = ""))) +
+  ylab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  scale_color_viridis_d(end = 0.5) +
+  scale_fill_viridis_d(end = 0.5) +
   fig_theme +
-  theme(legend.position = c(0.35, 0.88),
-        axis.title.y = element_text(size = 10, hjust = -1),
-        axis.title.x = element_text(size = 10, hjust = 0.85))
+  theme(legend.position = c(0.35, 0.6))
 
 evA_fig <- ggplot(evAPlotD2Dat2, aes(Ev_adult_density, Ev_adult_biomass, group = treatment)) +
   geom_ribbon(data = evABioDensSim2, aes(y = pred, ymin = lower, ymax = upper, fill = treatment), alpha = 0.3, color = NA) +
   geom_line(data = evABioDensSim2, aes(y = pred, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0, position = position_dodge(0.1), aes(color = treatment)) +
   stat_summary(geom = "point", fun = "mean", size = 2,  position = position_dodge(0.1), aes(color = treatment)) +
-  xlab(expression(paste(italic("E. virginicus"), " adult density (", m^-2, ")", sep = ""))) +
-  ylab(expression(paste(italic("E. virginicus"), " adult biomass (g ", m^-2, ")", sep = ""))) +
-  scale_color_viridis_d(end = 0.6) +
-  scale_fill_viridis_d(end = 0.6) +
-  fig_theme +
-  theme(axis.title.x = element_text(size = 10, hjust = 0.75))
+  annotate(geom = "text", x = 0, y = max(evABioDensSim2$upper), label = expression(paste(italic("E. virginicus"), " adult", sep = "")), hjust = 0, size = 3) +
+  xlab(expression(paste("Density (", m^-2, ")", sep = ""))) +
+  ylab(expression(paste("Biomass (g ", m^-2, ")", sep = ""))) +
+  scale_color_viridis_d(end = 0.5) +
+  scale_fill_viridis_d(end = 0.5) +
+  fig_theme
 
-pdf("output/plot_biomass_density_2019_density_exp.pdf", width = 7, height = 3)
+pdf("output/plot_biomass_density_2019_density_exp.pdf", width = 7, height = 2.36)
 plot_grid(mv_fig, evS_fig, evA_fig,
           nrow = 1,
           labels = LETTERS[1:3])
@@ -564,4 +564,4 @@ write_csv(plotD2Dat, "intermediate-data/plot_biomass_density_2019_density_exp.cs
 # models
 save(mvBioDensMod, file = "output/mv_plot_biomass_density_model_2019_density_exp.rda")
 save(evSBioDensMod2, file = "output/ev_seedling_plot_biomass_density_model_2019_density_exp.rda")
-save(evABioDensMod, file = "output/ev_adult_plot_biomass_density_model_2019_density_exp.rda")
+save(evABioDensMod2, file = "output/ev_adult_plot_biomass_density_model_2019_density_exp.rda")
