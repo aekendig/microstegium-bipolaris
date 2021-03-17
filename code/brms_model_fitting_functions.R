@@ -38,7 +38,7 @@ mod_check_fun <- function(mod){
 
 #### Model fit ####
 
-mod_fit_fun <- function(dat, mod, treatCol, ranEff = site, xCol, minX, maxX, yCol){
+mod_fit_fun <- function(dat, mod, treatCol, ranEff = site, xCol, minX, maxX, yCol, f2t = F){
 
   outDat <- dat %>%
     select({{treatCol}}) %>%
@@ -48,6 +48,14 @@ mod_fit_fun <- function(dat, mod, treatCol, ranEff = site, xCol, minX, maxX, yCo
     mutate(pred = fitted(mod, newdata = ., allow_new_levels = T)[, "Estimate"],
            lower = fitted(mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
            upper = fitted(mod, newdata = ., allow_new_levels = T)[, "Q97.5"])
+  
+  if(f2t == T){
+    outDat <- outDat %>%
+      mutate(fungicide = dplyr::recode(fungicide, "0" = "water", "1" = "fungicide"))
+    
+    dat <- dat %>%
+      mutate(fungicide = dplyr::recode(fungicide, "0" = "water", "1" = "fungicide"))
+  }
   
   outPlot <- ggplot(dat, aes(x = {{xCol}}, y = {{yCol}}, color = {{treatCol}}, fill = {{treatCol}})) +
     geom_ribbon(data = outDat, aes(y = pred, ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
