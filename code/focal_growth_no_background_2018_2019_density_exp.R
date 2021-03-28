@@ -83,7 +83,7 @@ pp_check(growthD1Mod, nsamples = 100)
 plot(growthD1Mod)
 
 
-#### year 1 model ####
+#### year 2 model ####
 
 growthD2Dat %>%
   filter(plant_group == "Mv_seedling" & fungicide == 0) %>%

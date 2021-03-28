@@ -18,6 +18,8 @@ library(tidybayes) # for mean_hdi
 
 # import data
 mvLeafDat <- read_csv("data/mv_leaf_weight_2018_density_exp.csv")
+sevD1Dat <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
+# leaf_scans_data_processing_2018_density_exp.R
 
 # model functions
 source("code/brms_model_fitting_functions.R")
@@ -42,16 +44,22 @@ post_pred_fun <- function(mod, dat){
 unique(mvLeafDat$notes)
 
 mvLeafD1Dat <- mvLeafDat %>%
-  filter(!is.na(leaf_weight.g) & (notes != "Leaf was mutiliated" | is.na(notes))) %>%
+  mutate(ID = as.character(ID)) %>%
+  left_join(sevD1Dat %>%
+              filter(sp == "Mv" & month == "sep") %>%
+              select(site, plot, treatment, ID, leaf_area.pix)) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotf = paste(site, plot, substr(treatment, 1, 1), sep = ""),
-         log_leaf_weight = log(leaf_weight.g))
+         log_leaf_weight = log(leaf_weight.g),
+         log_area = log(leaf_area.pix),
+         LMA = leaf_weight.g/leaf_area.pix) %>%
+  filter(!is.na(leaf_weight.g) & !(is.na(leaf_area.pix)) & (notes != "Leaf was mutiliated" | is.na(notes)))
 
 
 #### 2018 Mv model ####
 
 # initial visualization
-ggplot(mvLeafD1Dat, aes(treatment, leaf_weight.g, color = treatment)) +
+ggplot(mvLeafD1Dat, aes(treatment, LMA, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
   stat_summary(geom = "point", fun = "mean", size = 2)
 
@@ -65,11 +73,11 @@ ggplot(mvLeafD1Dat, aes(log_leaf_weight)) +
 
 # model
 mvLeafD1Mod <- brm(data = mvLeafD1Dat, family = gaussian,
-                   log_leaf_weight ~ fungicide + (1|site/plotf),
+                   log_leaf_weight ~ offset(log_area) + fungicide + (1|plotf),
                    prior <- c(prior(normal(-5, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
                    iter = 6000, warmup = 1000, chains = 3,
-                   control = list(adapt_delta = 0.999))
+                   control = list(adapt_delta = 0.999, max_treedepth = 15))
 mod_check_fun(mvLeafD1Mod)
 
 # posterior means
