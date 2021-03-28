@@ -123,7 +123,7 @@ post_pred_fun(seedsBioD1Mod)
 save(seedsBioD1Mod, file = "output/seeds_per_biomass_model_2018_density_exp.rda")
 
 
-#### 2019 Mv model ####
+#### 2019 models ####
 
 # initial visualization
 ggplot(seedsBioD2Dat, aes(log_bio, log_seeds, color = treatment)) +

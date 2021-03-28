@@ -41,6 +41,19 @@ post_pred_fun <- function(mod){
   
 }
 
+post_pred_fun2 <- function(mod){
+  
+  posterior_samples(mod) %>%
+    transmute(b0_FE = 100 * (b_b0_treatmentfungicide - b_b0_treatmentwater) / b_b0_treatmentwater,
+              alpha_FE = 100 * (b_alpha_treatmentfungicide - b_alpha_treatmentwater) / b_alpha_treatmentwater) %>%
+    pivot_longer(cols = everything(),
+                 names_to = "parameter",
+                 values_to = "effect") %>%
+    group_by(parameter) %>% median_hdi(effect)
+  
+}
+
+
 
 #### edit data ####
 
@@ -301,6 +314,7 @@ evAEvSD2Sim[[2]]
 
 # posterior means
 post_pred_fun(mvEvSD2Mod)
+post_pred_fun2(mvEvSD2Mod)
 post_pred_fun(evSEvSD2Mod)
 post_pred_fun(evAEvSD2Mod)
 
