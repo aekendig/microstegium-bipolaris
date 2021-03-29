@@ -8,8 +8,8 @@
 
 #### set-up ####
 
-# number of samples
-# n_samps <- 10 # specify in scripts that source this one
+# clear all existing data
+rm(list=ls())
 
 # load packages
 library(tidyverse)
@@ -46,79 +46,136 @@ load("output/evS_tillers_mv_density_model_2018_density_exp.rda")
 #### parameters from models ####
 
 # survival
-u.P.samps <- posterior_samples(evASurvD2Mod) %>%
-  transmute(u.P = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
+u.P <- posterior_samples(evASurvD2Mod) %>%
+  transmute(u.P = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(u.P) %>%
+  mean()
 
-w.S.samps <- posterior_samples(evSWinSurvD1Mod) %>%
-  transmute(w.S = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
-w.P.samps <- posterior_samples(evAWinSurvD1Mod) %>%
-  transmute(w.P = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
+w.S <- posterior_samples(evSWinSurvD1Mod) %>%
+  transmute(w.S = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(w.S) %>%
+  mean()
+w.P <- posterior_samples(evAWinSurvD1Mod) %>%
+  transmute(w.P = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(w.P) %>%
+  mean()
 
 # germination
-g.A.samps <- posterior_samples(mvGermD1Mod) %>%
-  transmute(g.A = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
-g.S.samps <- posterior_samples(evGermMod) %>%
-  transmute(g.S = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
+g.A <- posterior_samples(mvGermD1Mod) %>%
+  transmute(g.A = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(g.A) %>%
+  mean()
+g.S <- posterior_samples(evGermMod) %>%
+  transmute(g.S = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(g.S) %>%
+  mean()
 
 # establishment
-e.A.samps <- posterior_samples(mvSurvD2Mod) %>%
-  transmute(e.A = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
-e.S.samps <- posterior_samples(evSSurvD2Mod) %>%
-  transmute(e.S = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)))
+e.A <- posterior_samples(mvSurvD2Mod) %>%
+  transmute(e.A = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(e.A) %>%
+  mean()
+e.S <- posterior_samples(evSSurvD2Mod) %>%
+  transmute(e.S = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide))) %>%
+  pull(e.S) %>%
+  mean()
 
 # litter effects
-beta.A.samps <- posterior_samples(mvLitEstBhMod2) %>%
-  transmute(beta.A = b_betaL_Intercept)
-beta.S.samps <- posterior_samples(evLitEstBhMod2) %>%
-  transmute(beta.S = b_betaL_Intercept)
+beta.A <- posterior_samples(mvLitEstBhMod2) %>%
+  transmute(beta.A = b_betaL_Intercept) %>%
+  pull(beta.A) %>%
+  mean()
+beta.S <- posterior_samples(evLitEstBhMod2) %>%
+  transmute(beta.S = b_betaL_Intercept) %>%
+  pull(beta.S) %>%
+  mean()
 
 # biomass
-b.A.samps <- posterior_samples(mvMvD2Mod) %>%
-  transmute(b.A = b_b0_treatmentfungicide)
-b.S.samps <- posterior_samples(evSMvD2Mod) %>%
-  transmute(b.S = b_b0_treatmentfungicide)
-b.P.samps <- posterior_samples(evAMvD2Mod) %>%
-  transmute(b.P = b_b0_treatmentfungicide)
+b.A <- posterior_samples(mvMvD2Mod) %>%
+  transmute(b.A = b_b0_treatmentfungicide) %>%
+  pull(b.A) %>%
+  mean()
+b.S <- posterior_samples(evSMvD2Mod) %>%
+  transmute(b.S = b_b0_treatmentfungicide) %>%
+  pull(b.S) %>%
+  mean()
+b.P <- posterior_samples(evAMvD2Mod) %>%
+  transmute(b.P = b_b0_treatmentfungicide) %>%
+  pull(b.P) %>%
+  mean()
 
 # competition coefficients
-alpha.AA.samps <- posterior_samples(mvMvD2Mod) %>%
-  transmute(alpha.AA = b_alpha_treatmentfungicide)
-alpha.SA.samps <- posterior_samples(evSMvD2Mod) %>%
-  transmute(alpha.SA = b_alpha_treatmentfungicide)
-alpha.PA.samps <- posterior_samples(evAMvD2Mod) %>%
-  transmute(alpha.PA = b_alpha_treatmentfungicide)
+alpha.AA <- posterior_samples(mvMvD2Mod) %>%
+  transmute(alpha.AA = b_alpha_treatmentfungicide) %>%
+  pull(alpha.AA) %>%
+  mean()
+alpha.SA <- posterior_samples(evSMvD2Mod) %>%
+  transmute(alpha.SA = b_alpha_treatmentfungicide) %>%
+  pull(alpha.SA) %>%
+  mean()
+alpha.PA <- posterior_samples(evAMvD2Mod) %>%
+  transmute(alpha.PA = b_alpha_treatmentfungicide) %>%
+  pull(alpha.PA) %>%
+  mean()
 
-alpha.AS.samps <- posterior_samples(mvEvSD2Mod) %>%
-  transmute(alpha.AS = b_alpha_treatmentfungicide)
-alpha.SS.samps <- posterior_samples(evSEvSD2Mod) %>%
-  transmute(alpha.SS = b_alpha_treatmentfungicide)
-alpha.PS.samps <- posterior_samples(evAEvSD2Mod) %>%
-  transmute(alpha.PS = b_alpha_treatmentfungicide)
+alpha.AS <- posterior_samples(mvEvSD2Mod) %>%
+  transmute(alpha.AS = b_alpha_treatmentfungicide) %>%
+  pull(alpha.AS) %>%
+  mean()
+alpha.SS <- posterior_samples(evSEvSD2Mod) %>%
+  transmute(alpha.SS = b_alpha_treatmentfungicide) %>%
+  pull(alpha.SS) %>%
+  mean()
+alpha.PS <- posterior_samples(evAEvSD2Mod) %>%
+  transmute(alpha.PS = b_alpha_treatmentfungicide) %>%
+  pull(alpha.PS) %>%
+  mean()
 
-alpha.AP.samps <- posterior_samples(mvEvAD2Mod) %>%
-  transmute(alpha.AP = b_alpha_treatmentfungicide)
-alpha.SP.samps <- posterior_samples(evSEvAD2Mod) %>%
-  transmute(alpha.SP = b_alpha_treatmentfungicide)
-alpha.PP.samps <- posterior_samples(evAEvAD2Mod) %>%
-  transmute(alpha.PP = b_alpha_treatmentfungicide)
+alpha.AP <- posterior_samples(mvEvAD2Mod) %>%
+  transmute(alpha.AP = b_alpha_treatmentfungicide) %>%
+  pull(alpha.AP) %>%
+  mean()
+alpha.SP <- posterior_samples(evSEvAD2Mod) %>%
+  transmute(alpha.SP = b_alpha_treatmentfungicide) %>%
+  pull(alpha.SP) %>%
+  mean()
+alpha.PP <- posterior_samples(evAEvAD2Mod) %>%
+  transmute(alpha.PP = b_alpha_treatmentfungicide) %>%
+  pull(alpha.PP) %>%
+  mean()
 
 # seeds
-y.A.samps <- posterior_samples(mvSeedsBioD2Mod) %>%
-  transmute(y.A = b_Intercept + b_fungicide)
-y.S.samps <- posterior_samples(evSSeedsBioD2Mod) %>%
-  transmute(y.S = b_Intercept + b_fungicide)
-y.P.samps <- posterior_samples(evASeedsBioD2Mod) %>%
-  transmute(y.P = b_Intercept + b_fungicide)
+y.A <- posterior_samples(mvSeedsBioD2Mod) %>%
+  transmute(y.A = b_Intercept + b_fungicide) %>%
+  pull(y.A) %>%
+  mean()
+y.S <- posterior_samples(evSSeedsBioD2Mod) %>%
+  transmute(y.S = b_Intercept + b_fungicide) %>%
+  pull(y.S) %>%
+  mean()
+y.P <- posterior_samples(evASeedsBioD2Mod) %>%
+  transmute(y.P = b_Intercept + b_fungicide) %>%
+  pull(y.P) %>%
+  mean()
 
-yb.A.samps <- posterior_samples(mvSeedsBioD2Mod) %>%
+yb.A <- posterior_samples(mvSeedsBioD2Mod) %>%
   rename("b_fungi_log_bio" = "b_fungicide:log_bio") %>%
-  transmute(yb.A = b_log_bio + b_fungi_log_bio)
-yb.S.samps <- posterior_samples(evSSeedsBioD2Mod) %>%
+  transmute(yb.A = b_log_bio + b_fungi_log_bio) %>%
+  pull(yb.A) %>%
+  mean()
+yb.S <- posterior_samples(evSSeedsBioD2Mod) %>%
   rename("b_fungi_log_bio" = "b_fungicide:log_bio") %>%
-  transmute(yb.S = b_log_bio + b_fungi_log_bio)
-yb.P.samps <- posterior_samples(evASeedsBioD2Mod) %>%
+  transmute(yb.S = b_log_bio + b_fungi_log_bio) %>%
+  pull(yb.S) %>%
+  mean()
+yb.P <- posterior_samples(evASeedsBioD2Mod) %>%
   rename("b_fungi_log_bio" = "b_fungicide:log_bio") %>%
-  transmute(yb.P = b_log_bio + b_fungi_log_bio)
+  transmute(yb.P = b_log_bio + b_fungi_log_bio) %>%
+  pull(yb.P) %>%
+  mean()
+
+# perennial lifespan
+l.P <- ifelse(w.P * u.P > 0.99, 0.99, w.P * u.P)
 
 
 #### disease effects ####
@@ -166,7 +223,7 @@ d <- 0.35
 
 #### model ####
 
-sim_fun = function(A0, S0, P0, L0, simtime, iter, g.S.DE, b.A.DE, b.S.DE, alpha.SA.DE){
+sim_fun = function(A0, S0, P0, L0, simtime, g.S.DE, b.A.DE, b.S.DE, alpha.SA.DE){
   
   # initialize populations
   A <- rep(NA,simtime)
@@ -179,58 +236,17 @@ sim_fun = function(A0, S0, P0, L0, simtime, iter, g.S.DE, b.A.DE, b.S.DE, alpha.
   P[1] <- P0
   L[1] <- L0
   
-  # perennial adult growing season survival
-  u.P <- u.P.samps$u.P[iter]
-  
-  # perennial non-growing season survival
-  w.S <- w.S.samps$w.S[iter]
-  w.P <- w.P.samps$w.P[iter]
-  
-  # perennial lifespan
-  l.P <- ifelse(w.P * u.P > 0.99, 0.99, w.P * u.P)
   
   # germination
-  g.A <- g.A.samps$g.A[iter]
-  g.S <- g.S.samps$g.S[iter] * g.S.DE
+  g.S <- g.S * g.S.DE
   g.S <- ifelse(g.S > 1, 1, g.S) # restrict germination fraction to maximum 1
   
-  # maximum establishment
-  e.A <- e.A.samps$e.A[iter]
-  e.S <- e.S.samps$e.S[iter]
-  
-  # litter effect
-  beta.A <- beta.A.samps$beta.A[iter]
-  beta.S <- beta.S.samps$beta.S[iter]
-  
   # maximum growth
-  b.A <- b.A.samps$b.A[iter] * b.A.DE
-  b.S <- b.S.samps$b.S[iter] * b.S.DE
-  b.P <- b.P.samps$b.P[iter]
+  b.A <- b.A * b.A.DE
+  b.S <- b.S * b.S.DE
   
   # competitive effect of annual
-  alpha.AA <- alpha.AA.samps$alpha.AA[iter]
-  alpha.SA <- alpha.SA.samps$alpha.SA[iter] * alpha.SA.DE
-  alpha.PA <- alpha.PA.samps$alpha.PA[iter]
-  
-  # competitive effect of perennial seedling
-  alpha.AS <- alpha.AS.samps$alpha.AS[iter]
-  alpha.SS <- alpha.SS.samps$alpha.SS[iter]
-  alpha.PS <- alpha.PS.samps$alpha.PS[iter]
-  
-  # competitive effect of perennial adult
-  alpha.AP <- alpha.AP.samps$alpha.AP[iter]
-  alpha.SP <- alpha.SP.samps$alpha.SP[iter]
-  alpha.PP <- alpha.PP.samps$alpha.PP[iter]
-  
-  # minimum seeds
-  y.A <- y.A.samps$y.A[iter]
-  y.S <- y.S.samps$y.S[iter]
-  y.P <- y.P.samps$y.P[iter]
-  
-  # biomass-seed conversion
-  yb.A <- yb.A.samps$yb.A[iter]
-  yb.S <- yb.S.samps$yb.S[iter]
-  yb.P <- yb.P.samps$yb.P[iter]
+  alpha.SA <- alpha.SA * alpha.SA.DE
   
   # initialize parameter vectors
   E.A_vec <- rep(NA, simtime-1)
@@ -289,9 +305,8 @@ sim_fun = function(A0, S0, P0, L0, simtime, iter, g.S.DE, b.A.DE, b.S.DE, alpha.
                                 "Annual", 
                                 "Litter"), 
                               each = simtime),
-                N = c(S, P, A, L),
-                iteration = iter)
-
+                N = c(S, P, A, L))
+  
   # parameter data
   dfP <- tibble(time = rep(1:(simtime-1), 8),
                 parameter = rep(c("E.A", "E.S", "B.A", "B.S", "B.P", "Y.A", "Y.S", "Y.P"), 
@@ -305,12 +320,71 @@ sim_fun = function(A0, S0, P0, L0, simtime, iter, g.S.DE, b.A.DE, b.S.DE, alpha.
                                     "perennial seedling seed production",
                                     "perennial adult seed production"), 
                                   each = simtime - 1),
-                value = c(E.A_vec, E.S_vec, B.A_vec, B.S_vec, B.P_vec, Y.A_vec, Y.S_vec, Y.P_vec),
-                iteration = iter)
-
+                value = c(E.A_vec, E.S_vec, B.A_vec, B.S_vec, B.P_vec, Y.A_vec, Y.S_vec, Y.P_vec))
+  
   # return
   return(list(dfN, dfP))
 }
 
 
+#### simulations ####
 
+# simulation time
+simtimeR <- 600
+simtimeI <- 200
+
+# initial conditions
+A0E <- 0 # initial annual population size
+S0E <- 0 # initial perennial seedling population size
+P0E <- 10 # initial perennial adult population size
+L0E <- 0 # initial annual litter amount
+
+# function to simulate invasions
+inv_fun <- function(g_S_DE, b_A_DE, b_S_DE, alpha_SA_DE){
+  
+  # establish residents
+  mod_est <- sim_fun(A0 = A0E, S0 = S0E, P0 = P0E, L0 = L0E, simtime = simtimeR, 
+                     g.S.DE = g_S_DE, b.A.DE = b_A_DE, b.S.DE = b_S_DE, alpha.SA.DE = alpha_SA_DE)
+  
+  # extract final abundances
+  S0Ei <- mod_est[[1]] %>% filter(time == simtimeR & species == "Perennial seedling") %>% pull(N)
+  P0Ei <- mod_est[[1]] %>% filter(time == simtimeR & species == "Perennial adult") %>% pull(N)
+  L0Ei <- mod_est[[1]] %>% filter(time == simtimeR & species == "Litter") %>% pull(N)
+  
+  # invasion
+  mod_inv <- sim_fun(A0 = 10, S0 = S0Ei, P0 = P0Ei, L0 = L0Ei, simtime = simtimeI, 
+                     g.S.DE = g_S_DE, b.A.DE = b_A_DE, b.S.DE = b_S_DE, alpha.SA.DE = alpha_SA_DE)
+  
+  # output
+  mod_out <- mod_est[[1]] %>% 
+    full_join(mod_inv[[1]] %>%
+                mutate(time = time + simtimeR))
+  return(mod_out)
+}
+
+# no disease
+mod_0 <- inv_fun(g_S_DE = 1, b_A_DE = 1, b_S_DE = 1, alpha_SA_DE = 1) %>%
+  mutate(DE = 0)
+
+# observed disease
+mod_1 <- inv_fun(g_S_DE = 1, b_A_DE = mvBioDE, b_S_DE = evBioDE, alpha_SA_DE = alphaSADE) %>%
+  mutate(DE = 1)
+
+# observed disease
+mod_10 <- inv_fun(g_S_DE = 1, b_A_DE = mvBioDE/10, b_S_DE = evBioDE/10, alpha_SA_DE = alphaSADE*10) %>%
+  mutate(DE = 10)
+
+
+#### combine data ####
+
+abund <- mod_0 %>%
+  full_join(mod_1) %>%
+  full_join(mod_10)
+
+
+
+#### figures ####
+
+ggplot(abund, aes(time, N, linetype = as.factor(DE))) +
+  geom_line() +
+  facet_wrap(~ species, scales = "free")
