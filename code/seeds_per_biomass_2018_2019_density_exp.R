@@ -2,7 +2,7 @@
 
 # file: seeds_per_biomass_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/17/21
+# date last edited: 4/12/21
 # goal: analyses of seeds per g biomass
 
 
@@ -205,3 +205,12 @@ post_pred_fun(evASeedsBioD2Mod)
 save(mvSeedsBioD2Mod, file = "output/mv_seeds_per_biomass_model_2019_density_exp.rda")
 save(evSSeedsBioD2Mod, file = "output/evS_seeds_per_biomass_model_2019_density_exp.rda")
 save(evASeedsBioD2Mod, file = "output/evA_seeds_per_biomass_model_2019_density_exp.rda")
+
+# save data for figures
+write_csv(mvSeedsBioD2Dat, "intermediate-data/mv_seeds_per_biomass_2019_density_exp.csv")
+write_csv(evSSeedsBioD2Dat, "intermediate-data/evS_seeds_per_biomass_2019_density_exp.csv")
+write_csv(evASeedsBioD2Dat, "intermediate-data/evA_seeds_per_biomass_2019_density_exp.csv")
+
+write_csv(as_tibble(mvSeedsBioD2Sim[[1]]), "intermediate-data/mv_seeds_per_biomass_sim_2019_density_exp.csv")
+write_csv(as_tibble(evSSeedsBioD2Sim[[1]]), "intermediate-data/evS_seeds_per_biomass_sim_2019_density_exp.csv")
+write_csv(as_tibble(evASeedsBioD2Sim[[1]]), "intermediate-data/evA_seeds_per_biomass_sim_2019_density_exp.csv")
