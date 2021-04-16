@@ -2,8 +2,8 @@
 
 # file: plot_biomass_seeds_severity_all_exp
 # author: Amy Kendig
-# date last edited: 4/11/21
-# goal: plot-level biomass/seeds vs. severity for multiple experiemnts
+# date last edited: 4/12/21
+# goal: plot-level biomass/seeds vs. severity for multiple experiments
 
 
 #### set up ####
@@ -170,7 +170,12 @@ dat2 <- dat %>%
          biomass_g_m2_d = (biomass_g_m2_fungicide - biomass_g_m2_water) / biomass_g_m2_pooled_sd,
          seed_heads_d = (seed_heads_fungicide - seed_heads_water) / seed_heads_pooled_sd,
          biomass_g_m2_eff = (biomass_g_m2_fungicide - biomass_g_m2_water) / biomass_g_m2_water,
-         seed_heads_eff = (seed_heads_fungicide - seed_heads_water) / seed_heads_water)
+         seed_heads_eff = (seed_heads_fungicide - seed_heads_water) / seed_heads_water,
+         severity_eff = (severity_fungicide - severity_water) / severity_water)
+
+# mv only
+mvDat2 <- dat2 %>%
+  filter(sp == "Mv")
 
 
 #### figure ####
@@ -183,13 +188,40 @@ fig_theme <- theme_bw() +
         axis.text.y = element_text(size = 8, color = "black"),
         axis.text.x = element_text(size = 8, color = "black"),
         axis.title.y = element_text(size = 10),
-        axis.title.x = element_blank(),
+        axis.title.x = element_text(size = 10),
         legend.text = element_text(size = 8),
         legend.title = element_blank(),
         legend.position = "none",
         legend.background = element_blank(),
         strip.background = element_blank(),
         strip.text = element_blank())
+
+study_col = "#FDE725FF"
+
+# distributions
+ggplot(mvDat2, aes(x = severity_eff)) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_histogram(binwidth = 0.1) +
+  geom_vline(xintercept = filter(mvDat2, experiment == "current study")$severity_eff, color = study_col) +
+  xlab("Proportional change in lesions (%)") +
+  ylab("Replicates") +
+  fig_theme
+
+ggplot(mvDat2, aes(x = biomass_g_m2_eff)) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_histogram(binwidth = 0.1) +
+  geom_vline(xintercept = filter(mvDat2, experiment == "current study")$biomass_g_m2_eff, color = study_col) +
+  xlab(expression(paste("Proportional change in biomass (g ", m^-2, ")", sep = ""))) +
+  ylab("Replicates") +
+  fig_theme
+
+ggplot(mvDat2, aes(x = seed_heads_eff)) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_histogram(binwidth = 0.1) +
+  geom_vline(xintercept = filter(mvDat2, experiment == "current study")$seed_heads_eff, color = study_col) +
+  xlab("Proportional change in seed heads") +
+  ylab("Replicates") +
+  fig_theme
 
 ggplot(dat2, aes(severity_water, biomass_g_m2_eff, group = year_site, color = experiment, shape = sp_age)) +
   geom_point()

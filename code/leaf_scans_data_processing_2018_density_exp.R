@@ -2,9 +2,9 @@
 
 # file: leaf_scans_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 1/21/21
+# date last edited: 4/13/21
 # goal: combine raw 2018 leaf scan data and check for errors
-# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity.ijm, ev_leaf_damage_severity.ijm
+# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity_2018.ijm, ev_leaf_damage_severity_2018.ijm
 
 
 #### set-up ####
@@ -28,6 +28,41 @@ dt_jul <- read_csv("data/focal_size_disease_jul_2018_density_exp.csv")
 dt_late_aug <- read_csv("data/all_disease_seeds_late_aug_2018_density_exp.csv")
 dt_sep_ev <- read_csv("data/ev_disease_seeds_sep_2018_density_exp.csv")
 dt_sep_mv <- read_csv("data/mv_disease_sep_2018_density_exp.csv")
+
+#### need to analyze missing scans ####
+#### add code for separating transect samples from Sep 2018 and separating Bp samples ####
+
+# not sure how I handled edited - figure that out
+
+# list of file to check scans
+fl_ev_jul <- tibble(file = list.files(path = "../leaf-scans/leaf-scans-jul-2018-density-exp/scans/ev"))
+fl_mv_jul <- tibble(file = list.files(path = "../leaf-scans/leaf-scans-jul-2018-density-exp/scans/mv"))
+fl_ev_aug <- tibble(file = list.files(path = "../leaf-scans/leaf-scans-aug-2018-density-exp/scans/ev"))
+fl_mv_aug <- tibble(file = list.files(path = "../leaf-scans/leaf-scans-aug-2018-density-exp/scans/mv"))
+fl_ev_sep <- tibble(file = list.files(path = "../leaf-scans/leaf-scans-sep-2018-density-exp/scans/ev"))
+fl_mv_sep <- tibble(file = list.files(path = "../leaf-scans/leaf-scans-sep-2018-density-exp/scans/mv"))
+
+
+#### check for missing scans ####
+
+# function
+scan_fun <- function(scans, files) {
+  
+  files2 <- files %>%
+    mutate(plant = str_replace(file, ".tiff", ""))
+  
+  scans2 <- scans %>%
+    transmute(plant = gsub(".*:","",Slice))
+  
+  mis_files <- files2 %>%
+    anti_join(scans2)
+  
+  return(mis_files)
+  
+}
+
+# apply function
+scan_fun(ls_ev_jul, fl_ev_jul)
 
 
 #### edit data ####

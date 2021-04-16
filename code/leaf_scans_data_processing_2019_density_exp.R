@@ -4,7 +4,7 @@
 # author: Amy Kendig
 # date last edited: 1/8/21
 # goal: combine raw 2019 leaf scan data and check for errors
-# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity_2019.ijm
+# background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity_2019.ijm, ev_leaf_damage_severity_2019.ijm
 
 
 #### set-up ####
@@ -15,9 +15,11 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 
+#### need to update files below - should be from Jan 2021 ####
+
 # import all raw data files
-ls_ev_may <- read_csv("data/ev_leaf_scans_may_2019_density_exp.csv")
-ls_mv_may <- read_csv("data/mv_leaf_scans_may_2019_density_exp.csv")
+ls_ev_may <- read_csv("data/ev_leaf_scans_may_2019_density_exp.csv") # need to re-run
+ls_mv_may <- read_csv("data/mv_leaf_scans_may_2019_density_exp.csv") # need to re-run
 ls_ev_jun <- read_csv("data/ev_leaf_scans_jun_2019_density_exp.csv")
 ls_mv_jun <- read_csv("data/mv_leaf_scans_jun_2019_density_exp.csv")
 ls_ev_jul <- read_csv("data/ev_leaf_scans_jul_2019_density_exp.csv")

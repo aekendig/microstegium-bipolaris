@@ -2,7 +2,7 @@
 
 # file: seeds_per_biomass_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/12/21
+# date last edited: 4/14/21
 # goal: analyses of seeds per g biomass
 
 
@@ -67,7 +67,8 @@ evD2Dat <- evSeedD2Dat %>%
 unique(mvBioD1Dat$processing_notes)
 
 seedsBioD1Dat <- mvSeedD1Dat %>%
-  mutate(seeds = seeds_bio + seeds_soil) %>%
+  mutate(seeds_soil = seeds_soil * (0.05/0.49), # scale to quadrat area, same length for both
+         seeds = seeds_bio + seeds_soil) %>%
   full_join(mvBioD1Dat %>%
               select(site, plot, treatment, bio.g)) %>%
   filter(!is.na(bio.g) & !is.na(seeds)) %>%
@@ -107,7 +108,7 @@ seedsBioD1Mod <- brm(data = seedsBioD1Dat, family = gaussian,
                      prior <- c(prior(normal(6, 1), class = "Intercept"),
                                 prior(normal(0, 1), class = "b")), # use default for sigma
                      iter = 6000, warmup = 1000, chains = 3,
-                     control = list(adapt_delta = 0.99))
+                     control = list(adapt_delta = 0.999))
 mod_check_fun(seedsBioD1Mod)
 
 # simulated data
