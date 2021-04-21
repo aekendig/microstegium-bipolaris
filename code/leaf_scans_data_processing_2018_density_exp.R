@@ -2,7 +2,7 @@
 
 # file: leaf_scans_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 4/20/21
+# date last edited: 4/21/21
 # goal: combine raw 2018 leaf scan data and check for errors
 # background: leaf scans were analyzed using FIJI, script: mv_leaf_damage_severity_2018.ijm, ev_leaf_damage_severity_2018.ijm
 
@@ -316,7 +316,7 @@ datw <- dat %>%
   spread(temp, value) %>%
   rename(leaf_area.pix = leaf_area,
          lesion_area.pix = lesion_area) %>%
-  select(month, site, plot, treatment, sp, ID, focal, age, bp_example, leaf_area.pix, lesion_area.pix, leaf_count)
+  select(month, site, plot, treatment, sp, ID, focal, age, bp_example, leaves_tot, leaves_infec, Bp_spots_Ev, leaf_area.pix, lesion_area.pix, leaf_count)
 
 datw_mv_bg <- dt_mv_bg %>%
   rename(count = Count) %>%
@@ -340,7 +340,7 @@ datw_ev_bg <- dt_ev_bg %>%
   spread(temp, value) %>%
   rename(leaf_area.pix = leaf_area,
          lesion_area.pix = lesion_area) %>%
-  select(month, site, plot, treatment, sp, ID, focal, age, bp_example, leaf_area.pix, lesion_area.pix, leaf_count)
+  select(month, site, plot, treatment, sp, ID, focal, age, bp_example, leaves_tot, leaves_infec, Bp_spots_Ev, leaf_area.pix, lesion_area.pix, leaf_count)
 
 datw_mv_t <- ls_mv_sep2_t %>%
   rename(count = Count) %>%
@@ -407,6 +407,14 @@ datw %>%
   ggplot(aes(x = lesion_area.pix/leaf_area.pix)) +
   geom_histogram() +
   facet_wrap(~sp, scales = "free")
+
+# monthly trends
+datw %>%
+  mutate(sev = lesion_area.pix / leaf_area.pix) %>%
+  ggplot(aes(treatment, sev, color = age)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", size = 2, fun = "mean") +
+  facet_wrap(month ~ sp)
 
 
 #### save data ####
