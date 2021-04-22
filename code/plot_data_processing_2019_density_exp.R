@@ -200,27 +200,28 @@ ggplot(plotSevD2Dat, aes(x = treatment, y = severity)) +
   facet_wrap(sp ~ month, scales = "free")
 # highest in late Aug for both
 
+# make wide
+plotSevD2DatW <- plotSevD2Dat %>%
+  pivot_wider(names_from = month,
+              values_from = severity,
+              names_glue = "{month}_severity")
 
-##### START HERE: combine data ####
+
+##### combine data ####
+
 dat <- evSeedD2Dat2 %>%
+  mutate(sp = "Ev") %>%
   full_join(mvSeedD2Dat2) %>%
-  mutate(sp_age = paste(sp, age, sep = "_"),
-         year = 2019,
-         site = 1) %>%
   full_join(plotBioD2Dat) %>%
-  full_join(plotSevD2Dat) %>%
-  mutate(experiment = "current study") %>%
-  full_join(flory %>%
-              mutate(sp = "Mv",
-                     age = "seedling",
-                     sp_age = paste(sp, age, sep = "_"),
-                     experiment = "Flory et al. 2011",
-                     year = 2010)) %>%
-  full_join(stricker %>%
-              mutate(sp = "Mv",
-                     age = "seedling",
-                     sp_age = paste(sp, age, sep = "_"),
-                     experiment = "Stricker et al. 2016")) %>%
-  mutate(year_site = paste(year, site, sep = "_"),
-         treatment = case_when(treatment == "control" ~ "water",
-                               TRUE ~ treatment))
+  full_join(plotSevD2DatW)
+
+# check values
+dat %>%
+  group_by(sp, age) %>%
+  summarise(plot_types = length(unique(plot)),
+            plots = n())
+
+
+#### output ####
+
+write_csv(dat, "intermediate-data/plot_biomass_seeds_severity_2019_density_exp.csv")

@@ -14,63 +14,137 @@
 
 #### set up ####
 
+# clear all existing data
+rm(list=ls())
+
+# load packages
+library(car)
+library(tidyverse)
+library(effsize)
 
 # import data
 d1dat <- read_csv("intermediate-data/plot_biomass_seeds_severity_2018_density_exp.csv")
+d2dat <- read_csv("intermediate-data/plot_biomass_seeds_severity_2019_density_exp.csv")
+
+# logit adjustment
+log_adj = 0.001
 
 
-# copied and pasted from plot_data_processing_2018_density_exp
+#### functions ####
 
-# format for t-test
-mvSevD1DatS <- mvSevD1DatW %>%
-  pivot_wider(names_from = treatment,
-              values_from = c(jul_severity, late_aug_severity, sep_severity),
-              names_glue = "{.value}_{treatment}")
+dat_format_fun <- function(res_var, sp_abb, year){
 
-# t-tests
-t.test(mvSevD1DatS$jul_severity_fungicide, mvSevD1DatS$jul_severity_water, paired = T)
-t.test(mvSevD1DatS$late_aug_severity_fungicide, mvSevD1DatS$late_aug_severity_water, paired = T)
-t.test(mvSevD1DatS$sep_severity_fungicide, mvSevD1DatS$sep_severity_water, paired = T)
-# all three sig, biggest difference in Sep
+  # select dataset
+  if(year == "2018"){
+    dat <- d1dat2
+  }else{
+    dat <- d2dat2
+  }
+
+  # filter by species
+  dat2 <- dat %>%
+    filter(sp == sp_abb)
+
+  # make data wide
+  datw <- dat2 %>%
+    select(site, plot, treatment, {{res_var}}) %>%
+    pivot_wider(names_from = treatment,
+                values_from = {{res_var}}) %>%
+    drop_na()
+
+  return(datw)
+
+}
+
+t_test_fun <- function(res_var, sp_abb, year){
+  
+  # format data
+  datw <- dat_format_fun(res_var, sp_abb, year)
+
+  # t-test
+  mod <- t.test(datw$fungicide, datw$water, paired = T)
+
+  # output
+  dato <- tibble(t_val = as.numeric(mod$statistic),
+                 t_df = as.numeric(mod$parameter),
+                 t_p = mod$p.value)
+  return(dato)
+  
+}
+
+hedges_d_fun <- function(res_var, sp_abb, year){
+
+  # format data
+  datw <- dat_format_fun(res_var, sp_abb, year)
+  
+  # hedge's d
+  d <- cohen.d(datw$fungicide, datw$water, hedges.correction = T, paired = T)
+  
+  # output
+  dato <- tibble(hedges_d = d$estimate,
+                 d_lower = as.numeric(d$conf.int[1]),
+                 d_upper = as.numeric(d$conf.int[2]))
+  return(dato)
+
+}
 
 
-mvBioD1DatW <- mvBioD1Dat2 %>%
-  pivot_wider(names_from = treatment,
-              values_from = biomass.g_m2)
+#### edit data ####
 
-# t-test
-t.test(mvBioD1DatW$fungicide, mvBioD1DatW$water, paired = T)
-# not significantly different
+# logit-transform proportions
+d1dat2 <- d1dat %>%
+  mutate(logit_jul_severity = logit(jul_severity, adjust = log_adj),
+         logit_late_aug_severity = logit(late_aug_severity, adjust = log_adj),
+         logit_sep_severity = logit(sep_severity, adjust = log_adj)) %>%
+  select(-c(jul_severity, late_aug_severity, sep_severity))
 
-mvSeedsD1DatW <- mvSeedsD1Dat2 %>%
-  pivot_wider(names_from = treatment,
-              values_from = seeds)
-
-
-# t-test
-t.test(mvSeedsD1DatW$fungicide, mvSeedsD1DatW$water, paired = T)
-# marginally sig
-
-# format for t-test
-evSevD1DatS <- evSevD1DatW %>%
-  pivot_wider(names_from = treatment,
-              values_from = c(jul_severity, late_aug_severity, sep_severity),
-              names_glue = "{.value}_{treatment}") %>%
-  drop_na()
-
-# t-tests
-t.test(evSevD1DatS$jul_severity_fungicide, evSevD1DatS$jul_severity_water, paired = T)
-t.test(evSevD1DatS$late_aug_severity_fungicide, evSevD1DatS$late_aug_severity_water, paired = T)
-t.test(evSevD1DatS$sep_severity_fungicide, evSevD1DatS$sep_severity_water, paired = T)
-# sig lower in July
+d2dat2 <- d2dat %>%
+  mutate(logit_may_severity = logit(may_severity, adjust = log_adj),
+         logit_jun_severity = logit(jun_severity, adjust = log_adj),
+         logit_jul_severity = logit(jul_severity, adjust = log_adj),
+         logit_early_aug_severity = logit(early_aug_severity, adjust = log_adj),
+         logit_late_aug_severity = logit(late_aug_severity, adjust = log_adj)) %>%
+  select(-c(may_severity, jun_severity, jul_severity, early_aug_severity, late_aug_severity))
 
 
-# make wide
-evSeedsD1DatW <- evSeedsD1Dat2 %>%
-  pivot_wider(names_from = treatment,
-              values_from = seeds) %>%
-  drop_na()
+#### stats ####
 
-# t-tests
-t.test(evSeedsD1DatW$fungicide, evSeedsD1DatW$water, paired = T)
-# not sig different
+# 2018
+d1Sum <- d1dat2 %>%
+  pivot_longer(cols = c(biomass.g_m2, seeds, logit_jul_severity:logit_sep_severity),
+               names_to = "response",
+               values_to = "values") %>%
+  filter(!(sp == "Ev" & response == "biomass.g_m2")) %>%
+  select(sp, response) %>%
+  unique() %>%
+  mutate(hedges_d = map2(response, as.character(sp), hedges_d_fun, year = "2018"),
+         t_test = map2(response, as.character(sp), t_test_fun, year = "2018")) %>%
+  unnest_wider(hedges_d) %>%
+  unnest_wider(t_test)
+  
+# 2019
+d2Sum <- d2dat2 %>%
+  pivot_longer(cols = c(seeds, biomass.g_m2:logit_late_aug_severity),
+               names_to = "response",
+               values_to = "values") %>%
+  filter(!(sp == "Mv" & response == "logit_may_severity")) %>%
+  select(sp, response) %>%
+  unique() %>%
+  mutate(hedges_d = map2(response, as.character(sp), hedges_d_fun, year = "2019"),
+         t_test = map2(response, as.character(sp), t_test_fun, year = "2019")) %>%
+  unnest_wider(hedges_d) %>%
+  unnest_wider(t_test)
+
+
+#### format for figure ####
+
+# combine data
+# indicator of significance
+# rename response
+# remove unnecessary responses
+
+
+
+temp <- dat_format_fun(biomass.g_m2, "Ev", "2019")
+temp1 <- t.test(temp$fungicide, temp$water, paired = T)
+temp2 <- cohen.d(temp$fungicide, temp$water, hedges.correction = T, paired = T)
