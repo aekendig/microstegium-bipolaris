@@ -226,10 +226,11 @@ feD1Fig <- dat %>%
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_errorbar(aes(ymin = .lower, ymax = .upper, group = plant_group), width = 0, position = position_dodge(0.5), alpha = 0.7) +
   geom_point(position = position_dodge(0.5), aes(shape = plant_group, fill = sig)) +
+  geom_text(x = 1, y = 0.92, label = "2018", color = "black", size = 2.5, check_overlap = T, hjust = 1) +
   scale_shape_manual(values = shape_pal, name = "Plant group") +
   scale_color_manual(values = col_pal, name = "Plant group") +
   scale_fill_manual(values = c("white", "black"), guide = F) +
-  ylab("Proportional change due\nto fungicide") +
+  ylab("Proportional change\ndue to fungicide") +
   xlab("Plant response") +
   fig_theme +
   theme(legend.position = "none",
@@ -242,10 +243,11 @@ feD2Fig <- dat %>%
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_errorbar(aes(ymin = .lower, ymax = .upper, group = plant_group), width = 0, position = position_dodge(0.5), alpha = 0.7) +
   geom_point(position = position_dodge(0.5), aes(shape = plant_group, fill = sig)) +
+  geom_text(x = 1, y = 0.54, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 1) +
   scale_shape_manual(values = shape_pal, name = "Plant group") +
   scale_color_manual(values = col_pal, name = "Plant group") +
   scale_fill_manual(values = c("white", "black"), guide = F) +
-  ylab("Proportional change due\nto fungicide") +
+  ylab("Proportional change\ndue to fungicide") +
   xlab("Plant response") +
   fig_theme +
   theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1)) +
@@ -276,6 +278,7 @@ seedsBioFig <- ggplot(bioSeedsSim, aes(x = log_bio, y = pred)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = plant_group), alpha = 0.5) +
   geom_line(aes(color = plant_group)) +
   geom_point(data = bioSeedsDat, alpha = 0.7, size = 0.7, aes(y = log_seeds, shape = plant_group, color = plant_group)) +
+  geom_text(x = -1.35, y = 9.25, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
   scale_shape_manual(values = shape_pal[2:4], guide = F) +
   scale_color_manual(values = col_pal[2:4], guide = F) +
   scale_fill_manual(values = col_pal[2:4], guide = F) +
