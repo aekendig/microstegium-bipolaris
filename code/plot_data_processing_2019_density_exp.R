@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/21/21
+# date last edited: 4/24/21
 # goal: combine plot-scale data
 
 
@@ -156,7 +156,6 @@ plotDisD2Dat <- evDisMayD2Dat %>%
   full_join(fDisLAugD2Dat %>%
               mutate(month = "late_aug")) %>%
   filter(!is.na(leaves_tot) & !is.na(leaves_infec)) %>%
-  filter((plot %in% 2:4 & sp == "Mv") | (plot %in% 5:10 & sp == "Ev")) %>%
   mutate(age = case_when(ID == "A" ~ "adult",
                          !(ID %in% c("1", "2", "3")) & plot %in% 8:10 ~ "adult",
                          TRUE ~ "seedling")) %>%
@@ -170,25 +169,24 @@ plotDisD2Dat %>%
   filter(leaves_infec > leaves_tot)
 
 plotDisD2Dat %>%
-  filter(leaves_infec == 0) # 49 cases
+  filter(leaves_infec == 0) # 125 cases
 
 # severity
 plotSevD2Dat <- sevD2Dat %>%
   filter(month != "sep") %>% # too much data missing
-  filter((plot %in% 2:4 & sp == "Mv") | (plot %in% 5:10 & sp == "Ev")) %>%
   mutate(age = case_when(ID == "A" ~ "adult",
                          !(ID %in% c("1", "2", "3")) & plot %in% 8:10 ~ "adult",
                          TRUE ~ "seedling")) %>%
   select(-c(leaves_tot, leaves_infec)) %>%
   full_join(plotDisD2Dat) %>%
-  mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1, # applies to 66 leaves
+  mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1, # add an infected leaf if scan found lesions
                                   TRUE ~ leaves_infec),
          severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot),
-         severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # 6 have no leaf scans and 0 infected, 33 had infected leaves (leave as NA)
+         severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # make severity zero if no leaves infected and no severity info
                               TRUE ~ severity)) %>%
   filter(!is.na(severity)) %>%
-  group_by(month, site, treatment, plot, sp) %>%
-  summarise(severity = mean(severity)) %>% # average over the ages for Ev
+  group_by(month, site, treatment, plot, sp, age) %>%
+  summarise(severity = mean(severity)) %>%
   ungroup()
 
 # check
@@ -213,7 +211,7 @@ dat <- evSeedD2Dat2 %>%
   mutate(sp = "Ev") %>%
   full_join(mvSeedD2Dat2) %>%
   full_join(plotBioD2Dat) %>%
-  full_join(plotSevD2DatW)
+  left_join(plotSevD2DatW) # only select plots where plant group was the background
 
 # check values
 dat %>%
@@ -225,3 +223,4 @@ dat %>%
 #### output ####
 
 write_csv(dat, "intermediate-data/plot_biomass_seeds_severity_2019_density_exp.csv")
+write_csv(plotSevD2DatW, "intermediate-data/plot_severity_2019_density_exp.csv")

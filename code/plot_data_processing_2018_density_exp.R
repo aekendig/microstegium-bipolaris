@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 4/21/21
+# date last edited: 4/24/21
 # goal: combine plot-scale data
 
 
@@ -13,6 +13,7 @@ rm(list=ls())
 
 # load packages
 library(tidyverse)
+library(car)
 
 # import data
 fSevD1Dat <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
@@ -83,9 +84,13 @@ unique(disD1Dat$leaves_infec)
 
 #### Mv severity ####
 
+# background vs. focal
+disD1Dat %>%
+  filter(!(plot %in% 2:4) & focal == 0 & sp == "Mv") # bg Mv only in plots it was planted as bg
+
 # tiller counts by plot
 mvDisD1Dat <- disD1Dat %>%
-  filter(plot %in% c(2, 3, 4) & sp == "Mv") %>%
+  filter(sp == "Mv") %>%
   group_by(month, site, treatment, plot) %>%
   summarise(leaves_tot = mean(leaves_tot),
             leaves_infec = mean(leaves_infec)) %>% # avg leaves infected per tiller for plot
@@ -96,25 +101,25 @@ mvDisD1Dat %>%
   filter(leaves_infec > leaves_tot)
 
 mvDisD1Dat %>%
-  filter(leaves_infec == 0) # 2 plots in July
+  filter(leaves_infec == 0) # 18
 
 # severity
 mvSevD1Dat <- mvBgSevD1Dat %>%
-  filter(plot %in% c(2, 3, 4)) %>%
+  filter(plot %in% c(2, 3, 4)) %>% # we do have bg leaf scans for the other plots, but I'm not sure how to interpret them (more of the focal plant leaves or leaves from plants that encroached into plots?)
   full_join(fSevD1Dat %>%
-              filter(plot %in% c(2, 3, 4) & sp == "Mv")) %>%
+              filter(sp == "Mv")) %>% # focal plants from all plots
   group_by(site, treatment, plot) %>%
   summarise(leaf_area.pix = mean(leaf_area.pix / leaf_count), # manually checked leaf counts, need to do because some pictures have multiple leaves
             lesion_area.pix = mean(lesion_area.pix / leaf_count)) %>%
   ungroup() %>%
   full_join(mvDisD1Dat) %>%
-  mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1, # applies to two plots with one leaf each
+  mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1,  # add an infected leaf if scan found lesions
                                   TRUE ~ leaves_infec),
          severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot)) %>%
   select(month, site, treatment, plot, severity)
 
 # check
-filter(mvSevD1Dat, severity > 1 | is.na(severity))
+filter(mvSevD1Dat, severity > 1 | is.na(severity)) # no missing scans
 
 # figure
 ggplot(mvSevD1Dat, aes(x = treatment, y = severity)) +
@@ -164,7 +169,7 @@ ggplot(mvSeedsD1Dat2, aes(x = treatment, y = seeds)) +
 
 # leaf counts (average by plot because some are missing)
 evDisD1Dat <- disD1Dat %>%
-  filter(plot %in% 5:10 & sp == "Ev") %>%
+  filter(sp == "Ev") %>%
   mutate(age = case_when(focal == 1 & ID == "A" ~ "adult",
                          focal == 0 & plot %in% 8:10 ~ "adult",
                          TRUE ~ "seedling")) %>%
@@ -178,38 +183,39 @@ evDisD1Dat %>%
   filter(leaves_infec > leaves_tot)
 
 evDisD1Dat %>%
-  filter(leaves_infec == 0) # 30 plots
+  filter(leaves_infec == 0) # 58
 
 # severity
 evSevD1Dat <- evBgSevD1Dat %>%
-  filter(plot %in% 5:10) %>%
   select(-c(leaves_tot, leaves_infec)) %>%
   full_join(fSevD1Dat %>%
-              filter(plot %in% 5:10 & sp == "Ev") %>%
+              filter(sp == "Ev") %>%
               select(-c(leaves_tot, leaves_infec))) %>%
   full_join(evDisD1Dat) %>%
-  mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1, # applies to 3 plots, 4 leaves
+  mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1, # add an infected leaf if scan found lesions
                                   TRUE ~ leaves_infec),
          severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot),
-         severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # 39 have no leaf scans, 12 had infected leaves (leave as NA)
+         severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # make severity zero if no leaves infected and no severity info
                               TRUE ~ severity)) %>%
-  filter(!is.na(severity)) %>%
-  group_by(month, site, treatment, plot) %>%
-  summarise(severity = mean(severity)) %>% # average over the ages
-  ungroup()
-# 138 out of 144 plots (only missing the ones that had a tree fall on them)
+  filter(!is.na(severity)) # remove 14 cases where there are infected leaves, but no leaf scans
 
 # check
 filter(evSevD1Dat, severity > 1 | is.na(severity))
 
+# summarize by age
+evSevD1Dat2 <- evSevD1Dat %>%
+  group_by(month, site, treatment, plot, age) %>%
+  summarise(severity = mean(severity)) %>% # average over the ages
+  ungroup()
+
 # figure
-ggplot(evSevD1Dat, aes(x = treatment, y = severity)) +
+ggplot(evSevD1Dat2, aes(x = treatment, y = severity)) +
   geom_boxplot() +
   facet_wrap(~ month)
 # highest severity for water in July
 
 # make wide
-evSevD1DatW <- evSevD1Dat %>%
+evSevD1DatW <- evSevD1Dat2 %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
@@ -260,24 +266,51 @@ ggplot(evSeedsD1Dat2, aes(x = treatment, y = seeds)) +
 #### combine data ####
 
 # Mv
-mvDat <- mvSevD1DatW %>%
-  full_join(mvBioD1Dat2) %>%
+mvDat <- mvBioD1Dat2 %>%
   full_join(mvSeedsD1Dat2) %>%
+  left_join(mvSevD1DatW) %>% # only select plots with Mv planted as background 
   mutate(sp = "Mv",
          age = "seedling")
 
 # Ev
-evDat <- evSevD1DatW %>%
-  full_join(evSeedsD1Dat2) %>%
-  mutate(sp = "Ev",
-         age = case_when(plot %in% 5:7 ~ "seedling",
-                         TRUE ~ "adult"))
+evDat <- evSeedsD1Dat2 %>%
+  full_join(evSevD1DatW %>%
+              filter((age == "seedling" & plot %in% 5:7) | (age == "adult" & plot %in% 8:10))) %>%
+  mutate(sp = "Ev")
+
+# look at missing plots
+evDat %>%
+  group_by(site, treatment) %>%
+  count() # the two in D4 are expected, the one in D3 is not
+
+evDat %>%
+  filter(site == "D3" & treatment == "fungicide") # D3 6F
+
+evSurvD1Dat %>%
+  filter(site == "D3" & treatment == "fungicide" & plot == 6) # no surviving seedlings
 
 # both
 dat <- mvDat %>%
   full_join(evDat)
 
 
+#### combine severity data ####
+
+# combine
+sevDat <- mvSevD1DatW %>%
+  mutate(sp = "Mv",
+         age = "seedling") %>%
+  full_join(evSevD1DatW %>%
+              mutate(sp = "Ev"))
+
+# look at missing plots
+sevDat %>%
+  group_by(sp, age, site, treatment) %>%
+  count() %>%
+  data.frame()
+
+
 #### output ####
 
 write_csv(dat, "intermediate-data/plot_biomass_seeds_severity_2018_density_exp.csv")
+write_csv(sevDat, "intermediate-data/plot_severity_2018_density_exp.csv")

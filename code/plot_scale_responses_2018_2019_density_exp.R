@@ -2,7 +2,7 @@
 
 # file: plot_scale_responses_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/21/21
+# date last edited: 4/24/21
 # goal: plot-level biomass, seeds, and severity
 
 
@@ -35,6 +35,8 @@ fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.spacing.x = unit(0,"line"),
         axis.text.y = element_text(size = 8, color = "black"),
         axis.text.x = element_text(size = 8, color = "black"),
         axis.title.y = element_text(size = 10),
@@ -47,9 +49,7 @@ fig_theme <- theme_bw() +
         legend.key.size = unit(1, "mm"),
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
-        strip.placement = "outside",
-        panel.border = element_blank(),
-        panel.spacing.x = unit(0,"line"))
+        strip.placement = "outside")
 
 col_pal = c("#FFC000", "#8FD744FF")
 
@@ -175,7 +175,7 @@ ggplot(d2dat2, aes(x = seeds)) +
 
 # 2018
 d1Sum <- d1dat2 %>%
-  pivot_longer(cols = c(jul_severity:seeds, logit_jul_severity:logit_sep_severity),
+  pivot_longer(cols = -c(site, plot, treatment, sp, age),
                names_to = "response",
                values_to = "values") %>%
   filter(!(sp == "Ev" & response == "biomass.g_m2")) %>%
@@ -188,7 +188,7 @@ d1Sum <- d1dat2 %>%
   
 # 2019
 d2Sum <- d2dat2 %>%
-  pivot_longer(cols = c(seeds, biomass.g_m2:logit_late_aug_severity),
+  pivot_longer(cols = -c(site, plot, treatment, sp, age),
                names_to = "response",
                values_to = "values") %>%
   filter(!(sp == "Mv" & response %in% c("logit_may_severity", "may_severity"))) %>%
@@ -242,7 +242,7 @@ figdat <- dat_format_fun(sep_severity, "Mv", 2018) %>%
                                        names_to = "treatment", 
                                        values_to = "seeds")) %>%
               mutate(sp = "Mv") %>%
-              full_join(dat_format_fun(jun_severity, "Ev", 2019) %>%
+              full_join(dat_format_fun(early_aug_severity, "Ev", 2019) %>%
                           pivot_longer(cols = c(fungicide, water),
                                        names_to = "treatment", 
                                        values_to = "severity") %>%
@@ -256,14 +256,14 @@ figdat <- dat_format_fun(sep_severity, "Mv", 2018) %>%
                                                    values_to = "seeds")) %>%
                           mutate(sp = "Ev")) %>%
               mutate(year = 2019)) %>%
-  mutate(treatment = recode(treatment, "water" = "control (water)"),
+  mutate(treatment = dplyr::recode(treatment, "water" = "control (water)"),
          sp = fct_relevel(sp, "Mv"))
 
 sevSum <- d1Sum %>%
-  filter((sp == "Mv" & response == "sep_severity") | (sp == "Ev" & response == "jul_severity")) %>%
+  filter((sp == "Mv" & response == "logit_sep_severity") | (sp == "Ev" & response == "logit_jul_severity")) %>%
   mutate(year = 2018) %>%
   full_join(d2Sum %>%
-              filter((sp == "Mv" & response == "early_aug_severity") | (sp == "Ev" & response == "jun_severity")) %>%
+              filter((sp == "Mv" & response == "logit_early_aug_severity") | (sp == "Ev" & response == "logit_early_aug_severity")) %>%
               mutate(year = 2019)) %>%
   mutate(sig = case_when(t_p < 0.001 ~ "***",
                          t_p < 0.01 ~ "**",
