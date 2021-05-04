@@ -2,7 +2,7 @@
 
 # file: plot_scale_responses_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/24/21
+# date last edited: 5/4/21
 # goal: plot-level biomass, seeds, and severity
 
 
@@ -118,11 +118,13 @@ hedges_d_fun <- function(res_var, sp_abb, year){
 
 # logit-transform proportions
 d1dat2 <- d1dat %>%
+  select(-c(jul_lesions:sep_prop_healthy)) %>%
   mutate(logit_jul_severity = logit(jul_severity, adjust = log_adj),
          logit_late_aug_severity = logit(late_aug_severity, adjust = log_adj),
          logit_sep_severity = logit(sep_severity, adjust = log_adj))
 
 d2dat2 <- d2dat %>%
+  select(-c(early_aug_lesions:may_prop_healthy)) %>%
   mutate(logit_may_severity = logit(may_severity, adjust = log_adj),
          logit_jun_severity = logit(jun_severity, adjust = log_adj),
          logit_jul_severity = logit(jul_severity, adjust = log_adj),
@@ -318,13 +320,15 @@ seedSum <- d1Sum %>%
 # severity
 sevFig <- ggplot(figdat, aes(sp, severity * 100, color = treatment)) +
   geom_point(alpha = 0.5, size = 0.75, position = position_dodge(1)) +
-  geom_boxplot(fill = NA, outlier.size = 0.75, size = 0.25, position = position_dodge(1)) +
+  geom_boxplot(fill = NA, outlier.size = 0.75, size = 0.25, position = position_dodge(1), show.legend = F) +
   facet_grid(~ year, switch = "x") +
-  geom_text(data = sevSum, color = "black", aes(x = sp, y = max_val * 100, label = sig, size = txt_size)) +
+  geom_text(data = sevSum, color = "black", aes(x = sp, y = max_val * 100, label = sig, size = txt_size), show.legend = F) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_size_manual(values = c(5, 3)) +
   ylab("Lesions (%)") +
-  fig_theme
+  fig_theme +
+  theme(legend.position = c(0.25, 0.95)) +
+  guides(color = guide_legend(override.aes = list(size = 1.5, alpha = 1)))
   
 # biomass
 bioFig <- figdat %>%
@@ -342,15 +346,13 @@ bioFig <- figdat %>%
 # seeds
 seedFig <- ggplot(figdat, aes(sp, log(seeds + 1), color = treatment)) +
   geom_point(alpha = 0.5, size = 0.75, position = position_dodge(1)) +
-  geom_boxplot(fill = NA, outlier.size = 0.75, size = 0.25, position = position_dodge(1), show.legend = F) +
+  geom_boxplot(fill = NA, outlier.size = 0.75, size = 0.25, position = position_dodge(1)) +
   facet_grid(~ year, switch = "x") +
-  geom_text(data = seedSum, color = "black", aes(x = sp, y = log(max_val + 1), label = sig, size = txt_size), show.legend = F) +
+  geom_text(data = seedSum, color = "black", aes(x = sp, y = log(max_val + 1), label = sig, size = txt_size)) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_size_manual(values = c(5, 3)) +
   ylab("Seeds (log)") +
-  fig_theme +
-  theme(legend.position = c(0.25, 0.95)) +
-  guides(color = guide_legend(override.aes = list(size = 1.5, alpha = 1)))
+  fig_theme
 
 # combine
 pdf("output/plot_scale_responses_2018_2019_density_exp.pdf", width = 7, height = 3)

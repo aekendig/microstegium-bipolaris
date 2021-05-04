@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/24/21
+# date last edited: 5/4/21
 # goal: combine plot-scale data
 
 
@@ -95,51 +95,46 @@ ggplot(mvSeedD2Dat2, aes(treatment, seeds)) +
 
 # use average of others in plot if plant is missing biomass
 plotBioD2Dat <- bgBioD2Dat %>%
-  mutate(sp = case_when(plot %in% 2:4 ~ "Mv",
-                        plot %in% 5:10 ~ "Ev",
-                        TRUE ~ "none"),
-         age = case_when(plot %in% 8:10 ~ "adult",
-                         TRUE ~ "seedling")) %>%
-  filter(plot != 1) %>%
+  rename(biomass_bg = biomass.g) %>%
   left_join(mvBioD2Dat %>% # add focal biomass
-              filter(plot %in% 2:4) %>%
               group_by(site, plot, treatment) %>%
               mutate(biomass_weight_adj.g = mean(biomass_weight.g, na.rm = T)) %>%
               ungroup() %>%
               mutate(biomass_weight.g = case_when(is.na(biomass_weight.g) ~ biomass_weight_adj.g,
-                                                  TRUE ~ biomass_weight.g),
-                     age = "seedling") %>%
-              group_by(site, plot, treatment, sp, age) %>%
-              summarise(biomass_foc = sum(biomass_weight.g)) %>%
+                                                  TRUE ~ biomass_weight.g)) %>%
+              group_by(site, plot, treatment) %>%
+              summarise(biomass_foc_mv = sum(biomass_weight.g)) %>%
               ungroup() %>%
               full_join(evBioD2Dat %>%
-                          filter(ID %in% c("1", "2", "3") & plot %in% 5:7) %>%
+                          filter(ID %in% c("1", "2", "3")) %>%
                           group_by(site, plot, treatment) %>%
                           mutate(weight_adj = mean(weight, na.rm = T)) %>%
                           ungroup() %>%
                           mutate(weight = case_when(is.na(weight) ~ weight_adj,
-                                                    TRUE ~ weight),
-                                 sp = "Ev",
-                                 age = "seedling") %>%
-                          group_by(site, plot, treatment, sp, age) %>%
-                          summarise(biomass_foc = sum(weight)) %>%
+                                                    TRUE ~ weight)) %>%
+                          group_by(site, plot, treatment) %>%
+                          summarise(biomass_foc_evS = sum(weight)) %>%
                           ungroup()) %>%
               full_join(evBioD2Dat %>%
-                          filter(ID == "A" & plot %in% 8:10) %>%
+                          filter(ID == "A") %>%
                           select(site, plot, treatment, weight) %>%
-                          rename(biomass_foc = weight) %>%
-                          mutate(sp = "Ev",
-                                 age = "adult"))) %>%
-  mutate(biomass.g_m2 = biomass.g + biomass_foc) %>% # plot value
-  select(-c(biomass.g, biomass_foc))
+                          rename(biomass_foc_evA = weight))) %>%
+  mutate(biomass.g_m2 = case_when(plot %in% 2:4 ~ biomass_bg + biomass_foc_mv,
+                                  plot %in% 5:7 ~ biomass_bg + biomass_foc_evS,
+                                  plot %in% 8:10 ~ biomass_bg + biomass_foc_evA),
+         biomass_mv = case_when(plot %in% 2:4 ~ biomass.g_m2,
+                                TRUE ~ biomass_foc_mv),
+         biomass_evS = case_when(plot %in% 5:7 ~ biomass.g_m2,
+                                TRUE ~ biomass_foc_evS),
+         biomass_evA = case_when(plot %in% 8:10 ~ biomass.g_m2,
+                                 TRUE ~ biomass_foc_evA))
 
 # check
 filter(plotBioD2Dat, is.na(biomass.g_m2))
 
 # figure
 ggplot(plotBioD2Dat, aes(treatment, biomass.g_m2)) +
-  geom_boxplot() +
-  facet_wrap(sp ~ age, scales = "free")
+  geom_boxplot()
 
 
 #### plot severity ####
@@ -178,16 +173,23 @@ plotSevD2Dat <- sevD2Dat %>%
                          !(ID %in% c("1", "2", "3")) & plot %in% 8:10 ~ "adult",
                          TRUE ~ "seedling")) %>%
   select(-c(leaves_tot, leaves_infec)) %>%
+  group_by(month, site, treatment, plot, sp, age) %>%
+  summarise(lesion_area.pix = mean(lesion_area.pix, na.rm = T),
+            leaf_area.pix = mean(leaf_area.pix, na.rm = T)) %>% # leaf and lesion area averaged by plot
+  ungroup() %>%
   full_join(plotDisD2Dat) %>%
+  left_join(plotBioD2Dat) %>%
   mutate(leaves_infec = case_when(leaves_infec == 0 & lesion_area.pix > 0 ~ 1, # add an infected leaf if scan found lesions
                                   TRUE ~ leaves_infec),
          severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot),
          severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # make severity zero if no leaves infected and no severity info
-                              TRUE ~ severity)) %>%
-  filter(!is.na(severity)) %>%
-  group_by(month, site, treatment, plot, sp, age) %>%
-  summarise(severity = mean(severity)) %>%
-  ungroup()
+                              TRUE ~ severity),
+         lesions = case_when(sp == "Mv" ~ severity * biomass_mv,
+                             sp == "Ev" & age == "seedling" ~ severity * biomass_evS,
+                             sp == "Ev" & age == "adult" ~ severity * biomass_evA),
+         prop_healthy = 1 - severity) %>%
+  select(month, site, treatment, plot, sp, age, severity, lesions, prop_healthy)
+
 
 # check
 filter(plotSevD2Dat, severity > 1 | is.na(severity))
@@ -201,8 +203,8 @@ ggplot(plotSevD2Dat, aes(x = treatment, y = severity)) +
 # make wide
 plotSevD2DatW <- plotSevD2Dat %>%
   pivot_wider(names_from = month,
-              values_from = severity,
-              names_glue = "{month}_severity")
+              values_from = c(severity, lesions, prop_healthy),
+              names_glue = "{month}_{.value}")
 
 
 ##### combine data ####
@@ -210,7 +212,9 @@ plotSevD2DatW <- plotSevD2Dat %>%
 dat <- evSeedD2Dat2 %>%
   mutate(sp = "Ev") %>%
   full_join(mvSeedD2Dat2) %>%
-  full_join(plotBioD2Dat) %>%
+  full_join(plotBioD2Dat %>%
+              filter(plot != 1) %>%
+              select(site, plot, treatment, biomass.g_m2)) %>%
   left_join(plotSevD2DatW) # only select plots where plant group was the background
 
 # check values
