@@ -227,4 +227,4 @@ dat %>%
 #### output ####
 
 write_csv(dat, "intermediate-data/plot_biomass_seeds_severity_2019_density_exp.csv")
-write_csv(plotSevD2DatW, "intermediate-data/plot_severity_2019_density_exp.csv")
+write_csv(plotSevD2Dat, "intermediate-data/plot_severity_2019_density_exp.csv")

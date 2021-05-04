@@ -343,10 +343,10 @@ dat <- mvDat %>%
 #### combine severity data ####
 
 # combine
-sevDat <- mvSevD1DatW %>%
+sevDat <- mvSevD1Dat %>%
   mutate(sp = "Mv",
          age = "seedling") %>%
-  full_join(evSevD1DatW %>%
+  full_join(evSevD1Dat %>%
               mutate(sp = "Ev"))
 
 # look at missing plots
