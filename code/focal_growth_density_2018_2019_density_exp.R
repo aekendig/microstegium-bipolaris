@@ -644,9 +644,3 @@ mvD2Dat %>%
   filter(!is.na(fungicide) & !(is.na(water))) %>%
   group_by(plant_group) %>%
   summarise(diff = (mean(fungicide) - mean(water)) / mean(water))
-
-
-#### output ####
-save(mvMvD2Mod, file = "output/mv_biomass_mv_density_model_2019_density_exp.rda")
-save(mvEvSD2Mod, file = "output/evS_biomass_mv_density_model_2019_density_exp.rda")
-save(mvEvAD2Mod, file = "output/evA_biomass_mv_density_model_2019_density_exp.rda")
