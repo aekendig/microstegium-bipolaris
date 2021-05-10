@@ -113,6 +113,32 @@ hedges_d_fun <- function(res_var, sp_abb, year){
 
 }
 
+corr_fun <- function(sev_var, res_var, sp_abb, year){
+  
+  # select dataset
+  if(year == "2018"){
+    dat <- d1dat2
+  }else{
+    dat <- d2dat2
+  }
+  
+  # filter by species
+  dat2 <- dat %>%
+    filter(sp == sp_abb)
+  
+  # hedge's d
+  r <- cor.test(x = dat2 %>% pull({{sev_var}}),
+                y = dat2 %>% pull({{res_var}}))
+  
+  # output
+  dato <- tibble(corr = as.numeric(r$estimate),
+                 corr_lower = r$conf.int[1],
+                 corr_upper = r$conf.int[2],
+                 p = r$p.value)
+  return(dato)
+  
+}
+
 
 #### edit data ####
 
@@ -172,6 +198,97 @@ ggplot(d2dat2, aes(x = biomass.g_m2)) +
 ggplot(d2dat2, aes(x = seeds)) +
   geom_density() + facet_grid(sp ~ treatment, scales = "free")
 
+# 2018 lesion effects on biomass
+ggplot(filter(d1dat2, sp == "Mv"), aes(jul_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm")
+
+ggplot(filter(d1dat2, sp == "Mv"), aes(late_aug_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm")
+
+ggplot(filter(d1dat2, sp == "Mv"), aes(sep_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm")
+
+ggplot(filter(d1dat2, sp == "Mv"), aes(sep_severity, biomass.g_m2)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm")
+
+# 2018 lesion effects on seeds
+ggplot(d1dat2, aes(jul_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d1dat2, aes(jul_severity, seeds)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d1dat2, aes(late_aug_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d1dat2, aes(sep_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d1dat2, aes(sep_severity, seeds)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+# 2019 lesion effects on biomass
+ggplot(d2dat2, aes(jun_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(jul_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(early_aug_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(late_aug_severity, biomass.g_m2, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+# 2019 lesion effects on seeds
+ggplot(d2dat2, aes(jun_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(jul_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(early_aug_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(early_aug_severity, seeds)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+ggplot(d2dat2, aes(late_aug_severity, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(formula = y~x, method = "lm") +
+  facet_wrap(~ sp, scales = "free")
+
+
 
 #### stats ####
 
@@ -187,6 +304,16 @@ d1Sum <- d1dat2 %>%
          t_test = map2(response, as.character(sp), t_test_fun, year = "2018")) %>%
   unnest_wider(hedges_d) %>%
   unnest_wider(t_test)
+
+# adjust p-values for checking multiple months
+d1Sum2 <- d1Sum %>% 
+  filter(substr(response, 1, 5) == "logit" & sp == "Mv") %>%
+  mutate(t_p = p.adjust(t_p, method = "fdr")) %>%
+  full_join(d1Sum %>% 
+              filter(substr(response, 1, 5) == "logit" & sp == "Ev") %>%
+              mutate(t_p = p.adjust(t_p, method = "fdr"))) %>%
+  full_join(d1Sum %>%
+              filter(substr(response, 1, 5) != "logit"))
   
 # 2019
 d2Sum <- d2dat2 %>%
@@ -200,6 +327,36 @@ d2Sum <- d2dat2 %>%
          t_test = map2(response, as.character(sp), t_test_fun, year = "2019")) %>%
   unnest_wider(hedges_d) %>%
   unnest_wider(t_test)
+
+# adjust p-values for checking multiple months
+d2Sum2 <- d2Sum %>% 
+  filter(substr(response, 1, 5) == "logit" & sp == "Mv") %>%
+  mutate(t_p = p.adjust(t_p, method = "fdr")) %>%
+  full_join(d2Sum %>% 
+              filter(substr(response, 1, 5) == "logit" & sp == "Ev") %>%
+              mutate(t_p = p.adjust(t_p, method = "fdr"))) %>%
+  full_join(d2Sum %>%
+              filter(substr(response, 1, 5) != "logit"))
+
+# lesion correlations
+d1LesMo <- c("jul_severity", "late_aug_severity", "sep_severity")
+d2LesMo <- c("jun_severity", "jul_severity", "early_aug_severity", "late_aug_severity")
+
+d1Cor <- tibble(sp = c("Mv", "Mv", "Ev"),
+                response = c("biomass.g_m2", "seeds", "seeds")) %>%
+  expand_grid(tibble(severity = d1LesMo)) %>%
+  mutate(sev_cor = pmap(list(severity, response, as.character(sp), "2018"), corr_fun)) %>%
+  unnest_wider(sev_cor) 
+# none are negative and significant
+# do p-adjustments, as done above, if these value go in manuscript
+
+d2Cor <- tibble(sp = c("Mv", "Ev", "Mv", "Ev"),
+                response = c("biomass.g_m2", "biomass.g_m2", "seeds", "seeds")) %>%
+  expand_grid(tibble(severity = d2LesMo)) %>%
+  mutate(sev_cor = pmap(list(severity, response, as.character(sp), "2019"), corr_fun)) %>%
+  unnest_wider(sev_cor) 
+# none are negative and significant
+# do p-adjustments, as done above, if these value go in manuscript
 
 
 #### data for figure ####
@@ -261,10 +418,10 @@ figdat <- dat_format_fun(sep_severity, "Mv", 2018) %>%
   mutate(treatment = dplyr::recode(treatment, "water" = "control (water)"),
          sp = fct_relevel(sp, "Mv"))
 
-sevSum <- d1Sum %>%
+sevSum <- d1Sum2 %>%
   filter((sp == "Mv" & response == "logit_sep_severity") | (sp == "Ev" & response == "logit_jul_severity")) %>%
   mutate(year = 2018) %>%
-  full_join(d2Sum %>%
+  full_join(d2Sum2 %>%
               filter((sp == "Mv" & response == "logit_early_aug_severity") | (sp == "Ev" & response == "logit_early_aug_severity")) %>%
               mutate(year = 2019)) %>%
   mutate(sig = case_when(t_p < 0.001 ~ "***",
@@ -279,10 +436,10 @@ sevSum <- d1Sum %>%
               group_by(sp, year) %>%
               summarise(max_val = max(severity, na.rm = T)))
 
-bioSum <- d1Sum %>%
+bioSum <- d1Sum2 %>%
   filter(response == "biomass.g_m2") %>%
   mutate(year = 2018) %>%
-  full_join(d2Sum %>%
+  full_join(d2Sum2 %>%
               filter(response == "biomass.g_m2") %>%
               mutate(year = 2019)) %>%
   mutate(sig = case_when(t_p < 0.001 ~ "***",
@@ -297,10 +454,10 @@ bioSum <- d1Sum %>%
               group_by(sp, year) %>%
               summarise(max_val = max(biomass.g_m2, na.rm = T)))
 
-seedSum <- d1Sum %>%
+seedSum <- d1Sum2 %>%
   filter(response == "seeds") %>%
   mutate(year = 2018) %>%
-  full_join(d2Sum %>%
+  full_join(d2Sum2 %>%
               filter(response == "seeds") %>%
               mutate(year = 2019)) %>%
   mutate(sig = case_when(t_p < 0.001 ~ "***",

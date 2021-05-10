@@ -1,0 +1,72 @@
+---
+title: "Model Description"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Continuous time model
+This model describes changes in the biomass of annuals ($A$), first-year perennials ($F$), and adult perennials ($P$) over the growing season. Biomass is affected by disease and competition. We assume all biomass belonging to one plant group is pooled (i.e., experiences the same growth rate, competitive effects, and disease transmission). The biomass of plant group $i$, where $i = A, F, P$, can either be susceptible ($S$) or infected ($I$). The total biomass of a plant group is $M$ and the litter produced by annuals (an initial source of infection) is $l$. Inoculum is lost from the litter over the growing season as rate $h$.      
+
+\begin{equation}
+\begin{gathered}
+dS_{i}/dt = r_{i}S_{i}(1 - \alpha_{iA}M_{A} - \alpha_{iF}M_{F} - \alpha_{iP}M_{P}) - \beta_{il}S_{i}l - \beta_{iA}S_{i}I_{A} - \beta_{iF}S_{i}I_{F} - \beta_{iP}S_{i}I_{P}
+\\
+dI_{i}/dt = \beta_{il}S_{i}l + \beta_{iA}S_{i}I_{A} + \beta_{iF}S_{i}I_{F} + \beta_{iP}S_{i}I_{P} - v_{i}I_{i}
+\\
+dl/dt = -hl
+\end{gathered}
+\end{equation}
+
+Susceptible biomass grows at a rate $r_{i}$, which is slowed due to competition ($\alpha$ values), or lost due to infection ($\beta$ values). Both susceptible and infected biomass contribute to competition because susceptible biomass contributes to photosynthesis and resource uptake and both types of biomass contribute to shading. Infected biomass does not grow, but is converted from susceptible biomass. Infected biomass is lost due to processes such as shedding at a rate $v_{i}$.   
+
+We simulate the continuous time model for the number of days in a growing season ($T$). The initial states of the variables are derived from the discrete time model and described below.  
+
+# Discrete time model
+This model describes annual changes in the population densities of annual plant seeds ($A$), perennial plant seeds ($F$), and perennial adult plants ($P$).  
+
+Annual plant seeds either stay dormant in the seed bank or germinate. If they germinate, they establish, grow, and produce more seeds. Those that germinate and establish are used to initiate the continuous time model ($S_{A,0}$) with initial biomass $b_{A}$. The final biomass of annual plants in the continuous time model ($M_{A,T}$) is used to estimate seed production with a conversion constant $c_{A}$. Litter ($L$) reduces the establishment of annuals ($E_{A}$).
+
+\begin{equation}
+\begin{gathered}
+A[t+1] = s_{A}(1 - g_{A})A[t] + c_{A}M_{A,T}[t]
+\\
+S_{A,0} = g_{A}E_{A}b_{A}A[t]
+\\
+E_{A} = e_{A}/(1 + \gamma_{A}L[t])
+\end{gathered}
+\end{equation}
+
+The processes the determine perennial plant seeds are similar to those for annual plant seeds except that perennial seeds can be produced either by first year plants or by adults.
+
+\begin{equation}
+\begin{gathered}
+F[t+1] = s_{P}(1 - g_{P})F[t] + c_{F}M_{F,T}[t] + c_{P}M_{P,T}[t]
+\\
+S_{F,0} = g_{P}E_{P}b_{F}F[t]
+\\
+E_{P} = e_{P}/(1 + \gamma_{P}L[t])
+\end{gathered}
+\end{equation}
+
+Perennial adult plants are either adults  that survived through the year or seeds that germinated, established, and survived through the winter.
+
+\begin{equation}
+\begin{gathered}
+P[t+1] = l_{P}P[t] + g_{P}E_{P}w_{F}F[t]
+\\
+S_{P,0} = b_{P}P[t]
+\end{gathered}
+\end{equation}
+
+The litter is composed of litter remaining from the previous year and new litter produced by annuals.
+
+\begin{equation}
+\begin{gathered}
+L[t+1] = (1 - d)L[t] + M_{A,F}[t]
+\\
+l_{0} = L[t]
+\end{gathered}
+\end{equation}

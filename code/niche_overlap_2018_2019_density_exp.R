@@ -1,9 +1,9 @@
 ##### info ####
 
-# file: focal_growth_density_2018_2019_density_exp
+# file:niche_overlap_2018_2019_density_exp
 # author: Amy Kendig
 # date last edited: 5/7/21
-# goal: analyses of plant growth as a function of density
+# goal: fungicide effects on alphas and niche overlap
 
 
 #### set up ####

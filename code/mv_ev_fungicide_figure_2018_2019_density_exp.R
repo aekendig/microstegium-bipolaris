@@ -192,13 +192,13 @@ evASurvD2Samps <- samp_bin_fun(evASurvD2Mod) %>%
 evSWinSurvD1Samps <- samp_bin_fun(evSWinSurvD1Mod) %>%
   mutate(plant_group = "Ev seedling",
          response = "winter survival",
-         year = 2018)
+         year = 2019)
 
 # 2019 EvA survival
 evAWinSurvD1Samps <- samp_bin_fun(evAWinSurvD1Mod) %>%
   mutate(plant_group = "Ev adult",
          response = "winter survival",
-         year = 2018)
+         year = 2019)
 
 
 #### combine data ####
@@ -226,9 +226,9 @@ feD1Fig <- dat %>%
   filter(year == 2018) %>%
   ggplot(aes(response, prop_change, color = plant_group)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_errorbar(aes(ymin = .lower, ymax = .upper, group = plant_group), width = 0, position = position_dodge(0.5), alpha = 0.7) +
-  geom_point(position = position_dodge(0.5), aes(shape = plant_group, fill = sig)) +
-  geom_text(x = 1, y = 0.92, label = "2018", color = "black", size = 2.5, check_overlap = T, hjust = 1) +
+  geom_errorbar(aes(ymin = .lower, ymax = .upper, group = plant_group), width = 0, position = position_dodge(0.7), alpha = 0.7) +
+  geom_point(position = position_dodge(0.7), size = 2, aes(shape = plant_group, fill = sig)) +
+  geom_text(x = 1, y = 0.92, label = "2018", color = "black", size = 3, check_overlap = T, hjust = 1) +
   scale_shape_manual(values = shape_pal, name = "Plant group") +
   scale_color_manual(values = col_pal, name = "Plant group") +
   scale_fill_manual(values = c("white", "black"), guide = F) +
@@ -243,17 +243,18 @@ feD2Fig <- dat %>%
   filter(year == 2019) %>%
   ggplot(aes(response, prop_change, color = plant_group)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_errorbar(aes(ymin = .lower, ymax = .upper, group = plant_group), width = 0, position = position_dodge(0.5), alpha = 0.7) +
-  geom_point(position = position_dodge(0.5), aes(shape = plant_group, fill = sig)) +
-  geom_text(x = 1, y = 0.54, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 1) +
+  geom_errorbar(aes(ymin = .lower, ymax = .upper, group = plant_group), width = 0, position = position_dodge(0.7), alpha = 0.7) +
+  geom_point(position = position_dodge(0.7), size = 2, aes(shape = plant_group, fill = sig)) +
+  geom_text(x = 1.1, y = 0.54, label = "2019", color = "black", size = 3, check_overlap = T, hjust = 1) +
   scale_shape_manual(values = shape_pal, name = "Plant group") +
   scale_color_manual(values = col_pal, name = "Plant group") +
   scale_fill_manual(values = c("white", "black"), guide = F) +
-  ylab("Proportional change\ndue to fungicide") +
+  scale_y_continuous(breaks = c(-0.3, 0, 0.3)) +
   xlab("Plant response") +
   fig_theme +
-  theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1)) +
-  guides(colour = guide_legend(ncol = 2), shape = guide_legend(ncol = 2))
+  theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1),
+        axis.title.y = element_blank()) +
+  guides(colour = guide_legend(ncol = 2), shape = guide_legend(ncol = 2, override.aes = list(fill = "white")))
 
 
 #### biomass seeds figure ####
@@ -280,7 +281,7 @@ seedsBioFig <- ggplot(bioSeedsSim, aes(x = log_bio, y = pred)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = plant_group), alpha = 0.5) +
   geom_line(aes(color = plant_group)) +
   geom_point(data = bioSeedsDat, alpha = 0.7, size = 0.7, aes(y = log_seeds, shape = plant_group, color = plant_group)) +
-  geom_text(x = -1.35, y = 9.25, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
+  geom_text(x = -1.35, y = 9.25, label = "2019", color = "black", size = 3, check_overlap = T, hjust = 0) +
   scale_shape_manual(values = shape_pal[2:4], guide = F) +
   scale_color_manual(values = col_pal[2:4], guide = F) +
   scale_fill_manual(values = col_pal[2:4], guide = F) +
@@ -303,6 +304,5 @@ figC <- plot_grid(seedsBioFig, leg,
 pdf("output/mv_ev_fungicide_effect_figure_2018_2019_density_exp.pdf", width = 7, height = 3)
 plot_grid(feD1Fig, feD2Fig + theme(legend.position = "none"), figC,
           labels = c("A", "B", "C"),
-          rel_widths = c(1, 0.9, 1),
           nrow = 1)
 dev.off()
