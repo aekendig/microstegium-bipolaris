@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/4/21
+# date last edited: 5/18/21
 # goal: combine plot-scale data
 
 
@@ -187,8 +187,11 @@ plotSevD2Dat <- sevD2Dat %>%
          lesions = case_when(sp == "Mv" ~ severity * biomass_mv,
                              sp == "Ev" & age == "seedling" ~ severity * biomass_evS,
                              sp == "Ev" & age == "adult" ~ severity * biomass_evA),
-         prop_healthy = 1 - severity) %>%
-  select(month, site, treatment, plot, sp, age, severity, lesions, prop_healthy)
+         biomass_tot = case_when(sp == "Mv" ~ biomass_mv,
+                             sp == "Ev" & age == "seedling" ~ biomass_evS,
+                             sp == "Ev" & age == "adult" ~ biomass_evA),
+         susceptible = biomass_tot - lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity, lesions, susceptible)
 
 
 # check
@@ -203,7 +206,7 @@ ggplot(plotSevD2Dat, aes(x = treatment, y = severity)) +
 # make wide
 plotSevD2DatW <- plotSevD2Dat %>%
   pivot_wider(names_from = month,
-              values_from = c(severity, lesions, prop_healthy),
+              values_from = c(severity, lesions, susceptible),
               names_glue = "{month}_{.value}")
 
 

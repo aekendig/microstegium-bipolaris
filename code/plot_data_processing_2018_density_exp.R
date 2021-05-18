@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 5/4/21
+# date last edited: 5/18/21
 # goal: combine plot-scale data
 
 
@@ -137,8 +137,8 @@ mvSevD1Dat <- mvBgSevD1Dat %>%
                               TRUE ~ severity),
          lesions = lesion_area.pix * leaves_infec * tillers * mv_density,
          area_tot = leaf_area.pix * leaves_tot * tillers * mv_density,
-         prop_healthy = (area_tot - lesions) / area_tot) %>%
-  select(month, site, treatment, plot, severity, lesions, prop_healthy)
+         susceptible = area_tot - lesions) %>%
+  select(month, site, treatment, plot, severity, lesions, susceptible)
 
 # check
 filter(mvSevD1Dat, severity > 1 | is.na(severity)) # 1 NA
@@ -151,7 +151,7 @@ ggplot(mvSevD1Dat, aes(x = treatment, y = severity)) +
 # make wide
 mvSevD1DatW <- mvSevD1Dat %>%
   pivot_wider(names_from = month,
-              values_from = c(severity, lesions, prop_healthy),
+              values_from = c(severity, lesions, susceptible),
               names_glue = "{month}_{.value}")
 
 
@@ -248,8 +248,8 @@ evSevD1Dat <- evBgSevD1Dat %>%
                               TRUE ~ severity),
          lesions = lesion_area.pix * leaves_infec * tillers * ev_density,
          area_tot = leaf_area.pix * leaves_tot * tillers * ev_density,
-         prop_healthy = (area_tot - lesions) / area_tot) %>%
-  select(month, site, treatment, plot, age, severity, lesions, prop_healthy)
+         susceptible = area_tot - lesions) %>%
+  select(month, site, treatment, plot, age, severity, lesions, susceptible)
 
 # check
 filter(evSevD1Dat, severity > 1 | is.na(severity)) # 14 missing scans
@@ -263,7 +263,7 @@ ggplot(evSevD1Dat, aes(x = treatment, y = severity)) +
 # make wide
 evSevD1DatW <- evSevD1Dat %>%
   pivot_wider(names_from = month,
-              values_from = c(severity, lesions, prop_healthy),
+              values_from = c(severity, lesions, susceptible),
               names_glue = "{month}_{.value}")
 
 
