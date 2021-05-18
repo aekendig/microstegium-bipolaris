@@ -2,7 +2,7 @@
 
 # file: plot_severity_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/6/21
+# date last edited: 5/18/21
 # goal: effects of within and outside of plot severity
 
 
@@ -16,6 +16,7 @@ library(tidyverse)
 library(brms)
 library(tidybayes)
 library(cowplot)
+library(gridExtra)
 
 # import data
 d1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
@@ -24,29 +25,6 @@ d2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
 # plot_data_processing_2019_density_exp.R
 edgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv")
 # leaf_scans_data_processing_2019_density_exp.R
-
-fig_theme <- theme_bw() +
-  theme(panel.background = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        panel.spacing.x = unit(0,"line"),
-        axis.text.y = element_text(size = 8, color = "black"),
-        axis.text.x = element_text(size = 8, color = "black"),
-        axis.title.y = element_text(size = 10),
-        axis.title.x = element_text(size = 10),
-        axis.line = element_line(color = "black"),
-        legend.text = element_text(size = 8),
-        legend.title = element_text(size = 8),
-        legend.background = element_blank(),
-        legend.position = "none",
-        legend.key.size = unit(1, "mm"),
-        strip.background = element_blank(),
-        strip.text = element_text(size = 8),
-        strip.placement = "outside")
-
-col_pal = c("#472F7DFF", "#39568CFF", "#35B779FF")
-shape_pal = c(23, 22, 24)
 
 
 #### edit data ####
@@ -75,7 +53,7 @@ bgSevD1Dat <- d1Dat %>%
   rename(bg_lesions = lesions,
          bg_sp = sp,
          bg_age = age) %>%
-  select(-c(severity, prop_healthy))
+  select(-c(severity, susceptible))
 
 bgSevD2Dat <- d2Dat %>%
   filter((plot %in% 2:4 & sp == "Mv") |
@@ -84,47 +62,47 @@ bgSevD2Dat <- d2Dat %>%
   rename(bg_lesions = lesions,
          bg_sp = sp,
          bg_age = age) %>%
-  select(-c(severity, prop_healthy))
+  select(-c(severity, susceptible))
 
 # focal dataset
 focSevD1Dat <- d1Dat %>%
   filter(month != "jul") %>% # remove first month - no prior data
   rename(foc_sp = sp,
          foc_age = age,
+         foc_suscept = susceptible,
          foc_lesions = lesions) %>%
   mutate(month = dplyr::recode(month, 
                                "late_aug" = "jul", # match prior month
                                "sep" = "late_aug")) %>%
-  select(-c(severity, prop_healthy))
+  select(-severity)
 
 focSevD2Dat <- d2Dat %>%
   filter(month != "may") %>% # remove first month - no prior data
   rename(foc_sp = sp,
          foc_age = age,
+         foc_suscept = susceptible,
          foc_lesions = lesions) %>%
   mutate(month = dplyr::recode(month,  # match prior month
                                "jun" = "may",
                                "jul" = "jun",
                                "early_aug" = "jul",
                                "late_aug" = "early_aug")) %>%
-  select(-c(severity, prop_healthy))
+  select(-severity)
 
 # prior severity
 priorSevD1Dat <- d1Dat %>%
   filter(month != "sep") %>% # remove last month
-  mutate(foc_prior_disease = prop_healthy * lesions) %>%
   rename(foc_sp = sp,
          foc_age = age,
-         foc_prior_prop_healthy = prop_healthy,
+         foc_prior_suscept = susceptible,
          foc_prior_lesions = lesions) %>%
   select(-severity)
 
 priorSevD2Dat <- d2Dat %>%
   filter(month != "late_aug") %>% # remove last month
-  mutate(foc_prior_disease = prop_healthy * lesions) %>%
   rename(foc_sp = sp,
          foc_age = age,
-         foc_prior_prop_healthy = prop_healthy,
+         foc_prior_suscept = susceptible,
          foc_prior_lesions = lesions) %>%
   select(-severity)
 
@@ -142,21 +120,22 @@ sevD1Dat <- focSevD1Dat %>%
          bg_sp_age = paste(bg_sp, bg_age, sep = "_"),
          bg_lesions = case_when(foc_sp_age == bg_sp_age & plot == 1 ~ foc_lesions, # use focal lesions as bg in 1 plots
                                 TRUE ~ bg_lesions),
-         foc_lesions_change = foc_lesions - foc_prior_lesions,
-         foc_lesions_change = case_when(month == "jul" ~ foc_lesions_change / 2, # account for longer lapse between samples 
-                                        TRUE ~ foc_lesions_change),
-         bg_prior_disease = bg_lesions * foc_prior_prop_healthy) %>%
+         foc_suscept_change = log(foc_suscept / foc_prior_suscept),
+         foc_suscept_change = case_when(foc_suscept == 0 & foc_prior_suscept == 0 ~ log(1), # 4 plots had no lesions, no change
+                                        TRUE ~ foc_suscept_change),
+         foc_suscept_change = case_when(month == "jul" ~ foc_suscept_change / 2, # account for longer lapse between samples 
+                                        TRUE ~ foc_suscept_change)) %>%
   group_by(foc_sp, foc_age, bg_sp, bg_age) %>%
-  mutate(mean_foc_ls_chg = mean(foc_lesions_change, na.rm = T),
-         sd_foc_ls_chg = sd(foc_lesions_change, na.rm = T),
-         mean_foc_pri_dis = mean(foc_prior_disease, na.rm = T),
-         sd_foc_pri_dis = sd(foc_prior_disease, na.rm = T),
-         mean_bg_pri_dis = mean(bg_prior_disease, na.rm = T),
-         sd_bg_pri_dis = sd(bg_prior_disease, na.rm = T)) %>%
+  mutate(mean_bg_les = mean(bg_lesions, na.rm = T),
+         sd_bg_les = sd(bg_lesions, na.rm = T)) %>%
   ungroup() %>%
-  mutate(foc_ls_chg_s = (foc_lesions_change - mean_foc_ls_chg) / sd_foc_ls_chg,
-         foc_pr_dis_s = (foc_prior_disease - mean_foc_pri_dis) / sd_foc_pri_dis,
-         bg_pr_dis_s = (bg_prior_disease - mean_bg_pri_dis) / sd_bg_pri_dis)
+  mutate(bg_les_s = (bg_lesions - mean_bg_les) / sd_bg_les,
+         edge_severity = 0) %>%
+  filter(!is.na(foc_suscept_change) & !is.na(bg_les_s))
+
+# checks before adding last filter above
+filter(sevD1Dat, is.na(foc_suscept_change) & !is.na(foc_suscept) & !is.na(foc_prior_suscept)) 
+filter(sevD1Dat, is.na(bg_les_s) & !is.na(bg_lesions))
 
 sevD2Dat <- focSevD2Dat %>%
   left_join(priorSevD2Dat) %>%
@@ -172,104 +151,83 @@ sevD2Dat <- focSevD2Dat %>%
          bg_sp_age = paste(bg_sp, bg_age, sep = "_"),
          bg_lesions = case_when(foc_sp_age == bg_sp_age & plot == 1 ~ foc_lesions, # use focal lesions as bg in 1 plots
                                 TRUE ~ bg_lesions),
-         foc_lesions_change = foc_lesions - foc_prior_lesions,
-         bg_prior_disease = bg_lesions * foc_prior_prop_healthy) %>%
+         foc_suscept_change = log(foc_suscept / foc_prior_suscept)) %>%
   group_by(foc_sp, foc_age, bg_sp, bg_age) %>%
-  mutate(mean_foc_ls_chg = mean(foc_lesions_change, na.rm = T),
-         sd_foc_ls_chg = sd(foc_lesions_change, na.rm = T),
-         mean_foc_pri_dis = mean(foc_prior_disease, na.rm = T),
-         sd_foc_pri_dis = sd(foc_prior_disease, na.rm = T),
-         mean_bg_pri_dis = mean(bg_prior_disease, na.rm = T),
-         sd_bg_pri_dis = sd(bg_prior_disease, na.rm = T)) %>%
+  mutate(mean_bg_les = mean(bg_lesions, na.rm = T),
+         sd_bg_les = sd(bg_lesions, na.rm = T)) %>%
   ungroup() %>%
-  mutate(foc_ls_chg_s = (foc_lesions_change - mean_foc_ls_chg) / sd_foc_ls_chg,
-         foc_pr_dis_s = (foc_prior_disease - mean_foc_pri_dis) / sd_foc_pri_dis,
-         bg_pr_dis_s = (bg_prior_disease - mean_bg_pri_dis) / sd_bg_pri_dis)
+  mutate(bg_les_s = (bg_lesions - mean_bg_les) / sd_bg_les) %>%
+  filter(!is.na(foc_suscept_change) & !is.na(bg_les_s))
+
+# checks before adding last filter above
+filter(sevD2Dat, is.na(foc_suscept_change) & !is.na(foc_suscept) & !is.na(foc_prior_suscept)) 
+filter(sevD2Dat, is.na(bg_les_s) & !is.na(bg_lesions))
 
 # modified bg data for figure
-bgSevDat <- sevD1Dat %>%
-  select(month, site, plot, treatment, bg_sp, bg_age, bg_sp_age, bg_lesions) %>%
-  unique() %>%
-  mutate(yearf = "2018") %>%
-  full_join(sevD2Dat %>%
-              select(month, site, plot, treatment, bg_sp, bg_age, bg_sp_age, bg_lesions) %>%
-              unique() %>%
-              mutate(yearf = "2019")) %>%
-  filter(!is.na(bg_lesions)) %>%
-  group_by(yearf, bg_sp_age) %>%
-  mutate(mean_bg_ls = mean(bg_lesions),
-         sd_bg_ls = sd(bg_lesions)) %>%
-  ungroup() %>%
-  mutate(bg_ls_s = (bg_lesions - mean_bg_ls) / sd_bg_ls,
-         density_level = case_when(plot == 1 ~ "none",
-                                   plot %in% c(2, 5, 8) ~ "low",
-                                   plot %in% c(3, 6, 9) ~ "medium",
-                                   plot %in% c(4, 7, 10) ~ "high") %>%
-           fct_relevel("none", "low", "medium"),
-         bg_sp_age = str_replace(bg_sp_age, "_", " "),
-         bg_sp_age = recode(bg_sp_age, "Mv seedling" = "Mv"))
+# bgSevDat <- sevD1Dat %>%
+#   select(month, site, plot, treatment, bg_sp, bg_age, bg_sp_age, bg_lesions) %>%
+#   unique() %>%
+#   mutate(yearf = "2018") %>%
+#   full_join(sevD2Dat %>%
+#               select(month, site, plot, treatment, bg_sp, bg_age, bg_sp_age, bg_lesions) %>%
+#               unique() %>%
+#               mutate(yearf = "2019")) %>%
+#   filter(!is.na(bg_lesions)) %>%
+#   group_by(yearf, bg_sp_age) %>%
+#   mutate(mean_bg_ls = mean(bg_lesions),
+#          sd_bg_ls = sd(bg_lesions)) %>%
+#   ungroup() %>%
+#   mutate(bg_ls_s = (bg_lesions - mean_bg_ls) / sd_bg_ls,
+#          density_level = case_when(plot == 1 ~ "none",
+#                                    plot %in% c(2, 5, 8) ~ "low",
+#                                    plot %in% c(3, 6, 9) ~ "medium",
+#                                    plot %in% c(4, 7, 10) ~ "high") %>%
+#            fct_relevel("none", "low", "medium"),
+#          bg_sp_age = str_replace(bg_sp_age, "_", " "),
+#          bg_sp_age = recode(bg_sp_age, "Mv seedling" = "Mv"))
 
 
 #### visualizations ####
 
-# prior disease and lesions
-ggplot(priorSevD1Dat, aes(foc_prior_lesions, foc_prior_disease)) +
-  geom_point(aes(color = month)) +
-  geom_smooth() +
-  facet_wrap(foc_sp ~ foc_age)
-# too correlated, have to pick one of these
-
-# lesion change distributions
-ggplot(sevD1Dat, aes(foc_lesions_change)) +
+# susceptible change distributions
+ggplot(sevD1Dat, aes(foc_suscept_change)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-ggplot(sevD2Dat, aes(foc_ls_chg_s)) +
+ggplot(sevD2Dat, aes(foc_suscept_change)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-# focal disease distributions
-ggplot(sevD1Dat, aes(foc_prior_disease)) +
+# bg lesions distributions
+ggplot(sevD1Dat, aes(bg_lesions)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-ggplot(sevD2Dat, aes(foc_pr_dis_s)) +
+ggplot(sevD1Dat, aes(bg_les_s)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-# bg disease distributions
-ggplot(sevD1Dat, aes(bg_prior_disease)) +
+ggplot(sevD2Dat, aes(bg_lesions)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-ggplot(sevD2Dat, aes(bg_pr_dis_s)) +
+ggplot(sevD2Dat, aes(bg_les_s)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-# intraspecific
-ggplot(sevD1Dat, aes(foc_pr_dis_s, foc_ls_chg_s, color = treatment)) +
+# pairwise combinations
+ggplot(sevD1Dat, aes(bg_les_s, foc_suscept_change, color = treatment)) +
   geom_point(aes(shape = month)) +
   geom_smooth(formula = y ~ x, method = "lm") +
-  facet_wrap(foc_sp ~ foc_age, scales = "free")
+  facet_grid(foc_sp_age ~ bg_sp_age, scales = "free")
 
-ggplot(sevD2Dat, aes(foc_pr_dis_s, foc_ls_chg_s, color = treatment, color = treatment)) +
+ggplot(sevD2Dat, aes(bg_les_s, foc_suscept_change, color = treatment)) +
   geom_point(aes(shape = month)) +
   geom_smooth(formula = y ~ x, method = "lm") +
-  facet_wrap(foc_sp ~ foc_age, scales = "free")
-
-# interspecific
-ggplot(sevD1Dat, aes(bg_pr_dis_s, foc_ls_chg_s, color = treatment)) +
-  geom_point(aes(shape = month)) +
-  geom_smooth(formula = y ~ x, method = "lm") +
-  facet_wrap(foc_sp_age ~ bg_sp_age, scales = "free")
-
-ggplot(sevD2Dat, aes(bg_pr_dis_s, foc_ls_chg_s, color = treatment)) +
-  geom_point(aes(shape = month)) +
-  geom_smooth(formula = y ~ x, method = "lm") +
-  facet_wrap(foc_sp_age ~ bg_sp_age, scales = "free")
+  facet_grid(foc_sp_age ~ bg_sp_age, scales = "free")
 
 # edge
-ggplot(sevD2Dat, aes(edge_severity, foc_ls_chg_s, color = treatment)) +
+ggplot(sevD2Dat, aes(edge_severity, foc_suscept_change, color = treatment)) +
   geom_point(aes(shape = month)) +
   geom_smooth(formula = y ~ x, method = "lm") +
   facet_wrap(~ foc_sp_age, scales = "free")
@@ -278,37 +236,36 @@ ggplot(sevD2Dat, aes(edge_severity, foc_ls_chg_s, color = treatment)) +
 #### divide data ####
 
 mvD1Dat <- sevD1Dat %>%
-  filter(foc_sp == "Mv" & !is.na(foc_lesions_change) & !is.na(bg_pr_dis_s)) %>%
+  filter(foc_sp == "Mv") %>%
   mutate(bg_sp_age = fct_relevel(bg_sp_age, "Mv_seedling"))
 
 evSD1Dat <- sevD1Dat %>%
-  filter(foc_sp_age == "Ev_seedling" & !is.na(foc_lesions_change) & !is.na(bg_pr_dis_s)) %>%
+  filter(foc_sp_age == "Ev_seedling") %>%
   mutate(bg_sp_age = fct_relevel(bg_sp_age, "Ev_seedling"))
 
 evAD1Dat <- sevD1Dat %>%
-  filter(foc_sp_age == "Ev_adult" & !is.na(foc_lesions_change) & !is.na(bg_pr_dis_s))
+  filter(foc_sp_age == "Ev_adult")
 
 mvD2Dat <- sevD2Dat %>%
-  filter(foc_sp == "Mv" & !is.na(foc_lesions_change) & !is.na(bg_pr_dis_s) & !is.na(edge_severity)) %>%
+  filter(foc_sp == "Mv") %>%
   mutate(bg_sp_age = fct_relevel(bg_sp_age, "Mv_seedling"))
 
 evSD2Dat <- sevD2Dat %>%
-  filter(foc_sp_age == "Ev_seedling" & !is.na(foc_lesions_change) & !is.na(bg_pr_dis_s) & !is.na(edge_severity))%>%
+  filter(foc_sp_age == "Ev_seedling")%>%
   mutate(bg_sp_age = fct_relevel(bg_sp_age, "Ev_seedling"))
 
 evAD2Dat <- sevD2Dat %>%
-  filter(foc_sp_age == "Ev_adult" & !is.na(foc_lesions_change) & !is.na(bg_pr_dis_s) & !is.na(edge_severity))
+  filter(foc_sp_age == "Ev_adult")
 
 
 #### 2018 models ####
 
 # Mv
-mvSevD1Mod1 <- brm(foc_ls_chg_s ~ fungicide * bg_pr_dis_s * bg_sp_age + (1|plotf),
+mvSevD1Mod1 <- brm(foc_suscept_change ~ fungicide * bg_les_s * bg_sp_age + (1|plotf),
                    data = mvD1Dat, family = gaussian,
                    prior <- c(prior(normal(0, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
-                   control = list(adapt_delta = 0.99))
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
 summary(mvSevD1Mod1)
 
 # Ev seedling
@@ -316,19 +273,24 @@ evSSevD1Mod1 <- update(mvSevD1Mod1, newdata = evSD1Dat)
 summary(evSSevD1Mod1)
 
 # Ev adult
-evASevD1Mod1 <- update(mvSevD1Mod1, newdata = evAD1Dat)
+evASevD1Mod1 <- update(mvSevD1Mod1, newdata = evAD1Dat, 
+                       control = list(adapt_delta = 0.99))
 summary(evASevD1Mod1)
+
+# save
+save(mvSevD1Mod1, file = "output/mv_focal_plot_transmission_2018_density_exp.rda")
+save(evSSevD1Mod1, file = "output/evS_focal_plot_transmission_2018_density_exp.rda")
+save(evASevD1Mod1, file = "output/evA_focal_plot_transmission_2018_density_exp.rda")
 
 
 #### 2019 models ####
 
 # Mv
-mvSevD2Mod1 <- brm(foc_ls_chg_s ~ fungicide * (bg_pr_dis_s * bg_sp_age + edge_severity) + (1|plotf),
+mvSevD2Mod1 <- brm(foc_suscept_change ~ fungicide * (bg_les_s * bg_sp_age + edge_severity) + (1|plotf),
                    data = mvD2Dat, family = gaussian,
                    prior <- c(prior(normal(0, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
-                   control = list(adapt_delta = 0.99))
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
 summary(mvSevD2Mod1)
 
 # Ev seedling
@@ -339,114 +301,435 @@ summary(evSSevD2Mod1)
 evASevD2Mod1 <- update(mvSevD2Mod1, newdata = evAD2Dat)
 summary(evASevD2Mod1)
 
-# no significant edge severity effects
+# save
+save(mvSevD2Mod1, file = "output/mv_focal_plot_transmission_2019_density_exp.rda")
+save(evSSevD2Mod1, file = "output/evS_focal_plot_transmission_2019_density_exp.rda")
+save(evASevD2Mod1, file = "output/evA_focal_plot_transmission_2019_density_exp.rda")
+
+
+#### pairwise figure ####
+
+# prediction function
+pair_pred_fun <- function(year, foc, bg, trt){
+  
+  # data
+  if(year == "2018"){
+    dat <- sevD1Dat
+  }else{
+    dat <- sevD2Dat
+  }
+  
+  # model
+  if(year == "2018" & foc == "Mv_seedling"){
+    mod <- mvSevD1Mod1
+  }else if(year == "2018" & foc == "Ev_seedling"){
+    mod <- evSSevD1Mod1
+  }else if(year == "2018" & foc == "Ev_adult"){
+    mod <- evASevD1Mod1
+  }else if(year == "2019" & foc == "Mv_seedling"){
+    mod <- mvSevD2Mod1
+  }else if(year == "2019" & foc == "Ev_seedling"){
+    mod <- evSSevD2Mod1
+  }else if(year == "2019" & foc == "Ev_adult"){
+    mod <- evASevD2Mod1
+  }
+  
+  # subset for species pair
+  dat2 <- dat %>%
+    filter(foc_sp_age == foc & bg_sp_age == bg & treatment == trt)
+  
+  # sequence of lesion values
+  # other variables
+  # predicted values
+  simDat <- tibble(bg_les_s = seq(min(dat2$bg_les_s), max(dat2$bg_les_s), length.out = 100)) %>%
+    mutate(edge_severity = mean(dat$edge_severity),
+           plotf = "A",
+           fungicide = case_when(trt == "water" ~ 0,
+                                 trt == "fungicide" ~ 1),
+           bg_sp_age = bg) %>%
+    mutate(foc_suscept_change = fitted(mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+           lower = fitted(mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
+           upper = fitted(mod, newdata = ., allow_new_levels = T)[, "Q97.5"]) %>%
+    select(-bg_sp_age)
+  
+  # output
+  return(simDat)
+  
+}
+
+# predicted data
+predDat <- tibble(foc_sp_age = c("Ev_adult", "Ev_seedling", "Mv_seedling")) %>%
+  expand_grid(tibble(bg_sp_age = c("Ev_adult", "Ev_seedling", "Mv_seedling"))) %>%
+  expand_grid(tibble(treatment = c("water", "fungicide"))) %>%
+  expand_grid(tibble(year = c("2018", "2019"))) %>%
+  mutate(pred = pmap(list(year, foc_sp_age, bg_sp_age, treatment), pair_pred_fun)) %>%
+  unnest(pred)
+
+# coefficients function
+pair_coef_fun <- function(year, foc){
+  
+  # model
+  if(year == "2018" & foc == "Mv_seedling"){
+    mod <- mvSevD1Mod1
+  }else if(year == "2018" & foc == "Ev_seedling"){
+    mod <- evSSevD1Mod1
+  }else if(year == "2018" & foc == "Ev_adult"){
+    mod <- evASevD1Mod1
+  }else if(year == "2019" & foc == "Mv_seedling"){
+    mod <- mvSevD2Mod1
+  }else if(year == "2019" & foc == "Ev_seedling"){
+    mod <- evSSevD2Mod1
+  }else if(year == "2019" & foc == "Ev_adult"){
+    mod <- evASevD2Mod1
+  }
+  
+  # rename posterior samples
+  if(foc == "Mv_seedling"){
+    out <- posterior_samples(mod) %>%
+      rename("water_Mv_seedling" = "b_bg_les_s",
+             "b_Ev_adult" = "b_bg_les_s:bg_sp_ageEv_adult",
+             "b_Ev_seedling" = "b_bg_les_s:bg_sp_ageEv_seedling",
+             "b_Mv_seedling_fung" = "b_fungicide:bg_les_s",
+             "b_Ev_adult_fung" = "b_fungicide:bg_les_s:bg_sp_ageEv_adult",
+             "b_Ev_seedling_fung" = "b_fungicide:bg_les_s:bg_sp_ageEv_seedling",) %>%
+      mutate(water_Ev_adult = water_Mv_seedling + b_Ev_adult,
+             water_Ev_seedling = water_Mv_seedling + b_Ev_seedling,
+             fungicide_Mv_seedling = water_Mv_seedling + b_Mv_seedling_fung,
+             fungicide_Ev_adult = water_Ev_adult + b_Mv_seedling_fung + b_Ev_adult_fung,
+             fungicide_Ev_seedling = water_Ev_seedling + b_Mv_seedling_fung + b_Ev_seedling_fung)
+  } else if(foc == "Ev_seedling"){
+    out <- posterior_samples(mod) %>%
+      rename("water_Ev_seedling" = "b_bg_les_s",
+             "b_Ev_adult" = "b_bg_les_s:bg_sp_ageEv_adult",
+             "b_Mv_seedling" = "b_bg_les_s:bg_sp_ageMv_seedling",
+             "b_Ev_seedling_fung" = "b_fungicide:bg_les_s",
+             "b_Ev_adult_fung" = "b_fungicide:bg_les_s:bg_sp_ageEv_adult",
+             "b_Mv_seedling_fung" = "b_fungicide:bg_les_s:bg_sp_ageMv_seedling",) %>%
+      mutate(water_Ev_adult = water_Ev_seedling + b_Ev_adult,
+             water_Mv_seedling = water_Ev_seedling + b_Mv_seedling,
+             fungicide_Ev_seedling = water_Ev_seedling + b_Ev_seedling_fung,
+             fungicide_Ev_adult = water_Ev_adult + b_Ev_seedling_fung + b_Ev_adult_fung,
+             fungicide_Mv_seedling = water_Mv_seedling + b_Ev_seedling_fung + b_Mv_seedling_fung)
+  } else{
+    out <- posterior_samples(mod) %>%
+      rename("water_Ev_adult" = "b_bg_les_s",
+             "b_Ev_seedling" = "b_bg_les_s:bg_sp_ageEv_seedling",
+             "b_Mv_seedling" = "b_bg_les_s:bg_sp_ageMv_seedling",
+             "b_Ev_adult_fung" = "b_fungicide:bg_les_s",
+             "b_Ev_seedling_fung" = "b_fungicide:bg_les_s:bg_sp_ageEv_seedling",
+             "b_Mv_seedling_fung" = "b_fungicide:bg_les_s:bg_sp_ageMv_seedling",) %>%
+      mutate(water_Ev_seedling = water_Ev_adult + b_Ev_seedling,
+             water_Mv_seedling = water_Ev_adult + b_Mv_seedling,
+             fungicide_Ev_adult = water_Ev_adult + b_Ev_adult_fung,
+             fungicide_Ev_seedling = water_Ev_seedling + b_Ev_adult_fung + b_Ev_seedling_fung,
+             fungicide_Mv_seedling = water_Mv_seedling + b_Ev_adult_fung + b_Mv_seedling_fung)
+  }
+  
+  # re-organize and summarize
+  out2 <- out %>%
+    select(water_Mv_seedling, water_Ev_adult, water_Ev_seedling,
+           fungicide_Mv_seedling, fungicide_Ev_adult, fungicide_Ev_seedling) %>%
+    pivot_longer(cols = everything(),
+                 names_to = c("treatment", ".value"),
+                 names_pattern = "(.*)_(.*_.*)") %>%
+    pivot_longer(cols = -treatment,
+                 names_to = "bg_sp_age",
+                 values_to = "beta") %>%
+    group_by(treatment, bg_sp_age) %>%
+    median_hdi(beta)
+    
+    return(out2)
+  
+}
+
+# beta values
+betaDat <- tibble(foc_sp_age = c("Ev_adult", "Ev_seedling", "Mv_seedling")) %>%
+  expand_grid(tibble(year = c("2018", "2019"))) %>%
+  mutate(coef = pmap(list(year, foc_sp_age), pair_coef_fun)) %>%
+  unnest(coef) %>%
+  mutate(sig = case_when((.lower < 0 & .upper < 0) | (.lower > 0 & .upper > 0) ~ "omits 0",
+                         TRUE ~ "includes 0"),
+         foc_sp_age = str_replace(foc_sp_age, "_", " "),
+         foc_sp_age = fct_recode(foc_sp_age, Mv = "Mv seedling"),
+         bg_sp_age = str_replace(bg_sp_age, "_", " "),
+         bg_sp_age = fct_recode(bg_sp_age, Mv = "Mv seedling"),
+         treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_relevel("control (water)"))
+
+# add to predicted dataset
+predDat2 <- predDat %>%
+  mutate(foc_sp_age = str_replace(foc_sp_age, "_", " "),
+         foc_sp_age = fct_recode(foc_sp_age, Mv = "Mv seedling"),
+         bg_sp_age = str_replace(bg_sp_age, "_", " "),
+         bg_sp_age = fct_recode(bg_sp_age, Mv = "Mv seedling"),
+         treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_relevel("control (water)")) %>%
+  left_join(betaDat %>%
+              select(year, foc_sp_age, bg_sp_age, treatment, sig))
+
+# raw data
+sevDat <- sevD1Dat %>%
+  mutate(year = "2018") %>%
+  full_join(sevD2Dat %>%
+              mutate(year = "2019")) %>%
+  mutate(foc_sp_age = str_replace(foc_sp_age, "_", " "),
+         foc_sp_age = fct_recode(foc_sp_age, Mv = "Mv seedling"),
+         bg_sp_age = str_replace(bg_sp_age, "_", " "),
+         bg_sp_age = fct_recode(bg_sp_age, Mv = "Mv seedling"),
+         treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_relevel("control (water)"))
+
+# sig beta values
+betaDat2 <- betaDat %>%
+  filter(sig == "omits 0") %>%
+  left_join(predDat2 %>%
+              group_by(year, bg_sp_age) %>%
+              summarise(bg_les_s = max(bg_les_s))) %>%
+  left_join(predDat2 %>%
+              group_by(year, foc_sp_age) %>%
+              summarise(upper = max(upper)) %>%
+              ungroup() %>%
+              full_join(sevDat %>%
+                          group_by(year, foc_sp_age) %>%
+                          summarise(foc = max(foc_suscept_change),
+                                    min = min(foc_suscept_change))) %>%
+              rowwise() %>%
+              mutate(foc_suscept_change = max(c(foc, upper))) %>%
+              ungroup() %>%
+              select(-c(foc, upper))) %>%
+  rename(tran = beta) %>%
+  mutate(tran = round(tran * -1, 2),
+         .lower = round(.lower * -1, 2),
+         .upper = round(.upper * -1, 2),
+         lower = case_when(tran > 0 ~ .upper, # switch because they were negative
+                           TRUE ~ .lower),
+         upper = case_when(tran > 0 ~ .lower,
+                           TRUE ~ .upper),
+         foc_suscept_change = case_when(bg_sp_age == "Mv" & foc_sp_age == "Ev seedling" & year == "2019" & treatment == "fungicide" ~ foc_suscept_change - 0.6,
+                                        bg_sp_age == "Ev adult" & foc_sp_age == "Mv" & year == "2018" ~ min + 0.3,
+                                        bg_sp_age == "Ev seedling" ~ min + 0.5,
+                                        TRUE ~ foc_suscept_change)) %>%
+  select(-c(.lower, .upper))
+              
+
+# figure settings
+fig_theme <- theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.title.y = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.background = element_blank(),
+        legend.position = "none",
+        legend.margin = margin(-0.7, 0, 0, 2, unit = "cm"),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 8),
+        strip.placement = "outside")
+
+col_pal = c("black", "#238A8DFF")
+
+yearText <- tibble(year = c("2018", "2019"),
+                   bg_les_s = c(-1, -1),
+                   foc_suscept_change = c(1.1, 2.3),
+                   bg_sp_age = "Ev adult",
+                   foc_sp_age = "Ev adult",
+                   treatment = "fungicide")
+
+textSize = 3
+
+# water figure
+pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_les_s, y = foc_suscept_change)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
+  geom_line(aes(color = treatment, linetype = sig)) +
+  geom_point(data = filter(sevDat, year == "2018"), aes(color = treatment), alpha = 0.5, size = 0.5) +
+  geom_text(data = filter(betaDat2, year == "2018"), 
+            aes(label = paste("beta", " == ", tran, sep = ""), 
+                color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
+  geom_text(data = filter(yearText, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0) +
+  facet_grid(rows = vars(foc_sp_age),
+             cols = vars(bg_sp_age),
+             scales = "free",
+             switch = "both") +
+  scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
+  scale_color_manual(values = col_pal, name = "Treatment") +
+  scale_fill_manual(values = col_pal, name = "Treatment") +
+  xlab("Lesions") +
+  ylab("Change in susceptible tissue") +
+  fig_theme +
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal")
+
+# fungicide figure
+pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_les_s, y = foc_suscept_change)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
+  geom_line(aes(color = treatment, linetype = sig)) +
+  geom_point(data = filter(sevDat, year == "2019"), aes(color = treatment), alpha = 0.5, size = 0.5) +
+  geom_text(data = filter(betaDat2, year == "2019"), 
+            aes(label = paste("beta", " == ", tran, sep = ""), 
+                color = treatment), parse = T, hjust = 1, vjust = 1, size = textSize) +
+  geom_text(data = filter(yearText, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0) +
+  facet_grid(rows = vars(foc_sp_age),
+             cols = vars(bg_sp_age),
+             scales = "free",
+             switch = "both") +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  xlab("Lesions") +
+  ylab("Change in susceptible tissue") +
+  fig_theme +
+  theme(axis.title.y = element_blank(),
+        strip.text.y = element_blank())
+
+# legend
+leg <- get_legend(pairD1Fig)
+
+# combine plots
+combFig <- plot_grid(pairD1Fig + theme(legend.position = "none"), pairD2Fig,
+                     nrow = 1,
+                     labels = LETTERS[1:2],
+                     rel_widths = c(1, 0.9))
+
+# combine
+pdf("output/plot_severity_pairwise_figure_2018_2019_density_exp.pdf", width = 7, height = 3.5)
+plot_grid(combFig, leg,
+          nrow = 2,
+          rel_heights = c(0.8, 0.02))
+dev.off()
 
 
 #### extract effects ####
 
-bg_eff_fun <- function(mod, foc, yr){
-  
-  if(foc == "Mv"){
-    out <- posterior_samples(mod) %>%
-      rename("Mv" = "b_bg_pr_dis_s", 
-             "b_Ev_adult" = "b_bg_pr_dis_s:bg_sp_ageEv_adult",
-             "b_Ev_seedling" = "b_bg_pr_dis_s:bg_sp_ageEv_seedling") %>%
-      mutate(Ev_adult = Mv + b_Ev_adult,
-             Ev_seedling = Mv + b_Ev_seedling)
-  } else if(foc == "Ev seedling"){
-    out <- posterior_samples(mod) %>%
-      rename("Ev_seedling" = "b_bg_pr_dis_s", 
-             "b_Ev_adult" = "b_bg_pr_dis_s:bg_sp_ageEv_adult",
-             "b_Mv" = "b_bg_pr_dis_s:bg_sp_ageMv_seedling") %>%
-      mutate(Ev_adult = Ev_seedling + b_Ev_adult,
-             Mv = Ev_seedling + b_Mv)
-  } else{
-    out <- posterior_samples(mod) %>%
-      rename("Ev_adult" = "b_bg_pr_dis_s", 
-             "b_Ev_seedling" = "b_bg_pr_dis_s:bg_sp_ageEv_seedling",
-             "b_Mv" = "b_bg_pr_dis_s:bg_sp_ageMv_seedling") %>%
-      mutate(Ev_seedling = Ev_adult + b_Ev_seedling,
-             Mv = Ev_adult + b_Mv)
-  }
-
-  
-  out2 <- out %>%
-    select(Mv, Ev_adult, Ev_seedling) %>%
-    pivot_longer(cols = everything(),
-                 names_to = "bg_sp_age",
-                 values_to = "bg_eff") %>%
-    group_by(bg_sp_age) %>%
-    median_hdi(bg_eff) %>%
-    mutate(focal = foc,
-           background = str_replace(bg_sp_age, "_", " "),
-           yearf = yr)
-  
-  return(out2)
-  
-}
-
-bgEff <- bg_eff_fun(mvSevD1Mod1, "Mv", "2018") %>%
-  full_join(bg_eff_fun(evSSevD1Mod1, "Ev seedling", "2018")) %>%
-  full_join(bg_eff_fun(evASevD1Mod1, "Ev adult", "2018")) %>%
-  full_join(bg_eff_fun(mvSevD2Mod1, "Mv", "2019")) %>%
-  full_join(bg_eff_fun(evSSevD2Mod1, "Ev seedling", "2019")) %>%
-  full_join(bg_eff_fun(evASevD2Mod1, "Ev adult", "2019")) %>%
-  mutate(sig = case_when((.lower < 0 & .upper < 0) | (.lower > 0 & .upper > 0) ~ "omits 0",
-                         TRUE ~ "includes 0"))
-
-
-#### figure ####
-
-bg_dens_figD1 <- ggplot(filter(bgSevDat, yearf == "2018"), aes(density_level, bg_ls_s, color = bg_sp_age)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se", position = position_dodge(0.7)) +
-  stat_summary(geom = "point", size = 2, fun = "mean", fill = "white", position = position_dodge(0.7), aes(shape = bg_sp_age)) +
-  geom_text(x = 0.5, y = 1.03, label = "2018", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
-  ylab("Background lesions") +
-  xlab("Background plant density") +
-  scale_color_manual(values = col_pal, name = "Plant group") +
-  scale_shape_manual(values = shape_pal, name = "Plant group") +
-  fig_theme +
-  theme(legend.position = c(0.23, 0.75))
-
-bg_dens_figD2 <- ggplot(filter(bgSevDat, yearf == "2019"), aes(density_level, bg_ls_s, color = bg_sp_age)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se", position = position_dodge(0.7)) +
-  stat_summary(geom = "point", size = 2, fun = "mean", fill = "white", position = position_dodge(0.7), aes(shape = bg_sp_age)) +
-  geom_text(x = 0.5, y = 1.3, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
-  ylab("Background lesions") +
-  xlab("Background plant density") +
-  scale_color_manual(values = col_pal, name = "Plant group") +
-  scale_shape_manual(values = shape_pal, name = "Plant group") +
-  fig_theme
-
-les_figD1 <- ggplot(filter(bgEff, yearf == "2018"), aes(background, bg_eff, color = focal)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_errorbar(aes(ymin = .lower, ymax = .upper), width = 0, position = position_dodge(0.5)) +
-  geom_point(aes(shape = focal, fill = sig), size = 2, position = position_dodge(0.5)) +
-  geom_text(x = 0.48, y = 1.06, label = "2018", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
-  xlab("Background plant group") +
-  ylab("Change in focal lesions") +
-  scale_color_manual(values = col_pal, name = "Focal plant group") +
-  scale_shape_manual(values = shape_pal, name = "Focal plant group") +
-  scale_fill_manual(values = c("white", "black"), guide = F) +
-  fig_theme
-
-les_figD2 <- ggplot(filter(bgEff, yearf == "2019"), aes(background, bg_eff, color = focal)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_errorbar(aes(ymin = .lower, ymax = .upper), width = 0, position = position_dodge(0.5)) +
-  geom_point(aes(shape = focal, fill = sig), size = 2, position = position_dodge(0.5)) +
-  geom_text(x = 0.48, y = 1.18, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
-  xlab("Background plant group") +
-  ylab("Change in focal lesions") +
-  scale_color_manual(values = col_pal, name = "Focal plant group") +
-  scale_shape_manual(values = shape_pal, name = "Focal plant group") +
-  scale_fill_manual(values = c("white", "black"), guide = F) +
-  fig_theme +
-  theme(legend.position = c(0.6, 0.87))
+# bg_eff_fun <- function(mod, foc, yr){
+#   
+#   if(foc == "Mv"){
+#     out <- posterior_samples(mod) %>%
+#       rename("Mv" = "b_bg_pr_dis_s", 
+#              "b_Ev_adult" = "b_bg_pr_dis_s:bg_sp_ageEv_adult",
+#              "b_Ev_seedling" = "b_bg_pr_dis_s:bg_sp_ageEv_seedling") %>%
+#       mutate(Ev_adult = Mv + b_Ev_adult,
+#              Ev_seedling = Mv + b_Ev_seedling)
+#   } else if(foc == "Ev seedling"){
+#     out <- posterior_samples(mod) %>%
+#       rename("Ev_seedling" = "b_bg_pr_dis_s", 
+#              "b_Ev_adult" = "b_bg_pr_dis_s:bg_sp_ageEv_adult",
+#              "b_Mv" = "b_bg_pr_dis_s:bg_sp_ageMv_seedling") %>%
+#       mutate(Ev_adult = Ev_seedling + b_Ev_adult,
+#              Mv = Ev_seedling + b_Mv)
+#   } else{
+#     out <- posterior_samples(mod) %>%
+#       rename("Ev_adult" = "b_bg_pr_dis_s", 
+#              "b_Ev_seedling" = "b_bg_pr_dis_s:bg_sp_ageEv_seedling",
+#              "b_Mv" = "b_bg_pr_dis_s:bg_sp_ageMv_seedling") %>%
+#       mutate(Ev_seedling = Ev_adult + b_Ev_seedling,
+#              Mv = Ev_adult + b_Mv)
+#   }
+# 
+#   
+#   out2 <- out %>%
+#     select(Mv, Ev_adult, Ev_seedling) %>%
+#     pivot_longer(cols = everything(),
+#                  names_to = "bg_sp_age",
+#                  values_to = "bg_eff") %>%
+#     group_by(bg_sp_age) %>%
+#     median_hdi(bg_eff) %>%
+#     mutate(focal = foc,
+#            background = str_replace(bg_sp_age, "_", " "),
+#            yearf = yr)
+#   
+#   return(out2)
+#   
+# }
+# 
+# bgEff <- bg_eff_fun(mvSevD1Mod1, "Mv", "2018") %>%
+#   full_join(bg_eff_fun(evSSevD1Mod1, "Ev seedling", "2018")) %>%
+#   full_join(bg_eff_fun(evASevD1Mod1, "Ev adult", "2018")) %>%
+#   full_join(bg_eff_fun(mvSevD2Mod1, "Mv", "2019")) %>%
+#   full_join(bg_eff_fun(evSSevD2Mod1, "Ev seedling", "2019")) %>%
+#   full_join(bg_eff_fun(evASevD2Mod1, "Ev adult", "2019")) %>%
+#   mutate(sig = case_when((.lower < 0 & .upper < 0) | (.lower > 0 & .upper > 0) ~ "omits 0",
+#                          TRUE ~ "includes 0"))
 
 
-# combine figure
-pdf("output/plot_severity_effect_figure_2018_2019_density_exp.pdf", width = 4.7, height = 4.7)
-plot_grid(bg_dens_figD1, bg_dens_figD2, les_figD1, les_figD2,
-          nrow = 2,
-          labels = LETTERS[1:4])
-dev.off()
+#### effects figure ####
+
+# fig_theme <- theme_bw() +
+#   theme(panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         panel.border = element_blank(),
+#         panel.spacing.x = unit(0,"line"),
+#         axis.text.y = element_text(size = 8, color = "black"),
+#         axis.text.x = element_text(size = 8, color = "black"),
+#         axis.title.y = element_text(size = 10),
+#         axis.title.x = element_text(size = 10),
+#         axis.line = element_line(color = "black"),
+#         legend.text = element_text(size = 8),
+#         legend.title = element_text(size = 8),
+#         legend.background = element_blank(),
+#         legend.position = "none",
+#         legend.key.size = unit(1, "mm"),
+#         strip.background = element_blank(),
+#         strip.text = element_text(size = 8),
+#         strip.placement = "outside")
+# 
+# col_pal = c("#472F7DFF", "#39568CFF", "#35B779FF")
+# shape_pal = c(23, 22, 24)
+
+# bg_dens_figD1 <- ggplot(filter(bgSevDat, yearf == "2018"), aes(density_level, bg_ls_s, color = bg_sp_age)) +
+#   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se", position = position_dodge(0.7)) +
+#   stat_summary(geom = "point", size = 2, fun = "mean", fill = "white", position = position_dodge(0.7), aes(shape = bg_sp_age)) +
+#   geom_text(x = 0.5, y = 1.03, label = "2018", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
+#   ylab("Background lesions") +
+#   xlab("Background plant density") +
+#   scale_color_manual(values = col_pal, name = "Plant group") +
+#   scale_shape_manual(values = shape_pal, name = "Plant group") +
+#   fig_theme +
+#   theme(legend.position = c(0.23, 0.75))
+# 
+# bg_dens_figD2 <- ggplot(filter(bgSevDat, yearf == "2019"), aes(density_level, bg_ls_s, color = bg_sp_age)) +
+#   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se", position = position_dodge(0.7)) +
+#   stat_summary(geom = "point", size = 2, fun = "mean", fill = "white", position = position_dodge(0.7), aes(shape = bg_sp_age)) +
+#   geom_text(x = 0.5, y = 1.3, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
+#   ylab("Background lesions") +
+#   xlab("Background plant density") +
+#   scale_color_manual(values = col_pal, name = "Plant group") +
+#   scale_shape_manual(values = shape_pal, name = "Plant group") +
+#   fig_theme
+# 
+# les_figD1 <- ggplot(filter(bgEff, yearf == "2018"), aes(background, bg_eff, color = focal)) +
+#   geom_hline(yintercept = 0, linetype = "dashed") +
+#   geom_errorbar(aes(ymin = .lower, ymax = .upper), width = 0, position = position_dodge(0.5)) +
+#   geom_point(aes(shape = focal, fill = sig), size = 2, position = position_dodge(0.5)) +
+#   geom_text(x = 0.48, y = 1.06, label = "2018", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
+#   xlab("Background plant group") +
+#   ylab("Change in focal lesions") +
+#   scale_color_manual(values = col_pal, name = "Focal plant group") +
+#   scale_shape_manual(values = shape_pal, name = "Focal plant group") +
+#   scale_fill_manual(values = c("white", "black"), guide = F) +
+#   fig_theme
+# 
+# les_figD2 <- ggplot(filter(bgEff, yearf == "2019"), aes(background, bg_eff, color = focal)) +
+#   geom_hline(yintercept = 0, linetype = "dashed") +
+#   geom_errorbar(aes(ymin = .lower, ymax = .upper), width = 0, position = position_dodge(0.5)) +
+#   geom_point(aes(shape = focal, fill = sig), size = 2, position = position_dodge(0.5)) +
+#   geom_text(x = 0.48, y = 1.18, label = "2019", color = "black", size = 2.5, check_overlap = T, hjust = 0) +
+#   xlab("Background plant group") +
+#   ylab("Change in focal lesions") +
+#   scale_color_manual(values = col_pal, name = "Focal plant group") +
+#   scale_shape_manual(values = shape_pal, name = "Focal plant group") +
+#   scale_fill_manual(values = c("white", "black"), guide = F) +
+#   fig_theme +
+#   theme(legend.position = c(0.6, 0.87))
+# 
+# 
+# # combine figure
+# pdf("output/plot_severity_effect_figure_2018_2019_density_exp.pdf", width = 4.7, height = 4.7)
+# plot_grid(bg_dens_figD1, bg_dens_figD2, les_figD1, les_figD2,
+#           nrow = 2,
+#           labels = LETTERS[1:4])
+# dev.off()

@@ -48,10 +48,10 @@ fig_theme <- theme_bw() +
         legend.position = "none",
         legend.key.size = unit(1, "mm"),
         strip.background = element_blank(),
-        strip.text = element_text(size = 8),
+        strip.text = element_text(size = 10),
         strip.placement = "outside")
 
-col_pal = c("#FFC000", "#8FD744FF")
+col_pal = c("black", "#238A8DFF")
 
 
 
@@ -144,13 +144,13 @@ corr_fun <- function(sev_var, res_var, sp_abb, year){
 
 # logit-transform proportions
 d1dat2 <- d1dat %>%
-  select(-c(jul_lesions:sep_prop_healthy)) %>%
+  select(-c(jul_lesions:sep_susceptible)) %>%
   mutate(logit_jul_severity = logit(jul_severity, adjust = log_adj),
          logit_late_aug_severity = logit(late_aug_severity, adjust = log_adj),
          logit_sep_severity = logit(sep_severity, adjust = log_adj))
 
 d2dat2 <- d2dat %>%
-  select(-c(early_aug_lesions:may_prop_healthy)) %>%
+  select(-c(early_aug_lesions:may_susceptible)) %>%
   mutate(logit_may_severity = logit(may_severity, adjust = log_adj),
          logit_jun_severity = logit(jun_severity, adjust = log_adj),
          logit_jul_severity = logit(jul_severity, adjust = log_adj),
@@ -497,7 +497,7 @@ bioFig <- figdat %>%
   geom_text(data = bioSum, color = "black", aes(x = sp, y = log(max_val), label = sig, size = txt_size)) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_size_manual(values = c(5, 3)) +
-  ylab(expression(paste("Biomass (log g ", m^2, ")", sep = ""))) +
+  ylab(expression(paste("Biomass (g ", m^2, ")", sep = ""))) +
   fig_theme
 
 # seeds
@@ -508,7 +508,7 @@ seedFig <- ggplot(figdat, aes(sp, log(seeds + 1), color = treatment)) +
   geom_text(data = seedSum, color = "black", aes(x = sp, y = log(max_val + 1), label = sig, size = txt_size)) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_size_manual(values = c(5, 3)) +
-  ylab("Seeds (log)") +
+  ylab("Seeds") +
   fig_theme
 
 # combine
