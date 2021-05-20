@@ -2,7 +2,7 @@
 
 # file:niche_overlap_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/7/21
+# date last edited: 5/19/21
 # goal: fungicide effects on alphas and niche overlap
 
 
@@ -35,6 +35,13 @@ load("output/evA_biomass_evS_density_model_2019_density_exp.rda")
 load("output/mv_biomass_evA_density_model_2019_density_exp.rda")
 load("output/evS_biomass_evA_density_model_2019_density_exp.rda")
 load("output/evA_biomass_evA_density_model_2019_density_exp.rda")
+
+load("output/mv_biomass_Ricker_model_2019_density_exp.rda")
+load("output/evS_biomass_Ricker_model_2019_density_exp.rda")
+load("output/evA_biomass_Ricker_model_2019_density_exp.rda")
+load("output/mv_tillers_Ricker_model_2018_density_exp.rda")
+load("output/evS_tillers_Ricker_model_2018_density_exp.rda")
+load("output/evA_tillers_Ricker_model_2018_density_exp.rda")
 
 load("output/evA_growing_season_survival_model_2018_density_exp.rda")
 load("output/evA_growing_season_survival_model_2019_density_exp.rda")
@@ -201,3 +208,80 @@ diffD2 <- alphasD2 %>%
                values_to = "diff") %>%
   group_by(alpha) %>%
   mean_hdi(diff)
+
+
+#### Ricker models ####
+
+# combine alphas
+alphasRick <- posterior_samples(mvRickD1Mod) %>%
+  mutate(focal = "a", year = "2018") %>%
+  full_join(posterior_samples(evSRickD1Mod) %>%
+              mutate(focal = "s", year = "2018")) %>%
+  full_join(posterior_samples(evARickD1Mod) %>%
+              mutate(focal = "p", year = "2018")) %>%
+  full_join(posterior_samples(mvRickD2Mod) %>%
+              mutate(focal = "a", year = "2019")) %>%
+  full_join(posterior_samples(evSRickD2Mod) %>%
+              mutate(focal = "s", year = "2019")) %>%
+  full_join(posterior_samples(evARickD2Mod) %>%
+              mutate(focal = "p", year = "2019")) %>%
+  rename_with(str_replace, pattern = ":", replacement = "_") %>%
+  mutate(a_water = b_density,
+         s_water = b_density + b_density_backgroundEv_seedling,
+         p_water = b_density + b_density_backgroundEv_adult,
+         a_fungicide = b_density + b_fungicide_density,
+         s_fungicide = s_water + b_fungicide_density + b_fungicide_backgroundEv_seedling,
+         p_fungicide = p_water + b_fungicide_density + b_fungicide_backgroundEv_adult) %>%
+  select(year, focal, a_water, s_water, p_water, a_fungicide, s_fungicide, p_fungicide) %>%
+  as_tibble() %>%
+  pivot_longer(cols = -c(year, focal),
+               names_to = c(".value", "treatment"),
+               names_pattern = "(.)_(.*)") %>%
+  mutate(iter = rep(rep(1:15000, each = 2), 6)) %>%
+  pivot_wider(names_from = focal,
+              names_glue = "{focal}{.value}",
+              values_from = c(a, s, p)) %>%
+  mutate(aa = -1 * aa,
+         sa = -1 * sa * survS,
+         pa = -1 * pa * survP,
+         as = -1 * as * survS,
+         ss = -1 * ss * survS,
+         ps = -1 * ps,
+         ap = -1 * ap * survP,
+         pp = -1 * pp * survP,
+         rho = sqrt((ap + as) * (pa + sa) / (aa * (ss + pp))))
+
+sum(is.na(alphasRick$rho))/60000
+# almost half are lost because of negative (facilitative) values
+
+rhoRick <- alphasRick %>%
+  pivot_longer(cols = c(aa:rho),
+               names_to = "param",
+               values_to = "est") %>%
+  group_by(year, treatment, param) %>%
+  mean_hdi(est, na.rm = T) %>%
+  mutate(sig = case_when(.lower < 0 & .upper < 0 ~ T,
+                         .upper > 0 & .lower > 0 ~ T,
+                         TRUE ~ F))
+data.frame(rhoRick)
+
+diffRick <- alphasRick %>%
+  pivot_wider(names_from = treatment,
+              values_from = c(sp, ss, sa, pp, ps, pa, ap, as, aa, rho),
+              names_glue = "{.value}_{treatment}") %>%
+  transmute(sp = (sp_fungicide - sp_water) / sp_water,
+            ss = (ss_fungicide - ss_water) / ss_water,
+            sa = (sa_fungicide - sa_water) / sa_water,
+            pp = (pp_fungicide - pp_water) / pp_water,
+            ps = (ps_fungicide - ps_water) / ps_water,
+            pa = (pa_fungicide - pa_water) / pa_water,
+            ap = (ap_fungicide - ap_water) / ap_water,
+            as = (as_fungicide - as_water) / as_water,
+            aa = (aa_fungicide - aa_water) / aa_water,
+            rho = (rho_fungicide - rho_water) / rho_water) %>%
+  pivot_longer(cols = everything(),
+               names_to = "alpha",
+               values_to = "diff") %>%
+  group_by(alpha) %>%
+  mean_hdi(diff, na.rm = T)
+# no sig effect of fungicide

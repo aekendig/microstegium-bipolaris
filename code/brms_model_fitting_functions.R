@@ -67,3 +67,37 @@ mod_fit_fun <- function(dat, mod, treatCol, ranEff = site, xCol, minX, maxX, yCo
   return(list(outDat, outPlot))
   
 }
+
+
+#### Model fit for two treatments ####
+
+mod_fit_fun2 <- function(dat, mod, treatCol1, treatCol2, ranEff = site, xCol, minX, maxX, yCol, f2t = F){
+  
+  outDat <- dat %>%
+    select({{treatCol1}}, {{treatCol2}}) %>%
+    unique() %>%
+    mutate("{{ranEff}}" := "D5") %>%
+    expand_grid(tibble("{{xCol}}" := seq(minX, maxX, length.out = 100))) %>%
+    mutate(pred = fitted(mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+           lower = fitted(mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
+           upper = fitted(mod, newdata = ., allow_new_levels = T)[, "Q97.5"])
+  
+  if(f2t == T){
+    outDat <- outDat %>%
+      mutate(fungicide = dplyr::recode(fungicide, "0" = "water", "1" = "fungicide"))
+    
+    dat <- dat %>%
+      mutate(fungicide = dplyr::recode(fungicide, "0" = "water", "1" = "fungicide"))
+  }
+  
+  outPlot <- ggplot(dat, aes(x = {{xCol}}, y = {{yCol}}, color = {{treatCol1}}, fill = {{treatCol1}})) +
+    geom_ribbon(data = outDat, aes(y = pred, ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+    geom_line(data = outDat, aes(y = pred)) +
+    stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0) +
+    stat_summary(geom = "point", fun = "mean", size = 2) +
+    facet_wrap(vars({{treatCol2}})) +
+    theme_bw()
+  
+  return(list(outDat, outPlot))
+  
+}
