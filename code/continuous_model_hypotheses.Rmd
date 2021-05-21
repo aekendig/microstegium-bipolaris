@@ -1,0 +1,676 @@
+---
+title: "Conceptual figure"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(deSolve)
+library(cowplot)
+```
+
+# Continuous time model
+This model describes changes in the population densities of species $A$ and $B$, which are affected by disease and competition. The population density of species $i$, where $i = A, B$, can either be susceptible $S_{i}$ or infected $I_{i}$. The total population density of a species is $N_{i}$.      
+\begin{equation}
+\begin{gathered}
+\frac{dS_{A}}{dt} = r_{A}S_{A}(1 - \alpha_{AA}N_{A} - \alpha_{AB}N_{B}) - \beta_{AA}S_{A}I_{A} - \beta_{AB}S_{A}I_{B} - m_{A}S_{A}
+\\
+\frac{dS_{B}}{dt} = r_{B}S_{B}(1 - \alpha_{BB}N_{B} - \alpha_{BA}N_{A}) - \beta_{BB}S_{B}I_{B} - \beta_{BA}S_{B}I_{A} - m_{B}S_{B}
+\\
+\frac{dI_{A}}{dt} = \beta_{AA}S_{A}I_{A} + \beta_{AB}S_{A}I_{B} - v_{A}I_{A}
+\\
+\frac{dI_{B}}{dt} = \beta_{BB}S_{B}I_{B} + \beta_{BA}S_{B}I_{A} - v_{B}I_{B}
+\end{gathered}
+\end{equation}
+
+The susceptible population grows at a rate $r_{i}$, which is slowed due to competition ($\alpha$ values), or lost due to infection ($\beta$ values). $S_{i}$ decreases due to background mortality $m_{i}$. Both susceptible and infected individuals contribute to competition. Infected individuals do not reproduce. Infected individuals die due to disease $v_{i}$, where $v_{i} > m_{i}$. We simulate the continuous time model for $T$ days.  
+
+```{r model}
+cont_mod_fun <- function(t, x, params) {
+  
+  # initial conditions
+  S_A <- x[1]
+  S_B <- x[2]
+  I_A <- x[3]
+  I_B <- x[4]
+  
+  # parameters
+  r_A <- params[1]
+  r_B <- params[2]
+  
+  m_A <- params[3]
+  m_B <- params[4]
+  
+  a_AA <- params[5]
+  a_AB <- params[6]
+  a_BB <- params[7]
+  a_BA <- params[8]
+  
+  b_AA <- params[9]
+  b_AB <- params[10]
+  b_BB <- params[11]
+  b_BA <- params[12]
+  
+  v_A <- params[13]
+  v_B <- params[14]
+  
+  # derived values
+  N_A <- S_A + I_A
+  N_B <- S_B + I_B
+  
+  # model
+  dSAdt <- r_A * S_A * (1 - a_AA * N_A - a_AB * N_B) - b_AA * S_A * I_A - b_AB * S_A * I_B - m_A * S_A
+  dSBdt <- r_B * S_B * (1 - a_BB * N_B - a_BA * N_A) - b_BB * S_B * I_B - b_BA * S_B * I_A - m_B * S_B
+  dIAdt <- b_AA * S_A * I_A + b_AB * S_A * I_B - v_A * I_A
+  dIBdt <- b_BB * S_B * I_B + b_BA * S_B * I_A - v_B * I_B
+  
+  # combine values
+  dxdt <- c(dSAdt, dSBdt, dIAdt, dIBdt)
+  
+  # output
+  list(dxdt)
+}
+```
+
+We will use some of the same parameters throughout:
+```{r parameters}
+r <- 0.3
+m <- 0 # disease occurs on shorter time scale than typical lifetime
+alpha_hi <- 0.005
+alpha_med <- 0.002
+alpha_low <- 0.001
+beta_hi <- 0.007
+beta_low <- 0.0001
+v_hi <- 0.007
+v_low <- 0.0001
+maxT <- 100 # a growing season, can see unstable dynamics for large T
+```
+
+First we'll simulate dynamics with only the poorer competitor.
+
+```{r sp-A, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 0, I_A = 0, I_B = 0)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, 0, 0, 0, 
+           0, 0, 0, 0, 
+           0, 0)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+outA <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "no invasion")
+
+# create figure
+outA %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp A")
+```
+
+Next we'll simulate dynamics without disease. We assume the species coexist (i.e., $\alpha_{AA} > \alpha_{BA}$ and $\alpha_{BB} > \alpha_{AB}$). The species have equal growth rates, but species $B$ has a higher carrying capacity (i.e., $\alpha_{BB} < \alpha_{AA}$)
+
+```{r competition, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 0, I_B = 0)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           0, 0, 0, 0, 
+           0, 0)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out1 <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "no\ndisease")
+
+# create figure
+out1 %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "No disease")
+```
+
+Next, we'll consider a specialist pathogen that only infects species $B$. The pathogen reduces the final abundance of species B, which can be greater than, less than, or equal to the final abundance of species A, depending on the values of $\beta_{BB}$ and ${v_{B}}$.
+
+```{r specialists, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, 0, beta_hi, 0, 
+           v_hi, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out2 <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "specialist\npathogens")
+
+# create figure
+out2 %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Specialists")
+```
+
+Next, we'll consider a generalist pathogen that infects both species. We will assume that all transmission rates are equal and the same as $\beta_{BB}$ in the previous simulation.
+
+```{r generalist, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, beta_hi, beta_hi, beta_hi, 
+           v_hi, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out3 <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "complete\ngeneralist")
+
+# create figure
+out3 %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Generalist")
+```
+
+We will continue with a generalist pathogen, but assume unequal susceptibility. First, let's assume species A is less susceptibility (i.e., $\beta_{AA} < \beta_{BA}$ and $\beta_{AB} < \beta_{BB}$. 
+
+```{r sp-A-susceptibility, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_low, beta_low, beta_hi, beta_hi, 
+           v_hi, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out4a <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "lower\nsusceptibility")
+
+# create figure
+out4a %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp A susceptibility")
+```
+
+Now let's assume species B is less susceptible (i.e., $\beta_{BB} < \beta_{AB}$ and $\beta_{BA} < \beta_{AA}$. 
+
+```{r sp-B-susceptibility, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, beta_hi, beta_low, beta_low, 
+           v_hi, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out4b <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "lower\nsusceptibility")
+
+# create figure
+out4b %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp B susceptibility")
+```
+
+Now we will assume unequal competence. First, let's assume species A is more competent (i.e., $\beta_{AA} > \beta_{AB}$ and $\beta_{BA} > \beta_{BB}$. 
+
+```{r sp-A-competent, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, beta_low, beta_low, beta_hi, 
+           v_hi, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out5a <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "higher\ncompetence")
+
+# create figure
+out5a %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp A Competence")
+```
+
+Next, let's assume species B is more competent (i.e., $\beta_{BB} > \beta_{BA}$ and $\beta_{AB} > \beta_{AA}$. 
+
+```{r sp-B-competent, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_low, beta_hi, beta_hi, beta_low, 
+           v_hi, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out5b <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "higher\ncompetence")
+
+# create figure
+out5b %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp B Competence")
+```
+
+Now we will assume unequal tolerance. First, let's assume species A is more tolerant (i.e., $v_{A} < b_{B}$. 
+
+```{r sp-A-tolerant, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, beta_hi, beta_hi, beta_hi, 
+           v_low, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out6a <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "higher\ntolerance")
+
+# create figure
+out6a %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp A Tolerance")
+```
+
+Now let's assume species B is more tolerant (i.e., $v_{B} < b_{A}$. 
+
+```{r sp-B-tolerant, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, beta_hi, beta_hi, beta_hi, 
+           v_hi, v_low)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out6b <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "higher\ntolerance")
+
+# create figure
+out6b %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp B Tolerance")
+```
+
+Finally, let's assume species A is less susceptible and more tolerant. 
+
+```{r sp-A-2, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_low, beta_low, beta_hi, beta_hi, 
+           v_low, v_hi)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out7a <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "higher\nsusceptibility + tolerance")
+
+# create figure
+out7a %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp A all")
+```
+
+Now let's assume species B is less susceptible and more tolerant. 
+
+```{r sp-B-2, echo = F}
+
+# input values
+times <- seq(0, maxT)
+xstart <- c(S_A = 10, S_B = 10, I_A = 1, I_B = 1)
+parms <- c(r, r,
+           m, m,
+           alpha_hi, alpha_low, alpha_med, alpha_low, 
+           beta_hi, beta_hi, beta_low, beta_low, 
+           v_hi, v_low)
+
+# apply function
+ode(
+  func = cont_mod_fun,
+  y = xstart,
+  times = times,
+  parms = parms
+) %>%
+  as.data.frame() -> out
+
+# modify data table
+out7b <- out %>%
+  as_tibble() %>%
+  pivot_longer(cols = -time,
+               names_to = c("state", "species"),
+               names_pattern = "(.)_(.)",
+               values_to = "pop") %>%
+  mutate(state_species = paste(state, species, sep = "_"),
+         scenario = "higher\nsusceptibility + tolerance")
+
+# create figure
+out7b %>%
+  ggplot(aes(x = time, y = pop, color = state_species, linetype = species)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  labs(x='Time (days)', y='Number of individuals', title = "Sp B all")
+```
+
+Combining the final population abundances into a figure, we get
+```{r conceptual-figure, echo = F, message = F}
+
+# combine data tables
+fig_dat1 <- out1 %>%
+  full_join(out2) %>%
+  full_join(out4a) %>%
+  full_join(out5a) %>%
+  full_join(out6a) %>%
+  full_join(out3) %>%
+  filter(time == maxT) %>%
+  select(-state_species) %>%
+  pivot_wider(names_from = state,
+              values_from = pop) %>%
+  mutate(S = ifelse(S < 0, 0, S),
+         I = ifelse(I < 0 , 0, I),
+         N = S + I,
+         scenario = fct_relevel(scenario, "no\ndisease", "specialist\npathogens", "lower\nsusceptibility", "higher\ncompetence", "higher\ntolerance", "complete\ngeneralist"),
+         species = fct_recode(species, "Native" = "A", "Invasive" = "B"))
+
+fig_dat2 <- out1 %>%
+  full_join(out2) %>%
+  full_join(out4b) %>%
+  full_join(out5b) %>%
+  full_join(out6b) %>%
+  full_join(out3) %>%
+  filter(time == maxT) %>%
+  select(-state_species) %>%
+  pivot_wider(names_from = state,
+              values_from = pop) %>%
+  mutate(S = ifelse(S < 0, 0, S),
+         I = ifelse(I < 0 , 0, I),
+         N = S + I,
+         scenario = fct_relevel(scenario, "no\ndisease", "specialist\npathogens", "lower\nsusceptibility", "higher\ncompetence", "higher\ntolerance", "complete\ngeneralist"),
+         species = fct_recode(species, "Native" = "A", "Invasive" = "B"))
+
+# combine all for max
+fig_dat <- fig_dat1 %>%
+  full_join(fig_dat2)
+
+# calculate proportion
+fig_dat1 <- fig_dat1 %>%
+  mutate(N_prop = N / max(fig_dat$N))
+
+fig_dat2 <- fig_dat2 %>%
+  mutate(N_prop = N / max(fig_dat$N))
+
+# baseline no invasion
+fig_base <- outA %>%
+  filter(species == "A" & state == "S" & time == maxT) %>%
+  mutate(N_prop = pop / max(fig_dat$N)) %>%
+  pull(N_prop)
+
+# figure settings
+fig_theme <- theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 6, color = "black"),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_text(size = 8),
+        axis.title.x = element_text(size = 8, hjust = 0.6),
+        axis.line = element_line(color = "black"),
+        legend.text = element_text(size = 6),
+        legend.title = element_blank(),
+        legend.background = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank())
+
+col_pal = c("#440154FF", "#35B779FF")
+
+# figure
+fig1 <- ggplot(fig_dat1, aes(x = scenario, y = N_prop, fill = species)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_hline(yintercept = fig_base, linetype = "dashed") +
+  geom_vline(xintercept = 2.5) +
+  geom_text(x = 6.5, y = fig_base + 0.04, label = "Native species pre-invasion", check_overlap = T, hjust = 1, size = 2) +
+  geom_text(x = 2.55, y = 1, label = expression(paste("generalist pathogen", symbol('\256'))), check_overlap = T, hjust = 0, size = 2, parse = T) +
+  ylim(0, 1) +
+  labs(x = "Native species has...", y = "Population size") +
+  scale_fill_manual(values = col_pal) +
+  fig_theme +
+  theme(legend.position = "none")
+
+fig2 <- ggplot(fig_dat2, aes(x = scenario, y = N_prop, fill = species)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_vline(xintercept = 2.5) +
+  geom_hline(yintercept = fig_base, linetype = "dashed") +
+  geom_text(x = 6.5, y = fig_base + 0.04, label = "Native species pre-invasion", check_overlap = T, hjust = 1, size = 2) +
+  geom_text(x = 2.55, y = 1, label = expression(paste("generalist pathogen", symbol('\256'))), check_overlap = T, hjust = 0, size = 2) +
+  ylim(0, 1) +
+  labs(x = "Invasive species has...", y = "Population size") +
+  scale_fill_manual(values = col_pal) +
+  fig_theme +
+  theme(legend.position = c(0.9, 0.9))
+
+
+pdf("../output/continuous_model_hypotheses.pdf", width = 3.5, height = 4)
+plot_grid(fig2, fig1, nrow = 2, labels = LETTERS[1:2])
+dev.off()
+
+
+
+
+```
