@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/18/21
+# date last edited: 6/2/21
 # goal: combine plot-scale data
 
 
@@ -139,6 +139,31 @@ ggplot(plotBioD2Dat, aes(treatment, biomass.g_m2)) +
 
 #### plot severity ####
 
+# look at notes
+unique(evDisMayD2Dat$field_notes)
+filter(evDisMayD2Dat, !is.na(field_notes)) %>%
+  data.frame()
+
+unique(fDisJunD2Dat$field_notes)
+filter(fDisJunD2Dat, !is.na(field_notes)) %>%
+  data.frame()
+# "dead" should have NA values
+
+unique(fDisJulD2Dat$field_notes)
+filter(fDisJulD2Dat, !is.na(field_notes)) %>%
+  data.frame()
+# "dead" should have NA values
+
+unique(fDisEAugD2Dat$field_notes)
+filter(fDisEAugD2Dat, !is.na(field_notes) & field_notes != "no 2 lesion leaf") %>%
+  data.frame()
+# "dead" should have NA values
+
+unique(fDisLAugD2Dat$field_notes)
+filter(fDisLAugD2Dat, !is.na(field_notes) & field_notes != "too few green leaves") %>%
+  data.frame()
+# "appears dead" should have NA values
+
 # leaf counts
 plotDisD2Dat <- evDisMayD2Dat %>%
   mutate(month = "may") %>%
@@ -150,7 +175,7 @@ plotDisD2Dat <- evDisMayD2Dat %>%
               mutate(month = "early_aug")) %>%
   full_join(fDisLAugD2Dat %>%
               mutate(month = "late_aug")) %>%
-  filter(!is.na(leaves_tot) & !is.na(leaves_infec)) %>%
+  filter(!is.na(leaves_tot) & !is.na(leaves_infec) & leaves_tot > 0) %>% # leaves_tot > 0 removes dead plants
   mutate(age = case_when(ID == "A" ~ "adult",
                          !(ID %in% c("1", "2", "3")) & plot %in% 8:10 ~ "adult",
                          TRUE ~ "seedling")) %>%
@@ -163,8 +188,8 @@ plotDisD2Dat <- evDisMayD2Dat %>%
 plotDisD2Dat %>%
   filter(leaves_infec > leaves_tot)
 
-plotDisD2Dat %>%
-  filter(leaves_infec == 0) # 125 cases
+#### start here: make sure NA values are legit ####
+# make sure dead plants are removed from 2018 data too
 
 # severity
 plotSevD2Dat <- sevD2Dat %>%
@@ -186,16 +211,13 @@ plotSevD2Dat <- sevD2Dat %>%
                               TRUE ~ severity),
          lesions = case_when(sp == "Mv" ~ severity * biomass_mv,
                              sp == "Ev" & age == "seedling" ~ severity * biomass_evS,
-                             sp == "Ev" & age == "adult" ~ severity * biomass_evA),
-         biomass_tot = case_when(sp == "Mv" ~ biomass_mv,
-                             sp == "Ev" & age == "seedling" ~ biomass_evS,
-                             sp == "Ev" & age == "adult" ~ biomass_evA),
-         susceptible = biomass_tot - lesions) %>%
-  select(month, site, treatment, plot, sp, age, severity, lesions, susceptible)
-
+                             sp == "Ev" & age == "adult" ~ severity * biomass_evA)) %>%
+  filter(!is.na(lesion_area.pix)) %>%
+  select(month, site, treatment, plot, sp, age, severity, lesions)
 
 # check
-filter(plotSevD2Dat, severity > 1 | is.na(severity))
+filter(plotSevD2Dat, severity > 1 | is.na(severity)) %>%
+  data.frame()
 
 # figure
 ggplot(plotSevD2Dat, aes(x = treatment, y = severity)) +
@@ -206,7 +228,7 @@ ggplot(plotSevD2Dat, aes(x = treatment, y = severity)) +
 # make wide
 plotSevD2DatW <- plotSevD2Dat %>%
   pivot_wider(names_from = month,
-              values_from = c(severity, lesions, susceptible),
+              values_from = c(severity, lesions),
               names_glue = "{month}_{.value}")
 
 

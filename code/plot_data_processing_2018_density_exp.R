@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2018_density_exp
 # author: Amy Kendig
-# date last edited: 5/18/21
+# date last edited: 6/2/21
 # goal: combine plot-scale data
 
 
@@ -43,6 +43,28 @@ plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 
 #### combine leaf counts ####
+
+# look at notes
+filter(fDisJulD1Dat, !is.na(field_notes)) %>%
+  data.frame()
+filter(fDisJulD1Dat, !is.na(field_notes) & !is.na(leaves_tot)) %>%
+  data.frame()
+# all dead plants have NA values
+
+filter(bgDisJulD1Dat, !is.na(field_notes))
+# one plant has no leaves - remove
+
+filter(fDisAugD1Dat, !is.na(field_notes))
+
+filter(bgDisAugD1Dat, !is.na(field_notes)) %>%
+  data.frame()
+
+filter(evDisSepD1Dat, !is.na(field_notes)) %>%
+  data.frame()
+
+filter(mvDisSepD1Dat, !is.na(field_notes)) %>%
+  data.frame()
+
 disD1Dat <- fDisJulD1Dat %>%
   mutate(month = "jul", focal = 1) %>%
   select(month, site, plot, treatment, sp, ID, focal, leaves_tot, leaves_infec) %>%
@@ -72,7 +94,7 @@ disD1Dat <- fDisJulD1Dat %>%
                      focal = case_when(ID %in% c("1", "2", "3") ~ 1,
                                        TRUE ~ 0)) %>%
               select(month, site, plot, treatment, sp, ID, focal, leaves_tot, leaves_infec)) %>%
-  filter(!is.na(leaves_tot))
+  filter(!is.na(leaves_tot) & leaves_tot > 0)
 
 # check levels
 unique(disD1Dat$month)
@@ -123,7 +145,7 @@ mvSevD1Dat <- mvBgSevD1Dat %>%
   summarise(leaf_area.pix = mean(leaf_area.pix / leaf_count,  na.rm = T), # manually checked leaf counts, need to do because some pictures have multiple leaves
             lesion_area.pix = mean(lesion_area.pix / leaf_count, na.rm = T)) %>% # leaf and lesion area averaged by plot
   ungroup() %>%
-  full_join(mvDisD1Dat) %>%
+  full_join(mvDisD1Dat) %>% # plot-level leaf counts
   left_join(mvTilD1Dat) %>%
   left_join(plotsD %>%
               mutate(mv_density = case_when(plot %in% 2:4 ~ background_density + 3, # assume full density, even though some plants died
@@ -135,10 +157,9 @@ mvSevD1Dat <- mvBgSevD1Dat %>%
          severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot),
          severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # make severity zero if no leaves infected and no severity info
                               TRUE ~ severity),
-         lesions = lesion_area.pix * leaves_infec * tillers * mv_density,
-         area_tot = leaf_area.pix * leaves_tot * tillers * mv_density,
-         susceptible = area_tot - lesions) %>%
-  select(month, site, treatment, plot, severity, lesions, susceptible)
+         lesions = lesion_area.pix * leaves_infec * tillers * mv_density) %>%
+  filter(!is.na(lesion_area.pix)) %>%
+  select(month, site, treatment, plot, severity, lesions)
 
 # check
 filter(mvSevD1Dat, severity > 1 | is.na(severity)) # 1 NA
@@ -151,7 +172,7 @@ ggplot(mvSevD1Dat, aes(x = treatment, y = severity)) +
 # make wide
 mvSevD1DatW <- mvSevD1Dat %>%
   pivot_wider(names_from = month,
-              values_from = c(severity, lesions, susceptible),
+              values_from = c(severity, lesions),
               names_glue = "{month}_{.value}")
 
 
@@ -205,7 +226,7 @@ evDisD1Dat %>%
   filter(leaves_infec > leaves_tot)
 
 evDisD1Dat %>%
-  filter(leaves_infec == 0) # 58
+  filter(leaves_infec == 0) # 57
 
 # tiller counts by plot
 evTilD1Dat <- growthD1Dat %>%
@@ -246,10 +267,9 @@ evSevD1Dat <- evBgSevD1Dat %>%
          severity = (lesion_area.pix * leaves_infec) / (leaf_area.pix * leaves_tot),
          severity = case_when(leaves_infec == 0 & is.na(severity) ~ 0, # make severity zero if no leaves infected and no severity info
                               TRUE ~ severity),
-         lesions = lesion_area.pix * leaves_infec * tillers * ev_density,
-         area_tot = leaf_area.pix * leaves_tot * tillers * ev_density,
-         susceptible = area_tot - lesions) %>%
-  select(month, site, treatment, plot, age, severity, lesions, susceptible)
+         lesions = lesion_area.pix * leaves_infec * tillers * ev_density) %>%
+  filter(!is.na(lesion_area.pix)) %>%
+  select(month, site, treatment, plot, age, severity, lesions)
 
 # check
 filter(evSevD1Dat, severity > 1 | is.na(severity)) # 14 missing scans
@@ -263,7 +283,7 @@ ggplot(evSevD1Dat, aes(x = treatment, y = severity)) +
 # make wide
 evSevD1DatW <- evSevD1Dat %>%
   pivot_wider(names_from = month,
-              values_from = c(severity, lesions, susceptible),
+              values_from = c(severity, lesions),
               names_glue = "{month}_{.value}")
 
 

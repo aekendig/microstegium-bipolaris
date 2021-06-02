@@ -2,7 +2,7 @@
 
 # file: plot_severity_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/18/21
+# date last edited: 6/2/21
 # goal: effects of within and outside of plot severity
 
 
@@ -53,7 +53,7 @@ bgSevD1Dat <- d1Dat %>%
   rename(bg_lesions = lesions,
          bg_sp = sp,
          bg_age = age) %>%
-  select(-c(severity, susceptible))
+  select(-severity)
 
 bgSevD2Dat <- d2Dat %>%
   filter((plot %in% 2:4 & sp == "Mv") |
@@ -62,26 +62,24 @@ bgSevD2Dat <- d2Dat %>%
   rename(bg_lesions = lesions,
          bg_sp = sp,
          bg_age = age) %>%
-  select(-c(severity, susceptible))
+  select(-severity)
 
-# focal dataset
-focSevD1Dat <- d1Dat %>%
+# focal dataset (includes background when background is same species)
+focNextSevD1Dat <- d1Dat %>%
   filter(month != "jul") %>% # remove first month - no prior data
   rename(foc_sp = sp,
          foc_age = age,
-         foc_suscept = susceptible,
-         foc_lesions = lesions) %>%
+         foc_next_lesions = lesions) %>%
   mutate(month = dplyr::recode(month, 
                                "late_aug" = "jul", # match prior month
                                "sep" = "late_aug")) %>%
   select(-severity)
 
-focSevD2Dat <- d2Dat %>%
+focNextSevD2Dat <- d2Dat %>%
   filter(month != "may") %>% # remove first month - no prior data
   rename(foc_sp = sp,
          foc_age = age,
-         foc_suscept = susceptible,
-         foc_lesions = lesions) %>%
+         foc_next_lesions = lesions) %>%
   mutate(month = dplyr::recode(month,  # match prior month
                                "jun" = "may",
                                "jul" = "jun",
@@ -90,25 +88,23 @@ focSevD2Dat <- d2Dat %>%
   select(-severity)
 
 # prior severity
-priorSevD1Dat <- d1Dat %>%
+focSevD1Dat <- d1Dat %>%
   filter(month != "sep") %>% # remove last month
   rename(foc_sp = sp,
          foc_age = age,
-         foc_prior_suscept = susceptible,
-         foc_prior_lesions = lesions) %>%
+         foc_lesions = lesions) %>%
   select(-severity)
 
-priorSevD2Dat <- d2Dat %>%
+focSevD2Dat <- d2Dat %>%
   filter(month != "late_aug") %>% # remove last month
   rename(foc_sp = sp,
          foc_age = age,
-         foc_prior_suscept = susceptible,
-         foc_prior_lesions = lesions) %>%
+         foc_lesions = lesions) %>%
   select(-severity)
 
 # combine data
-sevD1Dat <- focSevD1Dat %>%
-  left_join(priorSevD1Dat) %>%
+sevD1Dat <- focNextSevD1Dat %>%
+  left_join(focSevD1Dat) %>%
   left_join(bgSevD1Dat) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotf = paste0(site, plot, substr(treatment, 1, 1)),
@@ -120,25 +116,29 @@ sevD1Dat <- focSevD1Dat %>%
          bg_sp_age = paste(bg_sp, bg_age, sep = "_"),
          bg_lesions = case_when(foc_sp_age == bg_sp_age & plot == 1 ~ foc_lesions, # use focal lesions as bg in 1 plots
                                 TRUE ~ bg_lesions),
-         foc_suscept_change = log(foc_suscept / foc_prior_suscept),
-         foc_suscept_change = case_when(foc_suscept == 0 & foc_prior_suscept == 0 ~ log(1), # 4 plots had no lesions, no change
-                                        TRUE ~ foc_suscept_change),
-         foc_suscept_change = case_when(month == "jul" ~ foc_suscept_change / 2, # account for longer lapse between samples 
-                                        TRUE ~ foc_suscept_change)) %>%
+         foc_lesions_change = log(foc_next_lesions / foc_lesions),
+         foc_lesions_change = case_when(foc_lesions == 0 & foc_next_lesions == 0 ~ log(1), # 4 plots had no lesions, no change
+                                        TRUE ~ foc_lesions_change),
+         foc_lesions_change = case_when(month == "jul" ~ foc_lesions_change / 2, # account for longer lapse between samples 
+                                        TRUE ~ foc_lesions_change)) %>%
   group_by(foc_sp, foc_age, bg_sp, bg_age) %>%
   mutate(mean_bg_les = mean(bg_lesions, na.rm = T),
          sd_bg_les = sd(bg_lesions, na.rm = T)) %>%
   ungroup() %>%
   mutate(bg_les_s = (bg_lesions - mean_bg_les) / sd_bg_les,
          edge_severity = 0) %>%
-  filter(!is.na(foc_suscept_change) & !is.na(bg_les_s))
+  filter(!is.na(foc_next_lesions) & !is.na(foc_lesions) & !is.na(bg_lesions))
 
-# checks before adding last filter above
-filter(sevD1Dat, is.na(foc_suscept_change) & !is.na(foc_suscept) & !is.na(foc_prior_suscept)) 
-filter(sevD1Dat, is.na(bg_les_s) & !is.na(bg_lesions))
+# check for missing data
+filter(sevD1Dat, is.na(foc_next_lesions))
+filter(sevD1Dat, is.na(bg_lesions)) # 18 missing
+filter(sevD1Dat, is.na(foc_lesions)) # 7 missing
+filter(sevD1Dat, is.na(foc_lesions_change) & !is.na(foc_next_lesions) & !is.na(foc_lesions))  
+filter(sevD1Dat, foc_lesions_change %in% c(Inf, -Inf))
 
-sevD2Dat <- focSevD2Dat %>%
-  left_join(priorSevD2Dat) %>%
+
+sevD2Dat <- focNextSevD2Dat %>%
+  left_join(focSevD2Dat) %>%
   left_join(bgSevD2Dat) %>%
   left_join(edgeSevD2Dat3) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
@@ -151,50 +151,36 @@ sevD2Dat <- focSevD2Dat %>%
          bg_sp_age = paste(bg_sp, bg_age, sep = "_"),
          bg_lesions = case_when(foc_sp_age == bg_sp_age & plot == 1 ~ foc_lesions, # use focal lesions as bg in 1 plots
                                 TRUE ~ bg_lesions),
-         foc_suscept_change = log(foc_suscept / foc_prior_suscept)) %>%
+         foc_lesions_change = log(foc_next_lesions / foc_lesions),
+         foc_lesions_change = case_when(foc_lesions == 0 & foc_next_lesions == 0 ~ log(1), # 4 plots had no lesions, no change
+                                        TRUE ~ foc_lesions_change),
+         foc_lesions_change = case_when(foc_lesions == 0 & foc_next_lesions > 0 ~ log(foc_next_lesions / 1e-6),
+                                        TRUE ~ foc_lesions_change),  # used close to smallest lesion amount (6.4e-6) as denominator
+         foc_lesions_change = case_when(foc_lesions > 0 & foc_next_lesions == 0 ~ log(1e-6 / foc_lesions),
+                                        TRUE ~ foc_lesions_change)) %>%  # used close to smallest lesion amount (6.4e-6) as numerator
   group_by(foc_sp, foc_age, bg_sp, bg_age) %>%
   mutate(mean_bg_les = mean(bg_lesions, na.rm = T),
          sd_bg_les = sd(bg_lesions, na.rm = T)) %>%
   ungroup() %>%
   mutate(bg_les_s = (bg_lesions - mean_bg_les) / sd_bg_les) %>%
-  filter(!is.na(foc_suscept_change) & !is.na(bg_les_s))
+  filter(!is.na(foc_next_lesions) & !is.na(foc_lesions) & !is.na(bg_lesions))
 
-# checks before adding last filter above
-filter(sevD2Dat, is.na(foc_suscept_change) & !is.na(foc_suscept) & !is.na(foc_prior_suscept)) 
-filter(sevD2Dat, is.na(bg_les_s) & !is.na(bg_lesions))
-
-# modified bg data for figure
-# bgSevDat <- sevD1Dat %>%
-#   select(month, site, plot, treatment, bg_sp, bg_age, bg_sp_age, bg_lesions) %>%
-#   unique() %>%
-#   mutate(yearf = "2018") %>%
-#   full_join(sevD2Dat %>%
-#               select(month, site, plot, treatment, bg_sp, bg_age, bg_sp_age, bg_lesions) %>%
-#               unique() %>%
-#               mutate(yearf = "2019")) %>%
-#   filter(!is.na(bg_lesions)) %>%
-#   group_by(yearf, bg_sp_age) %>%
-#   mutate(mean_bg_ls = mean(bg_lesions),
-#          sd_bg_ls = sd(bg_lesions)) %>%
-#   ungroup() %>%
-#   mutate(bg_ls_s = (bg_lesions - mean_bg_ls) / sd_bg_ls,
-#          density_level = case_when(plot == 1 ~ "none",
-#                                    plot %in% c(2, 5, 8) ~ "low",
-#                                    plot %in% c(3, 6, 9) ~ "medium",
-#                                    plot %in% c(4, 7, 10) ~ "high") %>%
-#            fct_relevel("none", "low", "medium"),
-#          bg_sp_age = str_replace(bg_sp_age, "_", " "),
-#          bg_sp_age = recode(bg_sp_age, "Mv seedling" = "Mv"))
+# check for missing data
+filter(sevD2Dat, is.na(foc_next_lesions))
+filter(sevD2Dat, is.na(bg_lesions)) # 189 missing
+filter(sevD2Dat, is.na(foc_lesions)) # 185 missing
+filter(sevD2Dat, is.na(foc_lesions_change) & !is.na(foc_next_lesions) & !is.na(foc_lesions)) 
+filter(sevD2Dat, foc_lesions_change %in% c(Inf, -Inf)) # 21 cases
 
 
 #### visualizations ####
 
-# susceptible change distributions
-ggplot(sevD1Dat, aes(foc_suscept_change)) +
+# lesions change distributions
+ggplot(sevD1Dat, aes(foc_lesions_change)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
-ggplot(sevD2Dat, aes(foc_suscept_change)) +
+ggplot(sevD2Dat, aes(foc_lesions_change)) +
   geom_density() +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
@@ -216,18 +202,19 @@ ggplot(sevD2Dat, aes(bg_les_s)) +
   facet_wrap(foc_sp ~ foc_age, scales = "free")
 
 # pairwise combinations
-ggplot(sevD1Dat, aes(bg_les_s, foc_suscept_change, color = treatment)) +
+ggplot(sevD1Dat, aes(bg_les_s, foc_lesions_change, color = treatment)) +
   geom_point(aes(shape = month)) +
   geom_smooth(formula = y ~ x, method = "lm") +
   facet_grid(foc_sp_age ~ bg_sp_age, scales = "free")
 
-ggplot(sevD2Dat, aes(bg_les_s, foc_suscept_change, color = treatment)) +
+ggplot(sevD2Dat, aes(bg_les_s, foc_lesions_change, color = treatment)) +
   geom_point(aes(shape = month)) +
   geom_smooth(formula = y ~ x, method = "lm") +
   facet_grid(foc_sp_age ~ bg_sp_age, scales = "free")
+# looked at high Ev adult plot (bg_les_s > 7) - no Ev scans for late August
 
 # edge
-ggplot(sevD2Dat, aes(edge_severity, foc_suscept_change, color = treatment)) +
+ggplot(sevD2Dat, aes(edge_severity, foc_lesions_change, color = treatment)) +
   geom_point(aes(shape = month)) +
   geom_smooth(formula = y ~ x, method = "lm") +
   facet_wrap(~ foc_sp_age, scales = "free")
@@ -261,11 +248,12 @@ evAD2Dat <- sevD2Dat %>%
 #### 2018 models ####
 
 # Mv
-mvSevD1Mod1 <- brm(foc_suscept_change ~ fungicide * bg_les_s * bg_sp_age + (1|plotf),
+mvSevD1Mod1 <- brm(foc_lesions_change ~ fungicide * bg_les_s * bg_sp_age + (1|plotf),
                    data = mvD1Dat, family = gaussian,
                    prior <- c(prior(normal(0, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                   control = list(adapt_delta = 0.99))
 summary(mvSevD1Mod1)
 
 # Ev seedling
@@ -273,8 +261,7 @@ evSSevD1Mod1 <- update(mvSevD1Mod1, newdata = evSD1Dat)
 summary(evSSevD1Mod1)
 
 # Ev adult
-evASevD1Mod1 <- update(mvSevD1Mod1, newdata = evAD1Dat, 
-                       control = list(adapt_delta = 0.99))
+evASevD1Mod1 <- update(mvSevD1Mod1, newdata = evAD1Dat)
 summary(evASevD1Mod1)
 
 # save
@@ -286,7 +273,7 @@ save(evASevD1Mod1, file = "output/evA_focal_plot_transmission_2018_density_exp.r
 #### 2019 models ####
 
 # Mv
-mvSevD2Mod1 <- brm(foc_suscept_change ~ fungicide * (bg_les_s * bg_sp_age + edge_severity) + (1|plotf),
+mvSevD2Mod1 <- brm(foc_lesions_change ~ fungicide * (bg_les_s * bg_sp_age + edge_severity) + (1|plotf),
                    data = mvD2Dat, family = gaussian,
                    prior <- c(prior(normal(0, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
@@ -347,7 +334,7 @@ pair_pred_fun <- function(year, foc, bg, trt){
            fungicide = case_when(trt == "water" ~ 0,
                                  trt == "fungicide" ~ 1),
            bg_sp_age = bg) %>%
-    mutate(foc_suscept_change = fitted(mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+    mutate(foc_lesions_change = fitted(mod, newdata = ., allow_new_levels = T)[, "Estimate"],
            lower = fitted(mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
            upper = fitted(mod, newdata = ., allow_new_levels = T)[, "Q97.5"]) %>%
     select(-bg_sp_age)
@@ -491,24 +478,23 @@ betaDat2 <- betaDat %>%
               ungroup() %>%
               full_join(sevDat %>%
                           group_by(year, foc_sp_age) %>%
-                          summarise(foc = max(foc_suscept_change),
-                                    min = min(foc_suscept_change))) %>%
+                          summarise(foc = max(foc_lesions_change),
+                                    min = min(foc_lesions_change))) %>%
               rowwise() %>%
-              mutate(foc_suscept_change = max(c(foc, upper))) %>%
+              mutate(foc_lesions_change = max(c(foc, upper))) %>%
               ungroup() %>%
               select(-c(foc, upper))) %>%
   rename(tran = beta) %>%
-  mutate(tran = round(tran * -1, 2),
-         .lower = round(.lower * -1, 2),
-         .upper = round(.upper * -1, 2),
+  mutate(tran = round(tran, 2),
+         .lower = round(.lower, 2),
+         .upper = round(.upper, 2),
          lower = case_when(tran > 0 ~ .upper, # switch because they were negative
                            TRUE ~ .lower),
          upper = case_when(tran > 0 ~ .lower,
                            TRUE ~ .upper),
-         foc_suscept_change = case_when(bg_sp_age == "Mv" & foc_sp_age == "Ev seedling" & year == "2019" & treatment == "fungicide" ~ foc_suscept_change - 0.6,
-                                        bg_sp_age == "Ev adult" & foc_sp_age == "Mv" & year == "2018" ~ min + 0.3,
-                                        bg_sp_age == "Ev seedling" ~ min + 0.5,
-                                        TRUE ~ foc_suscept_change)) %>%
+         foc_lesions_change = case_when(bg_sp_age == "Ev adult" & foc_sp_age == "Mv" & year == "2018" ~ min + 0.1,
+                                        bg_sp_age == "Mv" & foc_sp_age == "Ev adult" & year == "2018" ~ min + 1.7,
+                                        TRUE ~ foc_lesions_change)) %>%
   select(-c(.lower, .upper))
               
 
@@ -525,7 +511,7 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 8),
         legend.background = element_blank(),
         legend.position = "none",
-        legend.margin = margin(-0.7, 0, 0, 2, unit = "cm"),
+        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
         strip.placement = "outside")
@@ -534,7 +520,7 @@ col_pal = c("black", "#238A8DFF")
 
 yearText <- tibble(year = c("2018", "2019"),
                    bg_les_s = c(-1, -1),
-                   foc_suscept_change = c(1.1, 2.3),
+                   foc_lesions_change = c(3.8, 13.5),
                    bg_sp_age = "Ev adult",
                    foc_sp_age = "Ev adult",
                    treatment = "fungicide")
@@ -542,7 +528,7 @@ yearText <- tibble(year = c("2018", "2019"),
 textSize = 3
 
 # water figure
-pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_les_s, y = foc_suscept_change)) +
+pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_les_s, y = foc_lesions_change)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(sevDat, year == "2018"), aes(color = treatment), alpha = 0.5, size = 0.5) +
@@ -557,14 +543,14 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_les_s, y = foc_
   scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_fill_manual(values = col_pal, name = "Treatment") +
-  xlab("Lesions") +
-  ylab("Change in susceptible tissue") +
+  xlab("Initial infected tissue") +
+  ylab("Change in infected tissue") +
   fig_theme +
   theme(legend.position = "bottom",
         legend.direction = "horizontal")
 
 # fungicide figure
-pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_les_s, y = foc_suscept_change)) +
+pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_les_s, y = foc_lesions_change)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(sevDat, year == "2019"), aes(color = treatment), alpha = 0.5, size = 0.5) +
@@ -579,8 +565,8 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_les_s, y = foc_
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = col_pal) +
-  xlab("Lesions") +
-  ylab("Change in susceptible tissue") +
+  xlab("Initial infected tissue") +
+  ylab("Change in infected tissue") +
   fig_theme +
   theme(axis.title.y = element_blank(),
         strip.text.y = element_blank())
@@ -598,7 +584,7 @@ combFig <- plot_grid(pairD1Fig + theme(legend.position = "none"), pairD2Fig,
 pdf("output/plot_severity_pairwise_figure_2018_2019_density_exp.pdf", width = 7, height = 3.5)
 plot_grid(combFig, leg,
           nrow = 2,
-          rel_heights = c(0.8, 0.02))
+          rel_heights = c(0.8, 0.06))
 dev.off()
 
 
