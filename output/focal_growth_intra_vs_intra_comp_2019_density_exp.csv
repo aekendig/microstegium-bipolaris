@@ -1,0 +1,13 @@
+Hypothesis,Estimate,Est.Error,CI.Lower,CI.Upper,Evid.Ratio,Post.Prob,Star
+(density:focs) = 0,0.002359826796246011,0.005918139079395747,-0.009137255477256865,0.014035575527033805,NA,NA,
+(density:focs+density:focs:fungicide) = 0,8.627441782173958e-4,0.006034811833582542,-0.010869670675505809,0.012585423354079082,NA,NA,
+(density:foca) = 0,0.00184089852065202,0.008048036910872653,-0.013914552280433787,0.01753412965472551,NA,NA,
+(density:foca+density:foca:fungicide) = 0,0.010088777710010191,0.008379638415765901,-0.006210665148976026,0.026666612144412533,NA,NA,
+(density:focs+density:focs:bgs) = 0,-0.011000294116067413,0.028532136936222485,-0.06744769154248216,0.04574032352049118,NA,NA,
+(density:focs+density:focs:bgs+density:focs:fungicide+density:focs:bgs:fungicide) = 0,0.010714971128194216,0.031205777534575752,-0.04978615769419623,0.07229868513705433,NA,NA,
+(density:focs+density:focs:bgs)-(density:foca+density:foca:bgs) = 0,0.018737417677908815,0.041232329461734316,-0.06307299012081155,0.09959880083981384,NA,NA,
+(density:focs+density:focs:bgs+density:focs:fungicide+density:focs:bgs:fungicide)-(density:foca+density:foca:bgs+density:foca:fungicide+density:foca:bgs:fungicide) = 0,-0.07343142732050635,0.04403824552244386,-0.1600116127410639,0.011778685244083887,NA,NA,
+(density:foca+density:foca:bga) = 0,-0.1180478896721439,0.07796813613373152,-0.2712149971212669,0.03426358343751407,NA,NA,
+(density:foca+density:foca:bga+density:foca:fungicide+density:foca:bga:fungicide) = 0,0.06909811038661541,0.08466516777348866,-0.096812445647056,0.23580249187017985,NA,NA,
+(density:foca+density:foca:bga)-(density:focs+density:focs:bga) = 0,-0.13091228949422823,0.0831305144516096,-0.29473677651925256,0.03294414844215202,NA,NA,
+(density:foca+density:foca:bga+density:foca:fungicide+density:foca:bga:fungicide)-(density:focs+density:focs:bga+density:focs:fungicide+density:focs:bga:fungicide) = 0,0.0490645329680475,0.0885125849761122,-0.1245130377991413,0.2216197144648506,NA,NA,
