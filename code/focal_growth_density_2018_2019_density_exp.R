@@ -138,27 +138,21 @@ evA_mv_ctrl_hyp = "-density:foca = 0"
 evA_mv_fung_hyp = "-density:foca - density:foca:fungicide = 0"
 
 # EvS 
-mv_evS_ctrl_hyp = "density:focs + density:focs:bgs = 0"
-mv_evS_fung_hyp = "density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide = 0"
-evA_evS_ctrl_hyp = "density:focs + density:focs:bgs = density:foca + density:foca:bgs"
-evA_evS_fung_hyp = "density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide = density:foca + density:foca:bgs + density:foca:fungicide + density:foca:bgs:fungicide"
+mv_evS_ctrl_hyp = "0.5 * (density:focs + density:focs:bgs + density:foca + density:foca:bgs) = 0"
+mv_evS_fung_hyp = "0.5 * (density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide + density:foca + density:foca:bgs + density:foca:fungicide + density:foca:bgs:fungicide) = 0"
 
 # EvA 
-mv_evA_ctrl_hyp = "density:foca + density:foca:bga = 0"
-mv_evA_fung_hyp = "density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide = 0"
-evS_evA_ctrl_hyp = "density:foca + density:foca:bga = density:focs + density:focs:bga"
-evS_evA_fung_hyp = "density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide = density:focs + density:focs:bga + density:focs:fungicide + density:focs:bga:fungicide"
+mv_evA_ctrl_hyp = "0.5 * (density:focs + density:focs:bga + density:foca + density:foca:bga) = 0"
+mv_evA_fung_hyp = "0.5 * (density:focs + density:focs:bga + density:focs:fungicide + density:focs:bga:fungicide + density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide) = 0"
 
 growthD1hyps <- hypothesis(growthD1Mod, 
-           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
-           mv_evS_ctrl_hyp, mv_evS_fung_hyp, evA_evS_ctrl_hyp, evA_evS_fung_hyp,
-           mv_evA_ctrl_hyp, mv_evA_fung_hyp, evS_evA_ctrl_hyp, evS_evA_fung_hyp))
+                           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
+                             mv_evS_ctrl_hyp, mv_evS_fung_hyp, mv_evA_ctrl_hyp, mv_evA_fung_hyp))
 # none are significantly different from zero
 
 growthD2hyps <- hypothesis(growthD2Mod, 
-           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
-             mv_evS_ctrl_hyp, mv_evS_fung_hyp, evA_evS_ctrl_hyp, evA_evS_fung_hyp,
-             mv_evA_ctrl_hyp, mv_evA_fung_hyp, evS_evA_ctrl_hyp, evS_evA_fung_hyp))
+                           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
+                             mv_evS_ctrl_hyp, mv_evS_fung_hyp, mv_evA_ctrl_hyp, mv_evA_fung_hyp))
 # none are significantly different from zero
 
 write_csv(growthD1hyps[[1]], "output/focal_growth_intra_vs_intra_comp_2018_density_exp.csv")

@@ -3,11 +3,7 @@ Hypothesis,Estimate,Est.Error,CI.Lower,CI.Upper,Evid.Ratio,Post.Prob,Star
 (-bg_les_s:focs-bg_les_s:focs:fungicide) = 0,-1.025779866059336,0.4906276352467911,-1.9989000380527935,-0.07997381870110433,NA,NA,*
 (-bg_les_s:foca) = 0,-0.7897786523061553,0.30371878431568544,-1.3803451670555231,-0.19379760789416314,NA,NA,*
 (-bg_les_s:foca-bg_les_s:foca:fungicide) = 0,-0.2671052410538003,0.49864707338829845,-1.2461370766923416,0.6999548549980709,NA,NA,
-(bg_les_s:focs+bg_les_s:focs:bgs) = 0,-0.17421666531982097,0.5363516960596111,-1.2190994207847905,0.8682000499731765,NA,NA,
-(bg_les_s:focs+bg_les_s:focs:bgs+bg_les_s:focs:fungicide+bg_les_s:focs:bgs:fungicide) = 0,-0.28819191291113994,0.3622190789977231,-1.0016615915824605,0.425660872969415,NA,NA,
-(bg_les_s:focs+bg_les_s:focs:bgs)-(bg_les_s:foca+bg_les_s:foca:bgs) = 0,-0.6941468006746151,0.5570694645333424,-1.7855469296504127,0.4107957081836716,NA,NA,
-(bg_les_s:focs+bg_les_s:focs:bgs+bg_les_s:focs:fungicide+bg_les_s:focs:bgs:fungicide)-(bg_les_s:foca+bg_les_s:foca:bgs+bg_les_s:foca:fungicide+bg_les_s:foca:bgs:fungicide) = 0,-0.12923169081283023,0.5991430824939258,-1.2927231533516605,1.0688273296081543,NA,NA,
-(bg_les_s:foca+bg_les_s:foca:bga) = 0,-0.30746105884282154,0.31279854430482645,-0.9217250211664775,0.3075489012444464,NA,NA,
-(bg_les_s:foca+bg_les_s:foca:bga+bg_les_s:foca:fungicide+bg_les_s:foca:bga:fungicide) = 0,-1.165353228185957,0.5248333939820137,-2.183858074162238,-0.1328307663954391,NA,NA,*
-(bg_les_s:foca+bg_les_s:foca:bga)-(bg_les_s:focs+bg_les_s:focs:bga) = 0,-0.8335252909554081,0.40238394222983315,-1.6245616198424087,-0.0420862121287177,NA,NA,*
-(bg_les_s:foca+bg_les_s:foca:bga+bg_les_s:foca:fungicide+bg_les_s:foca:bga:fungicide)-(bg_les_s:focs+bg_les_s:focs:bga+bg_les_s:focs:fungicide+bg_les_s:focs:bga:fungicide) = 0,-2.342992423542763,0.8194633338420827,-3.961059362493901,-0.7638244406957982,NA,NA,*
+(0.5*(bg_les_s:focs+bg_les_s:focs:bgs+bg_les_s:foca+bg_les_s:foca:bgs)) = 0,0.17285673501748655,0.40202967273143886,-0.6066405870118419,0.9730173560702258,NA,NA,
+(0.5*(bg_les_s:focs+bg_les_s:focs:bgs+bg_les_s:focs:fungicide+bg_les_s:focs:bgs:fungicide+bg_les_s:foca+bg_les_s:foca:bgs+bg_les_s:foca:fungicide+bg_les_s:foca:bgs:fungicide)) = 0,-0.22357606750472483,0.38364872778069536,-0.9734453372887178,0.541662717431942,NA,NA,
+(0.5*(bg_les_s:focs+bg_les_s:focs:bga+bg_les_s:foca+bg_les_s:foca:bga)) = 0,0.1093015866348825,0.2915900496295568,-0.4730818066855964,0.676679160253263,NA,NA,
+(0.5*(bg_les_s:focs+bg_les_s:focs:bga+bg_les_s:focs:fungicide+bg_les_s:focs:bga:fungicide+bg_les_s:foca+bg_les_s:foca:bga+bg_les_s:foca:fungicide+bg_les_s:foca:bga:fungicide)) = 0,0.006142983585424484,0.5170215108958919,-1.0086380494872196,1.0270733894590847,NA,NA,

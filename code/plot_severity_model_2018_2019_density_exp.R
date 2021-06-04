@@ -275,26 +275,20 @@ evA_mv_ctrl_hyp = "-bg_les_s:foca = 0"
 evA_mv_fung_hyp = "-bg_les_s:foca - bg_les_s:foca:fungicide = 0"
 
 # EvS 
-mv_evS_ctrl_hyp = "bg_les_s:focs + bg_les_s:focs:bgs = 0"
-mv_evS_fung_hyp = "bg_les_s:focs + bg_les_s:focs:bgs + bg_les_s:focs:fungicide + bg_les_s:focs:bgs:fungicide = 0"
-evA_evS_ctrl_hyp = "bg_les_s:focs + bg_les_s:focs:bgs = bg_les_s:foca + bg_les_s:foca:bgs"
-evA_evS_fung_hyp = "bg_les_s:focs + bg_les_s:focs:bgs + bg_les_s:focs:fungicide + bg_les_s:focs:bgs:fungicide = bg_les_s:foca + bg_les_s:foca:bgs + bg_les_s:foca:fungicide + bg_les_s:foca:bgs:fungicide"
+mv_evS_ctrl_hyp = "0.5 * (bg_les_s:focs + bg_les_s:focs:bgs + bg_les_s:foca + bg_les_s:foca:bgs) = 0"
+mv_evS_fung_hyp = "0.5 * (bg_les_s:focs + bg_les_s:focs:bgs + bg_les_s:focs:fungicide + bg_les_s:focs:bgs:fungicide + bg_les_s:foca + bg_les_s:foca:bgs + bg_les_s:foca:fungicide + bg_les_s:foca:bgs:fungicide) = 0"
 
 # EvA 
-mv_evA_ctrl_hyp = "bg_les_s:foca + bg_les_s:foca:bga = 0"
-mv_evA_fung_hyp = "bg_les_s:foca + bg_les_s:foca:bga + bg_les_s:foca:fungicide + bg_les_s:foca:bga:fungicide = 0"
-evS_evA_ctrl_hyp = "bg_les_s:foca + bg_les_s:foca:bga = bg_les_s:focs + bg_les_s:focs:bga"
-evS_evA_fung_hyp = "bg_les_s:foca + bg_les_s:foca:bga + bg_les_s:foca:fungicide + bg_les_s:foca:bga:fungicide = bg_les_s:focs + bg_les_s:focs:bga + bg_les_s:focs:fungicide + bg_les_s:focs:bga:fungicide"
+mv_evA_ctrl_hyp = "0.5 * (bg_les_s:focs + bg_les_s:focs:bga + bg_les_s:foca + bg_les_s:foca:bga) = 0"
+mv_evA_fung_hyp = "0.5 * (bg_les_s:focs + bg_les_s:focs:bga + bg_les_s:focs:fungicide + bg_les_s:focs:bga:fungicide + bg_les_s:foca + bg_les_s:foca:bga + bg_les_s:foca:fungicide + bg_les_s:foca:bga:fungicide) = 0"
 
 sevD1hyps <- hypothesis(sevD1Mod, 
-                           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
-                             mv_evS_ctrl_hyp, mv_evS_fung_hyp, evA_evS_ctrl_hyp, evA_evS_fung_hyp,
-                             mv_evA_ctrl_hyp, mv_evA_fung_hyp, evS_evA_ctrl_hyp, evS_evA_fung_hyp))
+                        c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
+                          mv_evS_ctrl_hyp, mv_evS_fung_hyp, mv_evA_ctrl_hyp, mv_evA_fung_hyp))
 
 sevD2hyps <- hypothesis(sevD2Mod, 
-                           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
-                             mv_evS_ctrl_hyp, mv_evS_fung_hyp, evA_evS_ctrl_hyp, evA_evS_fung_hyp,
-                             mv_evA_ctrl_hyp, mv_evA_fung_hyp, evS_evA_ctrl_hyp, evS_evA_fung_hyp))
+                        c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
+                          mv_evS_ctrl_hyp, mv_evS_fung_hyp, mv_evA_ctrl_hyp, mv_evA_fung_hyp))
 # none are significantly different from zero
 
 write_csv(sevD1hyps[[1]], "output/plot_transmission_intra_vs_intra_2018_density_exp.csv")
