@@ -2,7 +2,7 @@
 
 # file: plot_severity_model_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/2/21
+# date last edited: 6/3/21
 # goal: effects of within and outside of plot severity
 
 
@@ -586,6 +586,9 @@ plot_grid(combFig, leg,
           nrow = 2,
           rel_heights = c(0.8, 0.06))
 dev.off()
+
+# save beta values
+write_csv(betaDat, "output/plot_severity_pairwise_coefficients_2018_2019_density_exp.csv")
 
 
 #### extract effects ####

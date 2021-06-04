@@ -2,7 +2,7 @@
 
 # file: focal_growth_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 5/19/21
+# date last edited: 6/3/21
 # goal: analyses of plant growth as a function of density
 
 #### approaches ####
@@ -794,7 +794,6 @@ alphasDat <- posterior_samples(mvRickD1Mod) %>%
   pivot_longer(cols = -c(year, focal, treatment),
                names_to = "background",
                values_to = "alpha") %>%
-  mutate(alpha = -1 * alpha) %>%
   group_by(year, treatment, focal, background) %>%
   mean_hdi(alpha) %>%
   ungroup() %>%
@@ -844,7 +843,8 @@ alphasDat2 <- alphasDat %>%
               select(-c(raw, upper))) %>%
   rename(param = alpha) %>%
   mutate(param = round(param, 2),
-         plant_growth = case_when(treatment == "fungicide" & background == "Mv" ~ plant_growth - 0.5,
+         plant_growth = case_when(treatment == "fungicide" & background == "Mv" & focal == "Ev seedling" ~ plant_growth - 0.5,
+                                  treatment == "fungicide" & background == "Mv" & focal == "Mv" ~ plant_growth - 0.6,
                                   TRUE ~ plant_growth + 0.1))
 
 # figure settings
@@ -860,7 +860,7 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 8),
         legend.background = element_blank(),
         legend.position = "none",
-        legend.margin = margin(-0.7, 0, 0, 1.7, unit = "cm"),
+        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
         strip.placement = "outside")
@@ -869,7 +869,7 @@ col_pal = c("black", "#238A8DFF")
 
 yearText <- tibble(year = c("2018", "2019"),
                    density = c(3.2, 3),
-                   plant_growth = c(0.87, 3),
+                   plant_growth = c(0.87, 2.7),
                    background = "Ev adult",
                    focal = "Ev adult",
                    treatment = "fungicide")
@@ -892,7 +892,7 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = density, y = plant
   scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_fill_manual(values = col_pal, name = "Treatment") +
-  xlab(expression(paste("Density (", m^-2, ")", sep = ""))) +
+  xlab(expression(paste("Competitor density (", m^-2, ")", sep = ""))) +
   ylab("Plant growth") +
   fig_theme +
   theme(legend.position = "bottom",
@@ -914,7 +914,7 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = density, y = plant
   scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal, name = "Treatment") +
   scale_fill_manual(values = col_pal, name = "Treatment") +
-  xlab(expression(paste("Density (", m^-2, ")", sep = ""))) +
+  xlab(expression(paste("Competitor density (", m^-2, ")", sep = ""))) +
   ylab("Plant growth") +
   fig_theme +
   theme(axis.title.y = element_blank(),
@@ -934,5 +934,8 @@ combFig <- plot_grid(pairD1Fig + theme(legend.position = "none"), pairD2Fig,
 pdf("output/focal_growth_pairwise_figure_2018_2019_density_exp.pdf", width = 7, height = 3.5)
 plot_grid(combFig, leg,
           nrow = 2,
-          rel_heights = c(0.8, 0.02))
+          rel_heights = c(0.8, 0.06))
 dev.off()
+
+# save alpha data
+write_csv(alphasDat, "output/focal_growth_pairwise_coefficients_2018_2019_density_exp.csv")
