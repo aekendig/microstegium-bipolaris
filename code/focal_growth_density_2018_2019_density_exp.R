@@ -2,7 +2,7 @@
 
 # file: focal_growth_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/3/21
+# date last edited: 6/4/21
 # goal: analyses of plant growth as a function of density
 
 
@@ -132,22 +132,22 @@ save(growthD2Mod, file = "output/focal_growth_density_model_2019_density_exp.rda
 # intra on left side of =
 
 # Mv 
-evS_mv_ctrl_hyp = "density:focs = 0"
-evS_mv_fung_hyp = "density:focs + density:focs:fungicide = 0"
-evA_mv_ctrl_hyp = "density:foca = 0"
-evA_mv_fung_hyp = "density:foca + density:foca:fungicide = 0"
+evS_mv_ctrl_hyp = "-density:focs = 0"
+evS_mv_fung_hyp = "-density:focs - density:focs:fungicide = 0"
+evA_mv_ctrl_hyp = "-density:foca = 0"
+evA_mv_fung_hyp = "-density:foca - density:foca:fungicide = 0"
 
 # EvS 
-mv_evS_ctrl_hyp = "density:focs + density:focs:bgs  = 0"
-mv_evS_fung_hyp = "density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide  = 0"
-evA_evS_ctrl_hyp = "density:focs + density:focs:bgs  = density:foca + density:foca:bgs"
-evA_evS_fung_hyp = "density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide  = density:foca + density:foca:bgs + density:foca:fungicide + density:foca:bgs:fungicide"
+mv_evS_ctrl_hyp = "density:focs + density:focs:bgs = 0"
+mv_evS_fung_hyp = "density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide = 0"
+evA_evS_ctrl_hyp = "density:focs + density:focs:bgs = density:foca + density:foca:bgs"
+evA_evS_fung_hyp = "density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide = density:foca + density:foca:bgs + density:foca:fungicide + density:foca:bgs:fungicide"
 
 # EvA 
-mv_evA_ctrl_hyp = "density:foca + density:foca:bga  = 0"
-mv_evA_fung_hyp = "density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide  = 0"
-evS_evA_ctrl_hyp = "density:foca + density:foca:bga  = density:focs + density:focs:bga"
-evS_evA_fung_hyp = "density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide  = density:focs + density:focs:bga + density:focs:fungicide + density:focs:bga:fungicide"
+mv_evA_ctrl_hyp = "density:foca + density:foca:bga = 0"
+mv_evA_fung_hyp = "density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide = 0"
+evS_evA_ctrl_hyp = "density:foca + density:foca:bga = density:focs + density:focs:bga"
+evS_evA_fung_hyp = "density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide = density:focs + density:focs:bga + density:focs:fungicide + density:focs:bga:fungicide"
 
 growthD1hyps <- hypothesis(growthD1Mod, 
            c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
@@ -225,9 +225,9 @@ evA_mv_fung_alpha = "density + density:fungicide + density:foca + density:foca:f
 
 # EvS background
 evS_evS_ctrl_alpha = "density + density:focs + density:bgs + density:focs:bgs = 0"
-evS_evS_fung_alpha = "density + density:focs + density:bgs + density:focs:bgs + density:fungicide + density:focs:fungicide + density:bgs:fungicide + density:focs:bgs:fungicide  = 0"
+evS_evS_fung_alpha = "density + density:focs + density:bgs + density:focs:bgs + density:fungicide + density:focs:fungicide + density:bgs:fungicide + density:focs:bgs:fungicide = 0"
 mv_evS_ctrl_alpha = "density +  density:bgs = 0"
-mv_evS_fung_alpha = "density +  density:bgs + density:fungicide + density:bgs:fungicide  = 0"
+mv_evS_fung_alpha = "density +  density:bgs + density:fungicide + density:bgs:fungicide = 0"
 evA_evS_ctrl_alpha = "density +  density:bgs + density:foca + density:foca:bgs = 0"
 evA_evS_fung_alpha = "density +  density:bgs + density:foca + density:foca:bgs + density:fungicide +  density:bgs:fungicide + density:foca:fungicide + density:foca:bgs:fungicide = 0"
 
@@ -235,7 +235,7 @@ evA_evS_fung_alpha = "density +  density:bgs + density:foca + density:foca:bgs +
 evA_evA_ctrl_alpha = "density + density:foca + density:bga + density:foca:bga = 0"
 evA_evA_fung_alpha = "density + density:foca + density:bga + density:foca:bga + density:fungicide + density:foca:fungicide + density:bga:fungicide + density:foca:bga:fungicide = 0"
 mv_evA_ctrl_alpha = "density +  density:bga = 0"
-mv_evA_fung_alpha = "density +  density:bga + density:fungicide + density:bga:fungicide  = 0"
+mv_evA_fung_alpha = "density +  density:bga + density:fungicide + density:bga:fungicide = 0"
 evS_evA_ctrl_alpha = "density + density:bga + density:focs + density:focs:bga = 0"
 evS_evA_fung_alpha = "density + density:bga + density:focs + density:focs:bga + density:fungicide + density:bga:fungicide + density:focs:fungicide + density:focs:bga:fungicide = 0"
 
