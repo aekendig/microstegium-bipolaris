@@ -2,7 +2,7 @@
 
 # file: focal_growth_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/4/21
+# date last edited: 6/5/21
 # goal: analyses of plant growth as a function of density
 
 

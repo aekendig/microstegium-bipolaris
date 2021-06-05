@@ -2,7 +2,7 @@
 
 # file: plot_severity_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/4/21
+# date last edited: 6/5/21
 # goal: effects of within and outside of plot severity
 
 

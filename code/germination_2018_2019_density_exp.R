@@ -2,7 +2,7 @@
 
 # file: germination_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/28/21
+# date last edited: 6/5/21
 # goal: analyses of germination
 
 
@@ -20,66 +20,83 @@ library(tidybayes) # for mean_hdi
 mvGermD1Dat1 <- read_csv("data/mv_germination_disease_set_1_2018_density_exp.csv")
 mvGermD1Dat2 <- read_csv("data/mv_germination_disease_set_2_2018_density_exp.csv")
 evGermDat <- read_csv("data/ev_germination_2018_2019_density_exp.csv")
+sevD1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
+# plot_data_processing_2018_density_exp.R
+sevD2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
+# plot_data_processing_2019_density_exp.R
 
 # model functions
 source("code/brms_model_fitting_functions.R")
 
-# fungicide effect function
-post_pred_fun <- function(mod, dat){
-
-  posterior_samples(mod) %>%
-    transmute(water = exp(b_Intercept) / (1 + exp(b_Intercept)),
-              fung = exp(b_Intercept + b_fungicide) / (1 + exp(b_Intercept + b_fungicide)),
-              perc = 100 * (fung - water) / water) %>%
-    pivot_longer(cols = everything(),
-                 names_to = "parameter",
-                 values_to = "effect") %>%
-    group_by(parameter) %>% mean_hdi(effect)
-
-}
-
-post_pred_fun2 <- function(mod, dat){
-  
-  posterior_samples(mod) %>%
-    rename(b_yearf2019_fung = "b_fungicide:yearf2019") %>%
-    transmute(water18 = exp(b_Intercept) / (1 + exp(b_Intercept)),
-              fung18 = exp(b_Intercept + b_fungicide) / (1 + exp(b_Intercept + b_fungicide)),
-              perc18 = 100 * (fung18 - water18) / water18,
-              water19 = exp(b_Intercept + b_yearf2019) / (1 + exp(b_Intercept + b_yearf2019)),
-              fung19 = exp(b_Intercept + b_fungicide + b_yearf2019 + b_yearf2019_fung) / (1 + exp(b_Intercept + b_fungicide + b_yearf2019 + b_yearf2019_fung)),
-              perc19 = 100 * (fung19 - water19) / water19) %>%
-    pivot_longer(cols = everything(),
-                 names_to = "parameter",
-                 values_to = "effect") %>%
-    group_by(parameter) %>% mean_hdi(effect)
-  
-}
-
 
 #### edit data ####
+
+# severity
+sevD1Dat2 <- sevD1Dat %>%
+  select(-lesions) %>%
+  pivot_wider(names_from = month,
+              values_from = severity,
+              names_glue = "{month}_severity") %>%
+  mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_rev())
+
+sevD2Dat2 <- sevD2Dat %>%
+  select(-lesions) %>%
+  pivot_wider(names_from = month,
+              values_from = severity,
+              names_glue = "{month}_severity") %>%
+  mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_rev())
+
+# notes
+unique(mvGermD1Dat1$notes_check_1) # seedlings with lesions in notes
+unique(mvGermD1Dat1$notes_check_2) # may be a contaminate on plate
+unique(mvGermD1Dat1$notes_check_3)
+unique(mvGermD1Dat1$notes_germination_check_1) # some plates were put into fridge during one day
+unique(mvGermD1Dat1$notes_germination_final) 
+unique(mvGermD1Dat2$notes) # may be a contaminate on plate
 
 # Mv data
 # average across trials
 mvGermD1Dat <- mvGermD1Dat1 %>%
-  mutate(germination_final = ifelse(is.na(germination_final), germination_check_1, germination_final)) %>%
-  select(site_plot, trial, seeds, germination_final) %>%
+  mutate(germination_final = ifelse(is.na(germination_final), germination_check_1, germination_final),
+         seeds_dark_check_1 = rowSums(cbind(seeds_dark_check_1, seeds_pink_check_1, seeds_red_check_1, seeds_green_check_1), na.rm = T),
+         seeds_dark_check_2 = rowSums(cbind(seeds_dark_check_2, seeds_pink_check_2, seeds_red_check_2, seeds_green_check_2), na.rm = T),
+         seeds_seeds_dark_check_3 = rowSums(cbind(seeds_dark_check_3, seeds_red_check_3, seeds_green_check_3), na.rm = T),
+         seeds_dark = pmax(seeds_dark_check_1, seeds_dark_check_2, seeds_dark_check_3, na.rm = T),
+         seeds_light = pmax(seeds_light_check_1, seeds_light_check_2, seeds_light_check_3, na.rm = T)) %>%
+  select(site_plot, trial, seeds, germination_final, seeds_dark, seeds_light) %>%
   full_join(mvGermD1Dat2 %>%
-              select(site_plot, trial, seeds, germination_final)) %>%
-  mutate(site = gsub(" .*$", "", site_plot),
+              mutate(seeds_dark = pmax(seeds_dark_check_1, seeds_dark_check_2, na.rm = T),
+                     seeds_light = pmax(seeds_light_check_1, seeds_light_check_2, na.rm = T)) %>%
+              select(site_plot, trial, seeds, germination_final, seeds_dark, seeds_light)) %>%
+  mutate(seeds_infect = rowSums(cbind(seeds_dark, seeds_light), na.rm = T),
+         prop_germ = germination_final / seeds,
+         prop_dark = seeds_dark / seeds,
+         prop_light = seeds_light / seeds,
+         prop_infect = seeds_infect / seeds,
+         site = gsub(" .*$", "", site_plot),
          plot = gsub(".* ","", site_plot) %>% 
            gsub("[^[:digit:]]", "", .) %>% 
            as.numeric(),
          treatment = gsub(".* ","", site_plot) %>% 
            gsub("[^[:alpha:]]", "", .) %>% 
            as.factor() %>%
-           recode("F" = "fungicide", "W" = "water"),
+           recode("F" = "fungicide", "W" = "control (water)") %>%
+           fct_rev(),
          site = ifelse(site == "P1", "D1", site),
-         fungicide = ifelse(treatment == "fungicide", 1, 0)) %>%
-  group_by(site, plot, treatment, fungicide) %>%
-  summarise(germinants = mean(germination_final) %>% round(),
-            seeds_planted = mean(seeds) %>% round(),
-            germination = germinants/seeds_planted) %>%
-  ungroup()
+         fungicide = ifelse(treatment == "fungicide", 1, 0),
+         plotf = paste0(site, plot, substr(treatment, 1, 1))) %>%
+  left_join(sevD1Dat2 %>%
+              filter(sp == "Mv"))
+
+# check
+filter(mvGermD1Dat, prop_germ > 1 | prop_dark > 1 | prop_light > 1 | prop_infect > 1) %>%
+  data.frame()
+# don't use prop_infect
+filter(mvGermD1Dat, is.na(jul_severity)) # 1 plot
+filter(mvGermD1Dat, is.na(late_aug_severity)) # 3 plots
+filter(mvGermD1Dat, is.na(sep_severity)) # 3 plots (one missing late aug)
 
 # correct reduction in emergents between week 3 and 4
 # correct the increase in cut-tops
@@ -98,13 +115,27 @@ evGermDat2 <- evGermDat %>%
          germinants = week_2_emerg + week_4_new_emerg + week_4_soil_germ,
          germination = germinants/seeds_planted,
          fungicide = ifelse(treatment == "fungicide", 1, 0),
-         plotf = paste(site, plot, substr(treatment, 1, 1), sep = ""),
-         yearf = as.factor(year))
-
+         plotf = paste0(site, plot, substr(treatment, 1, 1)),
+         treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_rev()) %>%
+  left_join(sevD1Dat2 %>%
+              filter(sp == "Ev") %>%
+              mutate(year = 2018) %>%
+              full_join(sevD2Dat2 %>%
+                          filter(sp == "Ev") %>%
+                          mutate(year = 2019)))
+  
 # sample size
 evGermDat2 %>%
   group_by(year, age) %>%
   count()
+
+filter(evGermDat2, is.na(jul_severity)) %>% data.frame() # 3 plots
+filter(evGermDat2, is.na(late_aug_severity)) %>% data.frame() # 27 missing
+# use jul_severity as predictor
+# or split by year and look at completeness of dataset, this reduces sample size though...
+
+#### start here ####
 
 
 #### 2018 Mv model ####
