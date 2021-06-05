@@ -249,7 +249,7 @@ sevD1Mod <- brm(foc_lesions_change ~ bg_les_s * foc * bg * fungicide + (1|plotf)
 # use plot instead of site for random effects because of multiple temporal sampling
 mod_check_fun(sevD1Mod)
 
-sevD2Mod <- brm(foc_lesions_change ~ bg_les_s * foc * bg * fungicide + edge_severity + edge_severity:fungicide + (1|plotf),
+sevD2Mod <- brm(foc_lesions_change ~ bg_les_s * foc * bg * fungicide + edge_severity + edge_severity:foc + edge_severity:fungicide + edge_severity:foc:fungicide + (1|plotf),
                 data = sevD2Dat, family = gaussian,
                 prior <- c(prior(normal(0, 1), class = "Intercept"),
                            prior(normal(0, 1), class = "b")), # use default for sigma
@@ -293,6 +293,24 @@ sevD2hyps <- hypothesis(sevD2Mod,
 
 write_csv(sevD1hyps[[1]], "output/plot_transmission_intra_vs_intra_2018_density_exp.csv")
 write_csv(sevD2hyps[[1]], "output/plot_transmission_intra_vs_intra_2019_density_exp.csv")
+
+
+#### edge effects ####
+
+mv_ctrl_edge <- "edge_severity = 0"
+mv_fung_edge <- "edge_severity + fungicide:edge_severity = 0"
+evS_ctrl_edge <- "edge_severity + focs:edge_severity = 0"
+evS_fung_edge <- "edge_severity + focs:edge_severity + fungicide:edge_severity + focs:fungicide:edge_severity = 0"
+evA_ctrl_edge <- "edge_severity + foca:edge_severity = 0"
+evA_fung_edge <- "edge_severity + foca:edge_severity + fungicide:edge_severity + foca:fungicide:edge_severity = 0"
+
+edgeD2hyps <- hypothesis(sevD2Mod, 
+                        c(mv_ctrl_edge, mv_fung_edge,
+                          evS_ctrl_edge, evS_fung_edge,
+                          evA_ctrl_edge, evA_fung_edge))
+# none are significantly different than zero
+
+write_csv(edgeD2hyps[[1]], "output/edge_transmission_2019_density_exp.csv")
 
 
 #### figure ####

@@ -159,6 +159,26 @@ write_csv(growthD1hyps[[1]], "output/focal_growth_intra_vs_intra_comp_2018_densi
 write_csv(growthD2hyps[[1]], "output/focal_growth_intra_vs_intra_comp_2019_density_exp.csv")
 
 
+#### intercepts ####
+
+# are Ev adult intercepts > Mv in 2019 (they have larger alphas)
+# common terms on both sides are deleted
+
+mv_ctrl_int <- "bga = 0"
+mv_fung_int <- "bga + bga:fungicide = 0"
+evS_ctrl_int <- "bga + focs:bga = 0"
+evS_fung_int <- "bga + focs:bga + bga:fungicide + focs:bga:fungicide = 0"
+evA_ctrl_int <- "bga + foca:bga = 0"
+evA_fung_int <- "bga + foca:bga + bga:fungicide + foca:bga:fungicide = 0"
+
+intD2hyps <- hypothesis(growthD2Mod, 
+                           c(mv_ctrl_int, mv_fung_int,
+                             evS_ctrl_int, evS_fung_int,
+                             evA_ctrl_int, evA_fung_int))
+
+write_csv(intD2hyps[[1]], "output/evA_mv_competition_intercept_comparison_2019_density_exp.csv")
+
+
 #### figure ####
 
 # density function
