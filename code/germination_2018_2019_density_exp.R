@@ -14,7 +14,7 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(brms)
-library(tidybayes) # for mean_hdi
+library(GGally)
 
 # import data
 mvGermD1Dat1 <- read_csv("data/mv_germination_disease_set_1_2018_density_exp.csv")
@@ -116,6 +116,7 @@ evGermDat2 <- evGermDat %>%
          germination = germinants/seeds_planted,
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotf = paste0(site, plot, substr(treatment, 1, 1)),
+         yearf = ifelse(year == 2018, 0, 1),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev()) %>%
   left_join(sevD1Dat2 %>%
@@ -123,64 +124,103 @@ evGermDat2 <- evGermDat %>%
               mutate(year = 2018) %>%
               full_join(sevD2Dat2 %>%
                           filter(sp == "Ev") %>%
-                          mutate(year = 2019)))
+                          mutate(year = 2019))) %>%
+  mutate(final_severity = case_when(year == 2018 ~ sep_severity,
+                                    year == 2019 ~ late_aug_severity))
   
 # sample size
 evGermDat2 %>%
   group_by(year, age) %>%
   count()
+# 40 in 2018
+# 56 in 2019
 
-filter(evGermDat2, is.na(jul_severity)) %>% data.frame() # 3 plots
-filter(evGermDat2, is.na(late_aug_severity)) %>% data.frame() # 27 missing
-# use jul_severity as predictor
-# or split by year and look at completeness of dataset, this reduces sample size though...
+# number missing?
+filter(evGermDat2, is.na(jul_severity)) %>% data.frame() # 3 all 2019
+filter(evGermDat2, is.na(late_aug_severity)) %>% data.frame() # 27
+filter(evGermDat2, is.na(final_severity)) %>% data.frame() # 31
+filter(evGermDat2, year == 2018 & is.na(late_aug_severity)) %>% data.frame() # 12
+filter(evGermDat2, year == 2018 & is.na(sep_severity)) %>% data.frame() # 16
+filter(evGermDat2, year == 2019 & is.na(early_aug_severity)) %>% data.frame() # 7
+filter(evGermDat2, year == 2019 & is.na(late_aug_severity)) %>% data.frame() # 15
 
-#### start here ####
+# split by year
+evGermD1Dat <- evGermDat2 %>% filter(year == 2018)
+evGermD2Dat <- evGermDat2 %>% filter(year == 2019)
 
 
-#### 2018 Mv model ####
+#### Mv models ####
 
 # initial visualization
-ggplot(mvGermD1Dat, aes(treatment, germination, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun = "mean", size = 2)
+mvGermD1Dat %>%
+  select(jul_severity, late_aug_severity, sep_severity,
+         prop_dark, prop_light, prop_germ) %>%
+  ggpairs()
 
 # model
 mvGermD1Mod <- brm(data = mvGermD1Dat, family = binomial,
-                   germinants | trials(seeds_planted) ~ fungicide + (1|site),
+                   germination_final | trials(seeds) ~ prop_dark + prop_light + (1|plotf),
                    prior <- c(prior(normal(0, 10), class = "Intercept"),
                               prior(normal(0, 10), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3,
-                   control = list(adapt_delta = 0.99999, max_treedepth = 15))
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
 mod_check_fun(mvGermD1Mod)
+# prop dark decreases germination
+# prop light increases germination
 
-# posterior means
-post_pred_fun(mvGermD1Mod)
+mvPropDarkMod <- brm(data = mvGermD1Dat, family = binomial,
+                     seeds_dark | trials(seeds) ~ sep_severity + (1|plotf),
+                     prior <- c(prior(normal(0, 10), class = "Intercept"),
+                                prior(normal(0, 10), class = "b")), # use default for sigma
+                     iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(mvPropDarkMod)
+# severity increases prop dark
+
+mvPropLightMod <- brm(data = mvGermD1Dat, family = binomial,
+                     seeds_light | trials(seeds) ~ sep_severity + (1|plotf),
+                     prior <- c(prior(normal(0, 10), class = "Intercept"),
+                                prior(normal(0, 10), class = "b")), # use default for sigma
+                     iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(mvPropLightMod)
+# severity increases prop light
 
 # save
-save(mvGermD1Mod, file = "output/mv_germination_model_2018_density_exp.rda")
+save(mvGermD1Mod, file = "output/mv_germination_infection_model_2018_density_exp.rda")
+save(mvPropDarkMod, file = "output/mv_seed_infection_dark_model_2018_density_exp.rda")
+save(mvPropLightMod, file = "output/mv_seed_infection_light_model_2018_density_exp.rda")
 
 
 #### Ev model ####
 
 # initial visualization
-ggplot(evGermDat2, aes(treatment, germination, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
-  facet_wrap(~ yearf)
+evGermD1Dat %>%
+  select(jul_severity, late_aug_severity, sep_severity, germination) %>%
+  ggpairs()
+
+evGermD2Dat %>%
+  select(jul_severity, early_aug_severity, late_aug_severity, germination) %>%
+  ggpairs()
+
+evGermDat2 %>%
+  select(late_aug_severity, final_severity, germination) %>%
+  ggpairs()
 
 # model
 evGermMod <- brm(data = evGermDat2, family = binomial,
-                   germinants | trials(seeds_planted) ~ fungicide * yearf + (1|site),
+                   germinants | trials(seeds_planted) ~ final_severity*yearf*age + (1|site),
                    prior <- c(prior(normal(0, 10), class = "Intercept"),
                               prior(normal(0, 10), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3,
-                 control = list(adapt_delta = 0.99999, max_treedepth = 15))
+                   iter = 6000, warmup = 1000, chains = 3)
 mod_check_fun(evGermMod)
 
-# posterior means
-post_pred_fun2(evGermMod)
+# hypotheses
+adult18 = "final_severity = 0"
+seedling18 = "final_severity + ageseedling + final_severity:ageseedling = 0"
+adult19 = "final_severity + yearf + final_severity:yearf = 0"
+seedling19 = "final_severity + yearf + ageseedling  + final_severity:yearf + final_severity:ageseedling + yearf:ageseedling + final_severity:yearf:ageseedling = 0"
+
+hypothesis(evGermMod, c(adult18, seedling18, adult19, seedling19))
+# only the first is negative
 
 # save
-save(evGermMod, file = "output/ev_germination_model_2018_2019_density_exp.rda")
+save(evGermMod, file = "output/ev_germination_severity_model_2018_2019_density_exp.rda")
 
