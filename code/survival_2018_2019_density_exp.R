@@ -2,7 +2,7 @@
 
 # file: survival_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 3/28/21
+# date last edited: 6/7/21
 # goal: analyses of growing season survival
 
 
@@ -14,72 +14,58 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(brms)
-library(tidybayes) # for mean_hdi
+library(GGally)
 
 # import data
 survD1Dat <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
 # all_survival_data_processing_2018
 survD2Dat <- read_csv("data/all_replacement_2019_density_exp.csv")
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
+sevD1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
+# plot_data_processing_2018_density_exp.R
+sevD2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
+# plot_data_processing_2019_density_exp.R
 
 # model functions
 source("code/brms_model_fitting_functions.R")
 
-# fungicide effect function
-post_pred_fun <- function(mod, dat){
-  
-  posterior_samples(mod) %>%
-    transmute(water = exp(b_Intercept) / (1 + exp(b_Intercept)),
-              fung = exp(b_Intercept + b_fungicide) / (1 + exp(b_Intercept + b_fungicide)),
-              perc = 100 * (fung - water) / water) %>%
-    pivot_longer(cols = everything(),
-                 names_to = "parameter",
-                 values_to = "effect") %>%
-    group_by(parameter) %>% mean_hdi(effect)
-  
-}
-
-post_pred_fun2 <- function(mod, dat){
-  
-  posterior_samples(mod) %>%
-    transmute(water = exp(b_Intercept) / (1 + exp(b_Intercept)),
-              fung = exp(b_Intercept + b_fungicide) / (1 + exp(b_Intercept + b_fungicide)),
-              perc = 100 * (fung - water) / water) %>%
-    pivot_longer(cols = everything(),
-                 names_to = "parameter",
-                 values_to = "effect") %>%
-    group_by(parameter) %>% mean_hdci(effect)
-  
-}
-
-post_pred_fun3 <- function(mod, dat){
-  
-  posterior_samples(mod) %>%
-    transmute(water = exp(b_Intercept) / (1 + exp(b_Intercept)),
-              fung = exp(b_Intercept + b_fungicide) / (1 + exp(b_Intercept + b_fungicide)),
-              perc = 100 * (fung - water) / water) %>%
-    pivot_longer(cols = everything(),
-                 names_to = "parameter",
-                 values_to = "effect") %>%
-    group_by(parameter) %>% median_hdi(effect)
-  
-}
-
 
 #### edit data ####
+
+# severity data
+sevD1Dat2 <- sevD1Dat %>%
+  select(-lesions) %>%
+  pivot_wider(names_from = month,
+              values_from = severity,
+              names_glue = "{month}_severity")
+
+sevD2Dat2 <- sevD2Dat %>%
+  select(-lesions) %>%
+  pivot_wider(names_from = month,
+              values_from = severity,
+              names_glue = "{month}_severity")
 
 # 2018 survival
 # make survival 1 if the plant produced seeds in summer
 # remove NA's 
 survD1Dat2 <- survD1Dat %>%
   filter(month == "September" & focal == 1) %>%
+  left_join(plotsD) %>%
   mutate(survival = case_when(seeds_produced == 1 ~ 1, 
                               TRUE ~ survival),
-         plant_group = paste(sp, age),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
-         plotf = paste(site, plot, substr(treatment, 1, 1), sep = "")) %>%
-  select(-c(month, field_notes, seeds_produced, focal)) %>%
-  filter(!is.na(survival))
+         focal = paste(sp, age, sep = " ") %>%
+           fct_recode(Mv = "Mv seedling"),
+         foc = fct_recode(focal, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
+           fct_relevel("m"),
+         background = str_replace(background, "_", " ") %>%
+           fct_recode(Mv = "Mv seedling"),
+         bg = fct_recode(background, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
+           fct_relevel("m"),
+         plotf = paste0(site, plot, substr(treatment, 1, 1))) %>%
+  select(-c(month, field_notes, seeds_produced)) %>%
+  filter(!is.na(survival)) %>%
+  left_join(sevD1Dat2)
 
 # 2019 survival data needs list of all plants (only replacements recorded)
 # merge ID lists with plot
@@ -104,36 +90,97 @@ survD2Dat2 <- survD2Dat %>%
   summarise(plantings = length(unique(replace_date)) + 1) %>%
   ungroup() %>%
   full_join(focD2Dat) %>%
+  left_join(plotsD) %>%
   mutate(plantings = replace_na(plantings, 1),
-         plant_group = paste(sp, age),
          survival = ifelse(plantings > 1, 0, 1),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
-         plotf = paste(site, plot, substr(treatment, 1, 1), sep = ""))
+         focal = paste(sp, age, sep = " ") %>%
+           fct_recode(Mv = "Mv seedling"),
+         foc = fct_recode(focal, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
+           fct_relevel("m"),
+         background = str_replace(background, "_", " ") %>%
+           fct_recode(Mv = "Mv seedling"),
+         bg = fct_recode(background, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
+           fct_relevel("m"),
+         plotf = paste(site, plot, substr(treatment, 1, 1), sep = "")) %>%
+  left_join(sevD2Dat2)
 
 # winter survival 2018-2019
 winSurvD1Dat <- survD1Dat %>%
   filter(month == "April" | month == "September") %>%
   select(-field_notes) %>%
   spread(month, survival) %>%
+  left_join(plotsD) %>%
   mutate(September = case_when(seeds_produced == 1 ~ 1, TRUE ~ September),
-         plant_group = paste(sp, age),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
-         plotf = paste(site, plot, substr(treatment, 1, 1), sep = "")) %>%
+         focal = paste(sp, age, sep = " ") %>%
+           fct_recode(Mv = "Mv seedling"),
+         foc = fct_recode(focal, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
+           fct_relevel("m"),
+         background = str_replace(background, "_", " ") %>%
+           fct_recode(Mv = "Mv seedling"),
+         bg = fct_recode(background, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
+           fct_relevel("m"),
+         plotf = paste0(site, plot, substr(treatment, 1, 1))) %>%
   filter(September == 1 & !is.na(April)) %>%
   select(-September) %>%
-  rename(survival = April)
+  rename(survival = April) %>%
+  left_join(sevD1Dat2)
 
-# split data
-mvSurvD1Dat <- survD1Dat2 %>% filter(plant_group == "Mv seedling")
-evSSurvD1Dat <- survD1Dat2 %>% filter(plant_group == "Ev seedling")
-evASurvD1Dat <- survD1Dat2 %>% filter(plant_group == "Ev adult")
 
-mvSurvD2Dat <- survD2Dat2 %>% filter(plant_group == "Mv seedling")
-evSSurvD2Dat <- survD2Dat2 %>% filter(plant_group == "Ev seedling")
-evASurvD2Dat <- survD2Dat2 %>% filter(plant_group == "Ev adult")
+#### fit models ####
 
-evSWinSurvD1Dat <- winSurvD1Dat %>% filter(plant_group == "Ev seedling")
-evAWinSurvD1Dat <- winSurvD1Dat %>% filter(plant_group == "Ev adult")
+survSevD1Mod <- brm(data = survD1Dat2, family = bernoulli,
+                    survival ~ jul_severity * foc + (1|plotf),
+                    prior <- c(prior(normal(0, 10), class = "Intercept"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+mod_check_fun(survSevD1Mod)
+
+survSevD2Mod <- update(survSevD1Mod, newdata = survD2Dat2,
+                       control = list(adapt_delta = 0.99)) 
+mod_check_fun(survSevD2Mod)
+
+winSurvSevD1Mod <- brm(data = winSurvD1Dat, family = bernoulli,
+                       survival ~ sep_severity * foc + (1|plotf),
+                       prior <- c(prior(normal(0, 10), class = "Intercept"),
+                                  prior(normal(0, 10), class = "b")), # use default for sigma
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+winSurvSevD1Mod <- update(winSurvSevD1Mod,
+                          control = list(adapt_delta = 0.99))
+mod_check_fun(winSurvSevD1Mod)
+
+# save models
+save(survSevD1Mod, file = "output/survival_severity_model_2018_density_exp.rda")
+save(survSevD2Mod, file = "output/survival_severity_model_2019_density_exp.rda")
+save(winSurvSevD1Mod, file = "output/winter_survival_severity_model_2018_density_exp.rda")
+
+
+#### coefficients ####
+
+mv_hyp = "jul_severity = 0"
+evS_hyp = "jul_severity + jul_severity:focs = 0"
+evA_hyp = "jul_severity + jul_severity:foca = 0"
+evA_win_hyp = "sep_severity = 0"
+evS_win_hyp = "sep_severity + sep_severity:focs = 0"
+
+
+survD1Coef <- hypothesis(survSevD1Mod, c(mv_hyp, evS_hyp, evA_hyp))[[1]]
+survD2Coef <- hypothesis(survSevD2Mod, c(mv_hyp, evS_hyp, evA_hyp))[[1]]
+winSurvD1Coef <- hypothesis(winSurvSevD1Mod, c(evA_win_hyp, evS_win_hyp))[[1]]
+# none are significantly affected by severity
+
+survCoef <- survD1Coef %>%
+  full_join(survD2Coef) %>%
+  full_join(winSurvD1Coef) %>%
+  mutate(year = c(rep(2018, 3), rep(2019, 3), rep(2018, 2)),
+         focal = c("Mv", "Ev seedling", "Ev adult",
+                   "Mv", "Ev seedling", "Ev adult",
+                   "Ev seedling", "Ev adult"),
+         season = c(rep("growing season", 6), rep("winter", 2))) %>%
+  select(year, focal, season, Estimate:CI.Upper)
+
+write_csv(survCoef, "output/survival_severity_coefficients_2018_2019_density_exp.csv")
 
 
 #### 2018 Mv model ####

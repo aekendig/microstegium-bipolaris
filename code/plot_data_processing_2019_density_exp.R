@@ -2,7 +2,7 @@
 
 # file: plot_data_processing_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/2/21
+# date last edited: 6/8/21
 # goal: combine plot-scale data
 
 
@@ -253,3 +253,4 @@ dat %>%
 
 write_csv(dat, "intermediate-data/plot_biomass_seeds_severity_2019_density_exp.csv")
 write_csv(plotSevD2Dat, "intermediate-data/plot_severity_2019_density_exp.csv")
+write_csv(plotBioD2Dat, "intermediate-data/plot_biomass_2019_density_exp.csv")

@@ -25,6 +25,11 @@ d2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
 # plot_data_processing_2019_density_exp.R
 edgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv")
 # leaf_scans_data_processing_2019_density_exp.R
+envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv") 
+# covariate_data_processing_2018_density_exp
+envD2Dat <- read_csv("intermediate-data/temp_humidity_monthly_2019_density_exp.csv") 
+# temp_humidity_data_processing_2019_density_exp
+bioD2Dat <- read_csv("intermediate-data/plot_biomass_2019_density_exp.csv")
 
 # model functions
 source("code/brms_model_fitting_functions.R")
@@ -184,6 +189,28 @@ filter(sevD2Dat, is.na(bg_lesions)) # 189 missing
 filter(sevD2Dat, is.na(foc_lesions)) # 185 missing
 filter(sevD2Dat, is.na(foc_lesions_change) & !is.na(foc_next_lesions) & !is.na(foc_lesions)) 
 filter(sevD2Dat, foc_lesions_change %in% c(Inf, -Inf)) # 21 cases
+
+# environmental data
+# make month the final month instead of initial
+envD1Dat2 <- envD1Dat %>%
+  inner_join(sevD1Dat %>%
+               mutate(month = fct_recode(month, sep = "late_aug", late_aug = "jul")))
+
+envD2Dat2 <- envD2Dat %>%
+  filter(month %in% c("early_aug", "late_aug")) %>%
+  mutate(dew_c = (dew_intensity2 - mean(dew_intensity2, na.rm = T)) / sd(dew_intensity2, na.rm = T)) %>%
+  inner_join(sevD2Dat %>%
+               mutate(month = fct_recode(month, 
+                                         late_aug = "early_aug", early_aug = "jul", jul = "jun", jun  = "may")))
+
+envBioD2Dat <- envD2Dat  %>%
+  filter(month %in% c("early_aug", "late_aug")) %>%
+  mutate(dew_c = (dew_intensity2 - mean(dew_intensity2, na.rm = T)) / sd(dew_intensity2, na.rm = T)) %>%
+  left_join(bioD2Dat %>%
+              mutate(biomass_tot = biomass_bg + biomass_foc_mv + biomass_foc_evS + biomass_foc_evA,
+                     biomass_c = (biomass_tot - mean(biomass_tot, na.rm = T)) / sd(biomass_tot, na.rm = T)) %>%
+              select(site, treatment, plot, biomass_tot, biomass_c)) %>%
+  mutate(plotf = paste0(site, plot, substr(treatment, 1, 1)))
 
 
 #### visualizations ####
@@ -574,3 +601,98 @@ plot_grid(combFig, leg,
           rel_heights = c(0.8, 0.06))
 dev.off()
 
+
+#### environmental models ####
+
+# 2018
+envSevD1Mod <- brm(foc_lesions_change ~ foc * fungicide * (soil_moisture_jun.prop + canopy_cover.prop) + (1|plotf),
+                   data = envD1Dat2, family = gaussian,
+                   prior <- c(prior(normal(0, 1), class = "Intercept"),
+                              prior(normal(0, 1), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(envSevD1Mod)
+
+save(envSevD1Mod, file = "output/environmental_infection_change_model_2018_density_exp.rda")
+
+# 2019
+ggplot(envD2Dat2, aes(x = dew_intensity2)) +
+  geom_histogram()
+ggplot(envD2Dat2, aes(x = dew_c)) +
+  geom_histogram()
+
+envSevD2Mod <- brm(foc_lesions_change ~ foc * dew_c + (1|plotf),
+                   data = envD2Dat2, family = gaussian,
+                   prior <- c(prior(normal(0, 1), class = "Intercept"),
+                              prior(normal(0, 1), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(envSevD2Mod)
+
+save(envSevD2Mod, file = "output/environmental_infection_change_model_2019_density_exp.rda")
+
+# refit without high EvA point
+envD2Dat3 <- envD2Dat2 %>%
+  filter(!(foc == "a" & foc_lesions_change > 10))
+envSevD2Mod2 <- update(envSevD2Mod, newdata = envD2Dat3, control = list(adapt_delta = 0.99))
+
+# coefficients
+mv_ctrl_soil_hyp <- "soil_moisture_jun.prop = 0"
+mv_fung_soil_hyp <- "soil_moisture_jun.prop + fungicide:soil_moisture_jun.prop = 0"
+evS_ctrl_soil_hyp <- "soil_moisture_jun.prop + focs:soil_moisture_jun.prop = 0"
+evS_fung_soil_hyp <- "soil_moisture_jun.prop + fungicide:soil_moisture_jun.prop + focs:soil_moisture_jun.prop + focs:fungicide:soil_moisture_jun.prop = 0"
+evA_ctrl_soil_hyp <- "soil_moisture_jun.prop + foca:soil_moisture_jun.prop = 0"
+evA_fung_soil_hyp <- "soil_moisture_jun.prop + fungicide:soil_moisture_jun.prop + foca:soil_moisture_jun.prop + foca:fungicide:soil_moisture_jun.prop = 0"
+
+mv_ctrl_canopy_hyp <- "canopy_cover.prop = 0"
+mv_fung_canopy_hyp <- "canopy_cover.prop + fungicide:canopy_cover.prop = 0"
+evS_ctrl_canopy_hyp <- "canopy_cover.prop + focs:canopy_cover.prop = 0"
+evS_fung_canopy_hyp <- "canopy_cover.prop + fungicide:canopy_cover.prop + focs:canopy_cover.prop + focs:fungicide:canopy_cover.prop = 0"
+evA_ctrl_canopy_hyp <- "canopy_cover.prop + foca:canopy_cover.prop = 0"
+evA_fung_canopy_hyp <- "canopy_cover.prop + fungicide:canopy_cover.prop + foca:canopy_cover.prop + foca:fungicide:canopy_cover.prop = 0"
+
+hypothesis(envSevD1Mod, c(mv_ctrl_soil_hyp, mv_fung_soil_hyp, mv_ctrl_canopy_hyp, mv_fung_canopy_hyp,
+                          evS_ctrl_soil_hyp, evS_fung_soil_hyp, evS_ctrl_canopy_hyp, evS_fung_canopy_hyp,
+                          evA_ctrl_soil_hyp, evA_fung_soil_hyp, evA_ctrl_canopy_hyp, evA_fung_canopy_hyp))
+# no significant effects
+
+mv_ctrl_dew_hyp <- "dew_c = 0"
+evS_ctrl_dew_hyp <- "dew_c + focs:dew_c = 0"
+evA_ctrl_dew_hyp <- "dew_c + foca:dew_c = 0"
+
+hypothesis(envSevD2Mod, c(mv_ctrl_dew_hyp, evS_ctrl_dew_hyp, evA_ctrl_dew_hyp))
+# dew increased EvA
+hypothesis(envSevD2Mod2, c(mv_ctrl_dew_hyp, evS_ctrl_dew_hyp, evA_ctrl_dew_hyp))
+# dew effect goes away - it's driven by one data point (see figure)
+
+# look at effect
+evAEnvD2Dat <- envD2Dat2 %>% filter(foc == "a")
+evADewSim <- tibble(dew_c = seq(min(evAEnvD2Dat$dew_c), max(evAEnvD2Dat$dew_c), length.out = 100)) %>%
+  mutate(plotf = "A",
+         foc = "a") %>%
+  mutate(foc_lesions_change = fitted(envSevD2Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+         lower = fitted(envSevD2Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
+         upper = fitted(envSevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"])
+
+ggplot(evAEnvD2Dat, aes(dew_c, foc_lesions_change)) +
+  geom_point(alpha = 0.5, aes(color = month)) +
+  geom_ribbon(data = evADewSim, aes(ymin = lower, ymax = upper), alpha = 0.5) +
+  geom_line(data = evADewSim) 
+
+# biomass effect on dew intensity
+ggplot(envBioD2Dat, aes(x = biomass_tot)) +
+  geom_histogram()
+
+ggplot(envBioD2Dat, aes(x = biomass_c)) +
+  geom_histogram()
+
+envBioD2Mod <- brm(dew_c ~ biomass_c * month + (1|plotf),
+                   data = envBioD2Dat, family = gaussian,
+                   prior <- c(prior(normal(0, 1), class = "Intercept"),
+                              prior(normal(0, 1), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+
+mod_check_fun(envBioD2Mod)
+
+save(envBioD2Mod, file = "output/dew_biomass_model_2019_density_exp.rda")
+
+hypothesis(envBioD2Mod, c("biomass_c = 0", "biomass_c + biomass_c:monthlate_aug = 0"))
+# no sig effect

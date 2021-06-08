@@ -25,6 +25,8 @@ tillerD1Dat <- read_csv("intermediate-data/focal_processed_growth_2018_density_e
 # focal_growth_data_processing_2018_density_exp
 mvBioD2Dat <- read_csv("data/mv_biomass_seeds_2019_density_exp.csv")
 evBioD2Dat <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
+
+# import severity data
 sevD1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
 # plot_data_processing_2018_density_exp.R
 sevD2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
@@ -48,7 +50,6 @@ sevD2Dat2 <- sevD2Dat %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
-
 
 # plant group densities
 plotDens <- plotsD %>%
@@ -265,7 +266,7 @@ mv_evS_fung_alpha = "density +  density:bgs + density:fungicide + density:bgs:fu
 evA_evS_ctrl_alpha = "density +  density:bgs + density:foca + density:foca:bgs = 0"
 evA_evS_fung_alpha = "density +  density:bgs + density:foca + density:foca:bgs + density:fungicide +  density:bgs:fungicide + density:foca:fungicide + density:foca:bgs:fungicide = 0"
 
-# EvA intra vs. inter
+# EvA background
 evA_evA_ctrl_alpha = "density + density:foca + density:bga + density:foca:bga = 0"
 evA_evA_fung_alpha = "density + density:foca + density:bga + density:foca:bga + density:fungicide + density:foca:fungicide + density:bga:fungicide + density:foca:bga:fungicide = 0"
 mv_evA_ctrl_alpha = "density +  density:bga = 0"
@@ -621,6 +622,7 @@ growthSevNoBgD2Mod <- brm(data = growthNoBgD2Dat, family = gaussian,
                           iter = 6000, warmup = 1000, chains = 3, cores = 3) 
 mod_check_fun(growthSevNoBgD2Mod)
 
+# need to save these
 
 #### severity coefficients ####
 

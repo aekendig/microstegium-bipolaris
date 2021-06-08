@@ -15,6 +15,7 @@ rm(list=ls())
 library(tidyverse)
 library(brms)
 library(GGally)
+library(cowplot)
 
 # import data
 mvGermD1Dat1 <- read_csv("data/mv_germination_disease_set_1_2018_density_exp.csv")
@@ -167,6 +168,14 @@ mod_check_fun(mvGermD1Mod)
 # prop dark decreases germination
 # prop light increases germination
 
+mvGermD1Mod2 <- brm(data = mvGermD1Dat, family = binomial,
+                   germination_final | trials(seeds) ~ sep_severity + (1|plotf),
+                   prior <- c(prior(normal(0, 10), class = "Intercept"),
+                              prior(normal(0, 10), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+summary(mvGermD1Mod2)
+# no effect of severity
+
 mvPropDarkMod <- brm(data = mvGermD1Dat, family = binomial,
                      seeds_dark | trials(seeds) ~ sep_severity + (1|plotf),
                      prior <- c(prior(normal(0, 10), class = "Intercept"),
@@ -204,23 +213,84 @@ evGermDat2 %>%
   select(late_aug_severity, final_severity, germination) %>%
   ggpairs()
 
+ggplot(evGermDat2, aes(year, germination, color = age)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.2)) +
+  stat_summary(geom = "point", fun = "mean", position = position_dodge(0.2))
+
 # model
 evGermMod <- brm(data = evGermDat2, family = binomial,
-                   germinants | trials(seeds_planted) ~ final_severity*yearf*age + (1|site),
+                   germinants | trials(seeds_planted) ~ final_severity*yearf + (1|site),
                    prior <- c(prior(normal(0, 10), class = "Intercept"),
                               prior(normal(0, 10), class = "b")), # use default for sigma
                    iter = 6000, warmup = 1000, chains = 3)
+evGermMod <- update(evGermMod, control = list(adapt_delta = 0.999, max_treedeth = 15))
 mod_check_fun(evGermMod)
 
 # hypotheses
-adult18 = "final_severity = 0"
-seedling18 = "final_severity + ageseedling + final_severity:ageseedling = 0"
-adult19 = "final_severity + yearf + final_severity:yearf = 0"
-seedling19 = "final_severity + yearf + ageseedling  + final_severity:yearf + final_severity:ageseedling + yearf:ageseedling + final_severity:yearf:ageseedling = 0"
-
-hypothesis(evGermMod, c(adult18, seedling18, adult19, seedling19))
-# only the first is negative
+ev18 = "final_severity = 0"
+ev19 = "final_severity + final_severity:yearf = 0"
+hypothesis(evGermMod, c(ev18, ev19))
 
 # save
 save(evGermMod, file = "output/ev_germination_severity_model_2018_2019_density_exp.rda")
 
+
+#### figure ####
+
+# figure settings
+fig_theme <- theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.title.y = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.background = element_blank(),
+        legend.position = "none",
+        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 8),
+        strip.placement = "outside")
+
+# simulated data
+mvPropDarkSim <- tibble(sep_severity = seq(min(mvGermD1Dat$sep_severity, na.rm = T), max(mvGermD1Dat$sep_severity, na.rm = T), length.out = 100)) %>%
+  mutate(plotf = "A",
+         seeds = round(mean(mvGermD1Dat$seeds))) %>%
+  mutate(prop_dark = fitted(mvPropDarkMod, newdata = ., allow_new_levels = T)[, "Estimate"]/seeds,
+         lower = fitted(mvPropDarkMod, newdata = ., allow_new_levels = T)[, "Q2.5"]/seeds,
+         upper = fitted(mvPropDarkMod, newdata = ., allow_new_levels = T)[, "Q97.5"]/seeds)
+
+mvGermSim <- tibble(prop_dark = seq(min(mvGermD1Dat$prop_dark), max(mvGermD1Dat$prop_dark), length.out = 100)) %>%
+  mutate(plotf = "A",
+         seeds = round(mean(mvGermD1Dat$seeds)),
+         prop_light = mean(mvGermD1Dat$prop_light)) %>%
+  mutate(prop_germ = fitted(mvGermD1Mod, newdata = ., allow_new_levels = T)[, "Estimate"]/seeds,
+         lower = fitted(mvGermD1Mod, newdata = ., allow_new_levels = T)[, "Q2.5"]/seeds,
+         upper = fitted(mvGermD1Mod, newdata = ., allow_new_levels = T)[, "Q97.5"]/seeds)
+
+# figures
+mvDarkFig <- ggplot(mvGermD1Dat, aes(sep_severity, prop_dark)) +
+  geom_point(alpha = 0.5) +
+  geom_line(data = mvPropDarkSim) +
+  geom_ribbon(data = mvPropDarkSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
+  fig_theme +
+  xlab("Leaf disease severity") +
+  ylab("Proportion seeds infected")
+
+mvGermFig <- ggplot(mvGermD1Dat, aes(prop_dark, prop_germ)) +
+  geom_point(alpha = 0.5) +
+  geom_line(data = mvGermSim) +
+  geom_ribbon(data = mvGermSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
+  fig_theme +
+  xlab("Proportion seeds infected") +
+  ylab("Proportion seeds germinated") +
+  theme(axis.title.y = element_text(size = 10, hjust = 0.1))
+
+pdf("output/mv_germination_infection_figure_2018_density_exp.pdf", width = 5, height = 2.5)
+plot_grid(mvDarkFig, mvGermFig,
+          nrow = 1,
+          labels = LETTERS[1:2])
+dev.off()
