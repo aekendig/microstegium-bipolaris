@@ -354,14 +354,16 @@ pre code {
 
 <div id="continuous-time-model" class="section level1">
 <h1>Continuous time model</h1>
-<p>This model describes changes in the biomass of annuals (<span class="math inline">\(A\)</span>), first-year perennials (<span class="math inline">\(F\)</span>), and adult perennials (<span class="math inline">\(P\)</span>) over the growing season. Biomass is affected by disease and competition. We assume all biomass belonging to one plant group is pooled (i.e., experiences the same growth rate, competitive effects, and disease transmission). The biomass of plant group <span class="math inline">\(i\)</span>, where <span class="math inline">\(i = A, F, P\)</span>, can either be susceptible (<span class="math inline">\(S\)</span>) or infected (<span class="math inline">\(I\)</span>). The total biomass of a plant group is <span class="math inline">\(M\)</span> and the litter produced by annuals (an initial source of infection) is <span class="math inline">\(l\)</span>. Inoculum is lost from the litter over the growing season as rate <span class="math inline">\(h\)</span>.</p>
+<p>This model describes changes in the biomass of annuals (<span class="math inline">\(A\)</span>), first-year perennials (<span class="math inline">\(F\)</span>), and adult perennials (<span class="math inline">\(P\)</span>) over the growing season. Biomass is affected by disease and competition. We assume all biomass belonging to one plant group (e.g., stems, leaves, etc.) experiences the same growth rate, competitive effects, and disease transmission. The biomass of plant group <span class="math inline">\(i\)</span>, where <span class="math inline">\(i = A, F, P\)</span>, can either be susceptible (<span class="math inline">\(S\)</span>) or infected (<span class="math inline">\(I\)</span>). The total biomass of a plant group is <span class="math inline">\(B\)</span> and the litter produced by annuals (an initial source of infection) is <span class="math inline">\(l\)</span>. Inoculum is lost from the litter over the growing season as rate <span class="math inline">\(h\)</span>.</p>
 <p><span class="math display">\[\begin{equation}
 \begin{gathered}
-dS_{i}/dt = r_{i}S_{i}(1 - \alpha_{iA}M_{A} - \alpha_{iF}M_{F} - \alpha_{iP}M_{P}) - \beta_{il}S_{i}l - \beta_{iA}S_{i}I_{A} - \beta_{iF}S_{i}I_{F} - \beta_{iP}S_{i}I_{P}
+dS_{i}/dt = r_{i}S_{i}(1 - \alpha_{iA}B_{A} - \alpha_{iF}B_{F} - \alpha_{iP}B_{P}) - \beta_{il}S_{i}l - \beta_{iA}S_{i}I_{A} - \beta_{iF}S_{i}I_{F} - \beta_{iP}S_{i}I_{P}
 \\
 dI_{i}/dt = \beta_{il}S_{i}l + \beta_{iA}S_{i}I_{A} + \beta_{iF}S_{i}I_{F} + \beta_{iP}S_{i}I_{P} - v_{i}I_{i}
 \\
 dl/dt = -hl
+\\
+B_{i,t} = S_{i,t} + I_{i,t}
 \end{gathered}
 \end{equation}\]</span></p>
 <p>Susceptible biomass grows at a rate <span class="math inline">\(r_{i}\)</span>, which is slowed due to competition (<span class="math inline">\(\alpha\)</span> values), or lost due to infection (<span class="math inline">\(\beta\)</span> values). Both susceptible and infected biomass contribute to competition because susceptible biomass contributes to photosynthesis and resource uptake and both types of biomass contribute to shading. Infected biomass does not grow, but is converted from susceptible biomass. Infected biomass is lost due to processes such as shedding at a rate <span class="math inline">\(v_{i}\)</span>.</p>
@@ -370,10 +372,10 @@ dl/dt = -hl
 <div id="discrete-time-model" class="section level1">
 <h1>Discrete time model</h1>
 <p>This model describes annual changes in the population densities of annual plant seeds (<span class="math inline">\(A\)</span>), perennial plant seeds (<span class="math inline">\(F\)</span>), and perennial adult plants (<span class="math inline">\(P\)</span>).</p>
-<p>Annual plant seeds either stay dormant in the seed bank or germinate. If they germinate, they establish, grow, and produce more seeds. Those that germinate and establish are used to initiate the continuous time model (<span class="math inline">\(S_{A,0}\)</span>) with initial biomass <span class="math inline">\(b_{A}\)</span>. The final biomass of annual plants in the continuous time model (<span class="math inline">\(M_{A,T}\)</span>) is used to estimate seed production with a conversion constant <span class="math inline">\(c_{A}\)</span>. Litter (<span class="math inline">\(L\)</span>) reduces the establishment of annuals (<span class="math inline">\(E_{A}\)</span>).</p>
+<p>Annual plant seeds either stay dormant in the seed bank or germinate. If they germinate, they establish, grow, and produce more seeds. Those that germinate and establish are used to initiate the continuous time model (<span class="math inline">\(S_{A,0}\)</span>) with initial biomass <span class="math inline">\(b_{A}\)</span>. The final biomass of annual plants in the continuous time model (<span class="math inline">\(B_{A,T}\)</span>) is used to estimate seed production with a conversion constant <span class="math inline">\(c_{A}\)</span>. Litter (<span class="math inline">\(L\)</span>) reduces the establishment of annuals (<span class="math inline">\(E_{A}\)</span>).</p>
 <p><span class="math display">\[\begin{equation}
 \begin{gathered}
-A[t+1] = s_{A}(1 - g_{A})A[t] + c_{A}M_{A,T}[t]
+A[t+1] = s_{A}(1 - g_{A})A[t] + c_{A}B_{A,T}[t]
 \\
 S_{A,0} = g_{A}E_{A}b_{A}A[t]
 \\
@@ -383,14 +385,14 @@ E_{A} = e_{A}/(1 + \gamma_{A}L[t])
 <p>The processes the determine perennial plant seeds are similar to those for annual plant seeds except that perennial seeds can be produced either by first year plants or by adults.</p>
 <p><span class="math display">\[\begin{equation}
 \begin{gathered}
-F[t+1] = s_{P}(1 - g_{P})F[t] + c_{F}M_{F,T}[t] + c_{P}M_{P,T}[t]
+F[t+1] = s_{P}(1 - g_{P})F[t] + c_{F}B_{F,T}[t] + c_{P}B_{P,T}[t]
 \\
 S_{F,0} = g_{P}E_{P}b_{F}F[t]
 \\
 E_{P} = e_{P}/(1 + \gamma_{P}L[t])
 \end{gathered}
 \end{equation}\]</span></p>
-<p>Perennial adult plants are either adults that survived through the year or seeds that germinated, established, and survived through the winter.</p>
+<p>Perennial adult plants are either adults that survived through the year or seeds that germinated, established, and survived through the non-growing season (e.g., winter).</p>
 <p><span class="math display">\[\begin{equation}
 \begin{gathered}
 P[t+1] = l_{P}P[t] + g_{P}E_{P}w_{F}F[t]
@@ -401,11 +403,40 @@ S_{P,0} = b_{P}P[t]
 <p>The litter is composed of litter remaining from the previous year and new litter produced by annuals.</p>
 <p><span class="math display">\[\begin{equation}
 \begin{gathered}
-L[t+1] = (1 - d)L[t] + M_{A,F}[t]
+L[t+1] = (1 - d)L[t] + B_{A,F}[t]
 \\
 l_{0} = L[t]
 \end{gathered}
 \end{equation}\]</span></p>
+</div>
+<div id="parameters" class="section level1">
+<h1>Parameters</h1>
+<table>
+<thead>
+<tr class="header">
+<th>Tables</th>
+<th align="center">Are</th>
+<th align="right">Cool</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>col 3 is</td>
+<td align="center">right-aligned</td>
+<td align="right">$1600</td>
+</tr>
+<tr class="even">
+<td>col 2 is</td>
+<td align="center">centered</td>
+<td align="right">$12</td>
+</tr>
+<tr class="odd">
+<td>zebra stripes</td>
+<td align="center">are neat</td>
+<td align="right">$1</td>
+</tr>
+</tbody>
+</table>
 </div>
 
 

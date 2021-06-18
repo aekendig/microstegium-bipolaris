@@ -8,15 +8,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Continuous time model
-This model describes changes in the biomass of annuals ($A$), first-year perennials ($F$), and adult perennials ($P$) over the growing season. Biomass is affected by disease and competition. We assume all biomass belonging to one plant group is pooled (i.e., experiences the same growth rate, competitive effects, and disease transmission). The biomass of plant group $i$, where $i = A, F, P$, can either be susceptible ($S$) or infected ($I$). The total biomass of a plant group is $M$ and the litter produced by annuals (an initial source of infection) is $l$. Inoculum is lost from the litter over the growing season as rate $h$.      
+This model describes changes in the biomass of annuals ($A$), first-year perennials ($F$), and adult perennials ($P$) over the growing season. Biomass is affected by disease and competition. We assume all biomass belonging to one plant group (e.g., stems, leaves, etc.) experiences the same growth rate, competitive effects, and disease transmission. The biomass of plant group $i$, where $i = A, F, P$, can either be susceptible ($S$) or infected ($I$). The total biomass of a plant group is $B$ and the litter produced by annuals (an initial source of infection) is $l$. Inoculum is lost from the litter over the growing season as rate $h$.      
 
 \begin{equation}
 \begin{gathered}
-dS_{i}/dt = r_{i}S_{i}(1 - \alpha_{iA}M_{A} - \alpha_{iF}M_{F} - \alpha_{iP}M_{P}) - \beta_{il}S_{i}l - \beta_{iA}S_{i}I_{A} - \beta_{iF}S_{i}I_{F} - \beta_{iP}S_{i}I_{P}
+dS_{i}/dt = r_{i}S_{i}(1 - \alpha_{iA}B_{A} - \alpha_{iF}B_{F} - \alpha_{iP}B_{P}) - \beta_{il}S_{i}l - \beta_{iA}S_{i}I_{A} - \beta_{iF}S_{i}I_{F} - \beta_{iP}S_{i}I_{P}
 \\
 dI_{i}/dt = \beta_{il}S_{i}l + \beta_{iA}S_{i}I_{A} + \beta_{iF}S_{i}I_{F} + \beta_{iP}S_{i}I_{P} - v_{i}I_{i}
 \\
 dl/dt = -hl
+\\
+B_{i,t} = S_{i,t} + I_{i,t}
 \end{gathered}
 \end{equation}
 
@@ -27,11 +29,11 @@ We simulate the continuous time model for the number of days in a growing season
 # Discrete time model
 This model describes annual changes in the population densities of annual plant seeds ($A$), perennial plant seeds ($F$), and perennial adult plants ($P$).  
 
-Annual plant seeds either stay dormant in the seed bank or germinate. If they germinate, they establish, grow, and produce more seeds. Those that germinate and establish are used to initiate the continuous time model ($S_{A,0}$) with initial biomass $b_{A}$. The final biomass of annual plants in the continuous time model ($M_{A,T}$) is used to estimate seed production with a conversion constant $c_{A}$. Litter ($L$) reduces the establishment of annuals ($E_{A}$).
+Annual plant seeds either stay dormant in the seed bank or germinate. If they germinate, they establish, grow, and produce more seeds. Those that germinate and establish are used to initiate the continuous time model ($S_{A,0}$) with initial biomass $b_{A}$. The final biomass of annual plants in the continuous time model ($B_{A,T}$) is used to estimate seed production with a conversion constant $c_{A}$. Litter ($L$) reduces the establishment of annuals ($E_{A}$).
 
 \begin{equation}
 \begin{gathered}
-A[t+1] = s_{A}(1 - g_{A})A[t] + c_{A}M_{A,T}[t]
+A[t+1] = s_{A}(1 - g_{A})A[t] + c_{A}B_{A,T}[t]
 \\
 S_{A,0} = g_{A}E_{A}b_{A}A[t]
 \\
@@ -43,7 +45,7 @@ The processes the determine perennial plant seeds are similar to those for annua
 
 \begin{equation}
 \begin{gathered}
-F[t+1] = s_{P}(1 - g_{P})F[t] + c_{F}M_{F,T}[t] + c_{P}M_{P,T}[t]
+F[t+1] = s_{P}(1 - g_{P})F[t] + c_{F}B_{F,T}[t] + c_{P}B_{P,T}[t]
 \\
 S_{F,0} = g_{P}E_{P}b_{F}F[t]
 \\
@@ -51,7 +53,7 @@ E_{P} = e_{P}/(1 + \gamma_{P}L[t])
 \end{gathered}
 \end{equation}
 
-Perennial adult plants are either adults  that survived through the year or seeds that germinated, established, and survived through the winter.
+Perennial adult plants are either adults  that survived through the year or seeds that germinated, established, and survived through the non-growing season (e.g., winter).
 
 \begin{equation}
 \begin{gathered}
@@ -65,8 +67,65 @@ The litter is composed of litter remaining from the previous year and new litter
 
 \begin{equation}
 \begin{gathered}
-L[t+1] = (1 - d)L[t] + M_{A,F}[t]
+L[t+1] = (1 - d)L[t] + B_{A,F}[t]
 \\
 l_{0} = L[t]
 \end{gathered}
 \end{equation}
+
+# Parameters
+
+```{r extract-parameters}
+library(tidyverse)
+library(brms)
+library(tidybayes)
+
+#### growth ####
+
+# load model
+load("../output/focal_growth_density_model_2019_density_exp.rda")
+
+# does fungicide significantly affect growth rates?
+# note that these only apply when Mv is the background plant, although its density is 0
+r_A_hyp = "fungicide = 0"
+r_F_hyp = "fungicide + focs:fungicide = 0"
+r_P_hyp = "fungicide + foca:fungicide = 0"
+
+hypothesis(growthD2Mod, c(r_A_hyp, r_F_hyp, r_P_hyp))
+# yes, fungicide significantly lowers perennial adult growth rate
+# use control values
+
+# does fungicide significantly affect growth rates?
+# assessed in focal_growth_2018_2019_density_exp.R
+# yes, some competition coefficients for perennial adults are only significant with fungicide
+# let's assume these could also apply with ctrl conditions
+
+# growth rates START HERE WITH COMPETITION COEFFICIENTS
+posterior_samples(growthD2Mod)  %>%
+  rename_with(str_replace, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(r_A = Intercept,
+            r_F = Intercept + focs,
+            r_P = Intercept + foca,
+            alpha_AA = density) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  mean_hdi(estimate)
+
+# save as table and re-import for display in in next chunk
+# can alsu be used as model input once it's saved as a table
+
+```
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+tabl <- "
+| Parameter | Estimate | Lower | Upper |
+|-----------|:--------:|:-----:|:-----:|
+| $r_{A}$   | right-aligned | $1600 |
+| col 2 is      | centered      |   $12 |
+| zebra stripes | are neat      |    $1 |
+"
+cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+```
