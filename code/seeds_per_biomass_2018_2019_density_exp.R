@@ -2,7 +2,7 @@
 
 # file: seeds_per_biomass_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 4/14/21
+# date last edited: 6/21/21
 # goal: analyses of seeds per g biomass
 
 
@@ -206,6 +206,77 @@ post_pred_fun(evASeedsBioD2Mod)
 save(mvSeedsBioD2Mod, file = "output/mv_seeds_per_biomass_model_2019_density_exp.rda")
 save(evSSeedsBioD2Mod, file = "output/evS_seeds_per_biomass_model_2019_density_exp.rda")
 save(evASeedsBioD2Mod, file = "output/evA_seeds_per_biomass_model_2019_density_exp.rda")
+
+# save data for figures
+write_csv(mvSeedsBioD2Dat, "intermediate-data/mv_seeds_per_biomass_2019_density_exp.csv")
+write_csv(evSSeedsBioD2Dat, "intermediate-data/evS_seeds_per_biomass_2019_density_exp.csv")
+write_csv(evASeedsBioD2Dat, "intermediate-data/evA_seeds_per_biomass_2019_density_exp.csv")
+
+
+#### 2019 models not transformed ####
+
+# initial visualization
+ggplot(seedsBioD2Dat, aes(biomass_weight.g, seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  facet_wrap(~ plant_group, scales = "free")
+
+ggplot(seedsBioD2Dat2, aes(biomass_weight.g, log_seeds, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  facet_wrap(~ plant_group, scales = "free")
+
+# divide data
+mvSeedsBioD2Dat2 <- seedsBioD2Dat %>%
+  filter(plant_group == "Mv_seedling")
+
+evSSeedsBioD2Dat2 <- seedsBioD2Dat %>%
+  filter(plant_group == "Ev_seedling")
+
+evASeedsBioD2Dat2 <- seedsBioD2Dat %>%
+  filter(plant_group == "Ev_adult")
+
+# fit models
+mvSeedsBioD2Mod2 <- brm(data = mvSeedsBioD2Dat2, family = gaussian,
+                           seeds ~ 0 + biomass_weight.g + fungicide:biomass_weight.g + (1|plotf),
+                           prior <- c(prior(normal(0, 100), class = "b")), # use default for sigma
+                           iter = 6000, warmup = 1000, chains = 3)
+mod_check_fun(mvSeedsBioD2Mod2)
+
+evSSeedsBioD2Mod2 <- update(mvSeedsBioD2Mod2, newdata = evSSeedsBioD2Dat2)
+mod_check_fun(evSSeedsBioD2Mod2)
+
+evASeedsBioD2Mod2 <- update(mvSeedsBioD2Mod2, formula. = seeds ~ 0 + biomass_weight.g + fungicide:biomass_weight.g + (1|site),
+                            control = list(adapt_delta = 0.999),
+                            newdata = evASeedsBioD2Dat2)
+mod_check_fun(evASeedsBioD2Mod2)
+
+# simulated data
+mvSeedsBioD2Sim2 <- mod_fit_fun(dat = mvSeedsBioD2Dat2, mod = mvSeedsBioD2Mod2, treatCol = fungicide,
+                                xCol = biomass_weight.g, 
+                                minX = min(mvSeedsBioD2Dat2$biomass_weight.g), 
+                                maxX = max(mvSeedsBioD2Dat2$biomass_weight.g), 
+                                yCol = seeds, f2t = T)
+mvSeedsBioD2Sim2[[2]]
+
+evSSeedsBioD2Sim2 <- mod_fit_fun(dat = evSSeedsBioD2Dat2, mod = evSSeedsBioD2Mod2, treatCol = fungicide,
+                                 xCol = biomass_weight.g, 
+                                 minX = min(evSSeedsBioD2Dat2$biomass_weight.g), 
+                                 maxX = max(evSSeedsBioD2Dat2$biomass_weight.g), 
+                                 yCol = seeds, f2t = T)
+evSSeedsBioD2Sim2[[2]]
+
+evASeedsBioD2Sim2 <- mod_fit_fun(dat = evASeedsBioD2Dat2, mod = evASeedsBioD2Mod2, treatCol = fungicide,
+                                xCol = biomass_weight.g, 
+                                minX = min(evASeedsBioD2Dat2$biomass_weight.g), 
+                                maxX = max(evASeedsBioD2Dat2$biomass_weight.g), 
+                                yCol = seeds, f2t = T)
+evASeedsBioD2Sim2[[2]]
+
+# save
+save(mvSeedsBioD2Mod2, file = "output/mv_seeds_per_biomass_untransformed_model_2019_density_exp.rda")
+save(evSSeedsBioD2Mod2, file = "output/evS_seeds_per_biomass_untransformed_model_2019_density_exp.rda")
+save(evASeedsBioD2Mod2, file = "output/evA_seeds_per_biomass_untransformed_model_2019_density_exp.rda")
 
 # save data for figures
 write_csv(mvSeedsBioD2Dat, "intermediate-data/mv_seeds_per_biomass_2019_density_exp.csv")

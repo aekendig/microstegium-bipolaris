@@ -2,7 +2,7 @@
 
 # file: survival_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/7/21
+# date last edited: 6/21/21
 # goal: analyses of growing season survival
 
 
@@ -127,6 +127,14 @@ winSurvD1Dat <- survD1Dat %>%
   rename(survival = April) %>%
   left_join(sevD1Dat2)
 
+# annual adult survival 2018-2019
+adultSurvD1Dat <- survD1Dat %>%
+  filter(month == "April" & age == "adult" & !is.na(survival)) %>%
+  select(-field_notes) %>%
+  left_join(plotsD) %>%
+  mutate(fungicide = ifelse(treatment == "fungicide", 1, 0))
+# includes non-focal
+
 
 #### fit models ####
 
@@ -154,6 +162,20 @@ mod_check_fun(winSurvSevD1Mod)
 save(survSevD1Mod, file = "output/survival_severity_model_2018_density_exp.rda")
 save(survSevD2Mod, file = "output/survival_severity_model_2019_density_exp.rda")
 save(winSurvSevD1Mod, file = "output/winter_survival_severity_model_2018_density_exp.rda")
+
+
+#### adult survival ####
+
+mean(adultSurvD1Dat$survival)
+
+adultSurvD1Mod <- brm(data = adultSurvD1Dat, family = bernoulli,
+                      survival ~ 1 + (1|site),
+                      prior <- prior(normal(0, 1), class = "Intercept"), # use default for sigma
+                      iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                      control = list(adapt_delta = 0.99)) 
+mod_check_fun(adultSurvD1Mod)
+
+save(adultSurvD1Mod, file = "output/ev_adult_survival_model_2018_2019_density_exp.rda")
 
 
 #### coefficients ####
