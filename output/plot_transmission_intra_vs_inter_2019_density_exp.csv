@@ -1,0 +1,9 @@
+Hypothesis,Estimate,Est.Error,CI.Lower,CI.Upper,Evid.Ratio,Post.Prob,Star
+(-bg_severity:focs) = 0,0.2004719684976067,0.5504268414066172,-0.8657362104150255,1.2848115441662358,NA,NA,
+(-bg_severity:focs-bg_severity:focs:fungicide) = 0,-0.5932259680094171,0.8485906035088289,-2.2523742914875644,1.08154852568366,NA,NA,
+(-bg_severity:foca) = 0,-0.9817503092459867,0.5584995662012924,-2.076631723942522,0.10591874337822738,NA,NA,
+(-bg_severity:foca-bg_severity:foca:fungicide) = 0,-0.5447038851080738,0.8506531835353283,-2.2147159879723723,1.11606867759872,NA,NA,
+(0.5*(bg_severity:focs+bg_severity:focs:bgs+bg_severity:foca+bg_severity:foca:bgs)) = 0,-0.1458222276112915,0.5249636566655319,-1.1832056852866286,0.8769585562371504,NA,NA,
+(0.5*(bg_severity:focs+bg_severity:focs:bgs+bg_severity:focs:fungicide+bg_severity:focs:bgs:fungicide+bg_severity:foca+bg_severity:foca:bgs+bg_severity:foca:fungicide+bg_severity:foca:bgs:fungicide)) = 0,0.1686471053829551,0.7725137447294635,-1.324756952795006,1.689548644782276,NA,NA,
+(0.5*(bg_severity:focs+bg_severity:focs:bga+bg_severity:foca+bg_severity:foca:bga)) = 0,-0.13057916052699595,0.5078234092569113,-1.132049410582934,0.8638425556304233,NA,NA,
+(0.5*(bg_severity:focs+bg_severity:focs:bga+bg_severity:focs:fungicide+bg_severity:focs:bga:fungicide+bg_severity:foca+bg_severity:foca:bga+bg_severity:foca:fungicide+bg_severity:foca:bga:fungicide)) = 0,0.05153945093521981,0.4653714181268077,-0.8680884910882085,0.9577739654680157,NA,NA,
