@@ -35,16 +35,16 @@ w_F,first-year perennial non-growing season survival fraction,0.9017668915846908
 b_A,annual initial biomass,0.031,NA,NA,g,experiment
 b_F,first-year perennial initial biomass,0.004,NA,NA,g,experiment
 b_P,adult perennial initial biomass,0.031,NA,NA,g,experiment
-beta_Al,litter transmission to annuals,0.11,NA,NA,day^-1^ g^-1^,"NA"
-beta_Fl,litter transmission to first-year perennials,0.11,NA,NA,day^-1^ g^-1^,"NA"
-beta_Pl,litter transmission to adult perennials,0.11,NA,NA,day^-1^ g^-1^,"NA"
+beta_Al,litter transmission to annuals,0.01,NA,NA,day^-1^ g^-1^,"NA"
+beta_Fl,litter transmission to first-year perennials,0.01,NA,NA,day^-1^ g^-1^,"NA"
+beta_Pl,litter transmission to adult perennials,0.01,NA,NA,day^-1^ g^-1^,"NA"
 k_A,transmission saturation constant for annuals,10,NA,NA,g,"NA"
 k_F,transmission saturation constant for first-year perennials,10,NA,NA,g,"NA"
 k_P,transmission saturation constant for adult perennials,10,NA,NA,g,"NA"
-v_A,annual infected tissue loss,0,NA,NA,day^-1^,"NA"
-v_F,perennial first-year infected tissue loss,0,NA,NA,day^-1^,"NA"
-v_P,perennial adult infected tissue loss,0,NA,NA,day^-1^,"NA"
-r_l,inoculum growth from litter,1,NA,NA,day^-1^,"NA"
+v_A,annual infected tissue loss,0.001,NA,NA,day^-1^,"NA"
+v_F,perennial first-year infected tissue loss,0.001,NA,NA,day^-1^,"NA"
+v_P,perennial adult infected tissue loss,0.001,NA,NA,day^-1^,"NA"
+h,inoculum loss from litter,0.5,NA,NA,day^-1^,"NA"
 s_A,annual surviving seed fraction,0.15,NA,NA,"NA",Redwood et al. 2018
 s_P,perennial surviving seed fraction,0.05,NA,NA,"NA",Garrison and Stier 2010
 gamma_A,litter suppression of annuals,0,NA,NA,g^-1^,"NA"

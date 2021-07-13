@@ -408,7 +408,7 @@ init_bio_parms <- tibble(Parameter = c("b_A", "b_F", "b_P"),
 lit_parms <- tibble(Parameter = c("beta_Al", "beta_Fl", "beta_Pl", 
                                   "k_A", "k_F", "k_P",
                                   "v_A", "v_F", "v_P", 
-                                  "r_l",
+                                  "h",
                                   "s_A", "s_P", 
                                   "gamma_A", "gamma_P", 
                                   "d"),
@@ -421,13 +421,13 @@ lit_parms <- tibble(Parameter = c("beta_Al", "beta_Fl", "beta_Pl",
                                     "annual infected tissue loss",
                                     "perennial first-year infected tissue loss",
                                     "perennial adult infected tissue loss",
-                                    "inoculum growth from litter",
+                                    "inoculum loss from litter",
                                     "annual surviving seed fraction",
                                     "perennial surviving seed fraction",
                                     "litter suppression of annuals",
                                     "litter suppression of perennial first-years",
                                     "annual litter decomposition fraction"),
-                     Estimate = c(rep(0.11, 3), rep(10, 3), rep(0, 3), 1, 0.15, 0.05, 0, 0, 0.59),
+                     Estimate = c(rep(0.01, 3), rep(10, 3), rep(0.001, 3), 0.5, 0.15, 0.05, 0, 0, 0.59),
                      Source = c(rep("NA", 10), "Redwood et al. 2018", "Garrison and Stier 2010", "NA", "NA", "DeMeester and Richter 2010")) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
@@ -509,8 +509,7 @@ cont_mod_fun <- function(t, x, params) {
   v_F <- as.numeric(params[params$Parameter == "v_F", "Estimate"])
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
 
-  r_l <- as.numeric(params[params$Parameter == "r_l", "Estimate"])
-  K_l <- as.numeric(params[params$Parameter == "K_l", "Estimate"])
+  h <- as.numeric(params[params$Parameter == "h", "Estimate"])
   
   # derived values
   B_A <- exp(LogS_A) + I_A
@@ -524,9 +523,8 @@ cont_mod_fun <- function(t, x, params) {
   dIAdt <- (beta_Al * exp(LogS_A) * l + beta_AA * exp(LogS_A) * I_A + beta_AF * exp(LogS_A) * I_F + beta_AP * exp(LogS_A) * I_P)/(k_A + B_A) - v_A * I_A
   dIFdt <- (beta_Fl * exp(LogS_F) * l + beta_FA * exp(LogS_F) * I_A + beta_FF * exp(LogS_F) * I_F + beta_FP * exp(LogS_F) * I_P)/(k_F + B_F) - v_F * I_F
   dIPdt <- (beta_Pl * exp(LogS_P) * l + beta_PA * exp(LogS_P) * I_A + beta_PF * exp(LogS_P) * I_F + beta_PP * exp(LogS_P) * I_P)/(k_P + B_P) - v_P * I_P
-  dldt <- r_l * l * (1 - l / K_l) - (beta_Al * exp(LogS_A) * l)/(k_A + B_A) - (beta_Fl * exp(LogS_F) * l)/(k_F + B_F) - (beta_Pl * exp(LogS_P) * l)/(k_P + B_P)
+  dldt <- -h * l
   
-   
   # model with linear transmission
   # dLogSAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - (beta_Al * l + beta_AA * I_A + beta_AF * I_F + beta_AP * I_P)
   # dLogSFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F - alpha_FP * B_P) - (beta_Fl * l + beta_FA * I_A + beta_FF * I_F + beta_FP * I_P)
@@ -543,7 +541,7 @@ cont_mod_fun <- function(t, x, params) {
   list(dxdt)
 }
 ```
-We simulate the dynamics of each plant group alone and then all together over 160 days. Populations are initiated with 10 plants and the equivalent of 0.4 infected annual plant for litter inoculum. We also simulated multiple starting values for plant density and litter inoculum.
+We simulate the dynamics of each plant group alone and then all together over 160 days. Populations are initiated with 5000 plants and the equivalent of 100 infected annual plant for litter inoculum. We also simulated multiple starting values for plant density and litter inoculum.
 
 
 ### Annual alone
@@ -553,13 +551,10 @@ We simulate the dynamics of each plant group alone and then all together over 16
 times <- seq(0, 160, by = 1)
 xstart <- c(LogS_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 5000),
             LogS_F = log(1e-10), LogS_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 75)
-parms_in <- parms %>%
-  full_join(tibble(Parameter = "K_l",
-                   Estimate = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 750))
+            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100/10)
 
 # apply function
-out <- ode(y = xstart, times = times, func = cont_mod_fun, parms = parms_in) %>%
+out <- ode(y = xstart, times = times, func = cont_mod_fun, parms = parms) %>%
   as.data.frame()
 
 # modify data table
@@ -595,120 +590,115 @@ outA %>%
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Time (days)', y='Biomass (g)')
 
-# # multiple starting values
-# starts <- seq(1, 5001, by = 500)
-# 
-# # empty list
-# outLA <- vector(mode = "list", length = length(starts))
-# 
-# # cycle through starting values
-# for(i in 1:length(starts)){
-# 
-#   xstart <- c(LogS_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i]),
-#             LogS_F = log(1e-10), LogS_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-#             l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 0.04)
-# 
-#   # apply function
-#   out <- ode(func = cont_mod_fun, y = xstart, times = times, parms = parms_in) %>%
-#     as.data.frame()
-# 
-#   # modify data table
-#   outLA[[i]] <- out %>%
-#     as_tibble() %>%
-#     mutate(S_A = exp(LogS_A),
-#            S_F = exp(LogS_F),
-#            S_P = exp(LogS_P)) %>%
-#     select(-c(LogS_A, LogS_F, LogS_P)) %>%
-#     pivot_longer(cols = -time,
-#                  names_to = c("state", "plant"),
-#                  names_pattern = "(.)_(.)",
-#                  values_to = "pop") %>%
-#     mutate(plant = case_when(is.na(plant) ~ "litter",
-#                              TRUE ~ plant),
-#            state = case_when(is.na(state) ~ "I",
-#                             TRUE ~ state),
-#            starting = starts[i])
-# }
-# 
-# # collapse list
-# outLA2 <- outLA %>%
-#   bind_rows() %>%
-#   filter(time == max(times))
-# 
-# # figure
-# outLA2 %>%
-#   filter(plant != "litter") %>%
-#   ggplot(aes(x = starting, y = pop, color = plant, linetype = state)) +
-#   geom_line(size = 2) +
-#   theme_classic() +
-#   theme(legend.key.width = unit(1.5, 'cm')) +
-#   labs(x='Initial population size', y='End of season biomass (g)')
-# 
-# # multiple litter starting values
-# starts <- seq(0.4, 1000, by = 50)
-# 
-# # empty list
-# outLL <- vector(mode = "list", length = length(starts))
-# 
-# # cycle through starting values
-# for(i in 1:length(starts)){
-# 
-#   parms_in <- parms %>%
-#   full_join(tibble(Parameter = "K_l",
-#                    Estimate = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i]))
-# 
-#   xstart <- c(LogS_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * as.numeric(parms[parms$Parameter == "g_S", "Estimate"]) * as.numeric(parms[parms$Parameter == "e_A", "Estimate"]) * 5000),
-#             LogS_F = log(1e-10), LogS_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-#             l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i]/10)
-# 
-#   # apply function
-#   out <- ode(func = cont_mod_fun, y = xstart, times = times, parms = parms_in) %>%
-#     as.data.frame()
-# 
-#   # modify data table
-#   outLL[[i]] <- out %>%
-#     as_tibble() %>%
-#     mutate(S_A = exp(LogS_A),
-#            S_F = exp(LogS_F),
-#            S_P = exp(LogS_P)) %>%
-#     select(-c(LogS_A, LogS_F, LogS_P)) %>%
-#     pivot_longer(cols = -time,
-#                  names_to = c("state", "plant"),
-#                  names_pattern = "(.)_(.)",
-#                  values_to = "pop") %>%
-#     mutate(plant = case_when(is.na(plant) ~ "litter",
-#                              TRUE ~ plant),
-#            state = case_when(is.na(state) ~ "I",
-#                             TRUE ~ state),
-#            starting = starts[i])
-# }
-# 
-# # collapse list
-# outLL2 <- outLL %>%
-#   bind_rows() %>%
-#   filter(time == max(times))
-# 
-# # figure
-# outLL2 %>%
-#   filter(plant != "litter") %>%
-#   ggplot(aes(x = starting, y = pop, color = plant, linetype = state)) +
-#   geom_line(size = 2) +
-#   theme_classic() +
-#   theme(legend.key.width = unit(1.5, 'cm')) +
-#   labs(x='Initial litter inoculum', y='End of season biomass (g)')
+# multiple starting values
+starts <- seq(1, 5001, by = 500)
+
+# empty list
+outLA <- vector(mode = "list", length = length(starts))
+
+# cycle through starting values
+for(i in 1:length(starts)){
+
+  xstart <- c(LogS_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i]),
+            LogS_F = log(1e-10), LogS_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
+            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100/10)
+
+  # apply function
+  out <- ode(func = cont_mod_fun, y = xstart, times = times, parms = parms) %>%
+    as.data.frame()
+
+  # modify data table
+  outLA[[i]] <- out %>%
+    as_tibble() %>%
+    mutate(S_A = exp(LogS_A),
+           S_F = exp(LogS_F),
+           S_P = exp(LogS_P)) %>%
+    select(-c(LogS_A, LogS_F, LogS_P)) %>%
+    pivot_longer(cols = -time,
+                 names_to = c("state", "plant"),
+                 names_pattern = "(.)_(.)",
+                 values_to = "pop") %>%
+    mutate(plant = case_when(is.na(plant) ~ "litter",
+                             TRUE ~ plant),
+           state = case_when(is.na(state) ~ "I",
+                            TRUE ~ state),
+           starting = starts[i])
+}
+
+# collapse list
+outLA2 <- outLA %>%
+  bind_rows() %>%
+  filter(time == max(times))
+
+# figure
+outLA2 %>%
+  filter(plant != "litter") %>%
+  ggplot(aes(x = starting, y = pop, color = plant, linetype = state)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  theme(legend.key.width = unit(1.5, 'cm')) +
+  labs(x='Initial population size', y='End of season biomass (g)')
+
+# multiple litter starting values
+starts <- seq(1, 1000, by = 50)
+
+# empty list
+outLL <- vector(mode = "list", length = length(starts))
+
+# cycle through starting values
+for(i in 1:length(starts)){
+
+  xstart <- c(LogS_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 5000),
+            LogS_F = log(1e-10), LogS_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
+            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i]/10)
+
+  # apply function
+  out <- ode(func = cont_mod_fun, y = xstart, times = times, parms = parms) %>%
+    as.data.frame()
+
+  # modify data table
+  outLL[[i]] <- out %>%
+    as_tibble() %>%
+    mutate(S_A = exp(LogS_A),
+           S_F = exp(LogS_F),
+           S_P = exp(LogS_P)) %>%
+    select(-c(LogS_A, LogS_F, LogS_P)) %>%
+    pivot_longer(cols = -time,
+                 names_to = c("state", "plant"),
+                 names_pattern = "(.)_(.)",
+                 values_to = "pop") %>%
+    mutate(plant = case_when(is.na(plant) ~ "litter",
+                             TRUE ~ plant),
+           state = case_when(is.na(state) ~ "I",
+                            TRUE ~ state),
+           starting = starts[i])
+}
+
+# collapse list
+outLL2 <- outLL %>%
+  bind_rows() %>%
+  filter(time == max(times))
+
+# figure
+outLL2 %>%
+  filter(plant != "litter") %>%
+  ggplot(aes(x = starting, y = pop, color = plant, linetype = state)) +
+  geom_line(size = 2) +
+  theme_classic() +
+  theme(legend.key.width = unit(1.5, 'cm')) +
+  labs(x='Initial litter inoculum', y='End of season biomass (g)')
 
 ```
-START HERE: Why doesn't infected biomass reach a carrying capacity of 1/alpha? Why isn't the inoculum depleted with all this transmission?
 
 ### Perennial seedling alone
 ```{r F-only-continuous, echo = F}
 
 # input values
 times <- seq(0, 160)
-xstart <- c(S_A = 0,
-            S_F = as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 10,
-            S_P = 0, I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 10)
+xstart <- c(LogS_A = log(1e-10), 
+            LogS_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 5000),
+            LogS_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
+            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100/10)
 
 # apply function
 ode(
@@ -746,10 +736,11 @@ outF %>%
 
 # input values
 times <- seq(0, 160)
-xstart <- c(S_A = 0, S_F = 0,
-            S_P = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, 
+xstart <- c(LogS_A = log(1e-10), 
+            LogS_F = log(1e-10),
+            LogS_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 5000), 
             I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 10)
+            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100/10)
 
 # apply function
 ode(
@@ -787,11 +778,11 @@ outP %>%
 
 # input values
 times <- seq(0, 160)
-xstart <- c(S_A = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 10, 
-            S_F = as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 10,
-            S_P = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, 
+xstart <- c(LogS_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 5000), 
+            LogS_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 5000), 
+            LogS_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 5000), 
             I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 0)
+            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100/10)
 
 # apply function
 ode(
@@ -824,6 +815,7 @@ outT %>%
   labs(x='Time (days)', y='Biomass (g)')
 ```
 
+#### start here: debug discrete model or simulation block (next one) ####
 ## Discrete time model
 ```{r discrete-model, echo = F}
 disc_mod_fun = function(AS0, AI0, F0, P0, L0, IA0, simtime, gs_days, disc_parms, con_parms){
@@ -887,11 +879,6 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, IA0, simtime, gs_days, disc_parms,
     # seedling establishment
     E_A <- e_A/(1 + gamma_A * L[t])
     E_P <- e_P/(1 + gamma_P * L[t])
-    
-    # max inoculum
-    con_parms <- con_parms %>%
-      full_join(tibble(Parameter = "K_l",
-                       Estimate = I_A0[t]))
     
     # biomass at the end of the growing season
     out <- ode(func = cont_mod_fun,
@@ -1025,7 +1012,7 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, IA0, simtime, gs_days, disc_parms,
 ```{r A-only-discrete, echo = F}
 
 # input values
-modA <- disc_mod_fun(AS0 = 20, AI0 = 0, F0 = 0, P0 = 0, L0 = 0, IA0 = 1, simtime = 10, gs_days = 160, con_parms = parms)
+modA <- disc_mod_fun(AS0 = 100, AI0 = 0, F0 = 0, P0 = 0, L0 = 0, IA0 = 10, simtime = 10, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modA %>%
