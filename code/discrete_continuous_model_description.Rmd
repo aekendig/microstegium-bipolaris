@@ -11,6 +11,7 @@ library(brms)
 library(tidybayes)
 library(kableExtra)
 library(deSolve)
+library(cowplot)
 ```
 
 # Continuous time model
@@ -759,8 +760,6 @@ outLV2 %>%
   labs(x='Annual virulence', y='End of season biomass (g)')
 
 ```
-#### start here
-The largest biomass decrease above is 3%. With higher virulence, the disease cannot be sustained. Should parameters be adjusted to sustain the disease or should infected biomass be not allowed to contribute to total biomass growth? Looking for a ~30% decrease.
 
 ### Perennial seedling alone
 ```{r F-only-continuous, echo = F}
@@ -1231,7 +1230,7 @@ modT %>%
 
 # Long-term simulation
 
-To simulate historical and future dynamics, we start with a community consisting of only the perennial species. The annual species invades after 100 years, but there are is no disease (i.e., $\beta_{Al} = \beta_{Fl} = \beta_{Pl} = 0$, which prevents initial infection, and $p = 0$). After 100 more years, the annual begins to spread disease within the community (i.e., $\beta_{Al} = \beta_{Fl} = \beta_{Pl} = 0.001$). We begin with 10 first-year perennials and 10 adult perennials and later introduce 10 annuals. We introduce disease by infecting 1/10th of the annual biomass from the previous year.
+To simulate historical and future dynamics, we start with a community consisting of only the perennial species. The annual species invades after 100 years, but there are is no disease (i.e., $\beta_{Al} = \beta_{Fl} = \beta_{Pl} = 0$, which prevents initial infection, and $p = 0$). After 100 more years, the annual begins to spread disease within the community (i.e., $\beta_{Al} = \beta_{Fl} = \beta_{Pl} = 0.001$). We begin with 10 first-year perennials and later introduce 10 annuals. We introduce disease by infecting 1/10th of the annual biomass from the previous year.
 
 ```{r long-term simulation, echo = F}
 
@@ -1242,7 +1241,7 @@ parms_df <- parms %>%
                               TRUE ~ Estimate))
 
 # perennial only
-modL1 <- disc_mod_fun(AS0 = 1e-100, AI0 = 0, F0 = 10, P0 = 10, L0 = 0, IA0 = 0, simtime = 100, gs_days = 160, 
+modL1 <- disc_mod_fun(AS0 = 1e-100, AI0 = 0, F0 = 10, P0 = 1e-100, L0 = 0, IA0 = 0, simtime = 100, gs_days = 160, 
                       disc_parms = parms_df, con_parms = parms_df)
 
 # input values for next simulation
@@ -1319,15 +1318,18 @@ modL %>%
   filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
+
+# save dataset
+write_csv(modL, "../output/discrete_continuous_model_time_series.csv")
 ```
-### Virulence simulation
+# Virulence simulation
 ```{r virulence simulation}
 
 # virulence values
-vir <- seq(0, 1, by = 0.1)
+vir <- seq(0, 0.03, length.out = 100)
 vir[1] <- 1e-20 # make first value non-zero
 
 # empty list
@@ -1356,47 +1358,167 @@ for(i in 1:length(vir)){
 
 # collapse list
 outV2 <- outV %>%
-  bind_rows()
+  bind_rows() %>%
+  filter(time == max(time))
 
 # figure
-outV2 %>%
-  filter(species %in% c("Susceptible annual", "Infected annual", "Annual", "Perennial first-year", "Perennial adult") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
+filter(outV2, species %in% c("Susceptible annual", "Infected annual", "Annual", "Perennial first-year", "Perennial adult") & !is.na(N)) %>%
+  ggplot(aes(x = virulence, y = N, color = species)) +
   geom_line() +
   theme_classic() +
-  labs(x='Time (years)', y='Number of plants') +
-  facet_wrap(~ virulence)
+  labs(x='Annual virulence', y='Number of plants')
 
-
-
-
-```
-
-### Total annual density
-```{r long-term simulation total}
-modL_tot <- modL %>%
-  filter(species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult")) %>%
-  pivot_wider(names_from = species,
-              values_from = N) %>%
-  rename(AS = "Susceptible annual",
-         AI = "Infected annual",
-         F1 = "Perennial first-year",
-         P = "Perennial adult") %>%
-  mutate(A = AS + AI) %>%
-  pivot_longer(cols = c(A, AS, AI, F1, P),
-               names_to = "species",
-               values_to = "N") %>%
-  filter(!(species %in% c("AS", "AI")))
-
-ggplot(modL_tot, aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+filter(outV2, species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") & !is.na(N)) %>%
+  ggplot(aes(x = virulence, y = N, color = species)) +
+  geom_line() +
   theme_classic() +
-  labs(x='Time (years)', y='Number of plants')
+  labs(x='Annual virulence', y='Biomass (g)')
 
-# total population drops very slightly
+# save dataset
+write_csv(outV2, "../output/discrete_continous_model_virulence_simulation.csv")
+
 ```
 
+# Figure
+```{r figure}
 
+# figure settings
+fig_theme <- theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.title.y = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.background = element_blank(),
+        legend.position = "none",
+        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"))
 
+linePal = c("solid", "dotted", "dashed")
+
+# edit data
+timeDensDat <- modL %>%
+  filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
+                                 species == "Perennial first-year" ~ "Ev first-year",
+                                 species == "Perennial adult" ~ "Ev adult"))
+
+timeBioDat <- modL %>%
+  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+  mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
+                                 species == "Perennial first-year biomass" ~ "Ev first-year",
+                                 species == "Perennial adult biomass" ~ "Ev adult")) %>%
+  group_by(time) %>%
+  mutate(tot = sum(N)) %>%
+  ungroup() %>%
+  mutate(relBio = N/tot)
+
+virDensDat <- outV2 %>%
+  filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
+                                 species == "Perennial first-year" ~ "Ev first-year",
+                                 species == "Perennial adult" ~ "Ev adult"))
+
+virBioDat <- outV2 %>%
+  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+  mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
+                                 species == "Perennial first-year biomass" ~ "Ev first-year",
+                                 species == "Perennial adult biomass" ~ "Ev adult")) %>%
+  group_by(virulence) %>%
+  mutate(tot = sum(N)) %>%
+  ungroup() %>%
+  mutate(relBio = N/tot)
+
+# time series figures
+timeDensFig <- timeDensDat %>%
+  ggplot(aes(x = time, y = N, color = plant_group, linetype = plant_group)) +
+  geom_line() +
+  annotate("text", x = 100, y = 0, label = sprintf('\u2190'), hjust = 0) +
+  annotate("text", x = 120, y = 0, label = "invasion", hjust = 0, size = 2) +
+  annotate("text", x = 200, y = 3197, label = sprintf('\u2191'), vjust = 1) +
+  annotate("text", x = 200, y = 2900, label = "disease", vjust = 1, size = 2) +
+  scale_color_viridis_d(name = "Plant group", end = 0.8) +
+  scale_linetype_manual(values = linePal, name = "Plant group") +
+  labs(x = 'Time (years)', y = expression(paste('Density (', m^-2, ')', sep = ""))) +
+  fig_theme +
+  theme(legend.position = c(0.04, 0.7))
+
+timeBioFig <- timeBioDat %>%
+  ggplot(aes(x = time, y = relBio, color = plant_group, linetype = plant_group)) +
+  geom_line() +
+  annotate("text", x = 100, y = 0.05, label = sprintf('\u2190'), hjust = 0) +
+  annotate("text", x = 120, y = 0.05, label = "invasion", hjust = 0, size = 2) +
+  annotate("text", x = 200, y = 0.882, label = sprintf('\u2191'), vjust = 1) +
+  annotate("text", x = 200, y = 0.8, label = "disease", vjust = 1, size = 2) +
+  scale_color_viridis_d(name = "Plant group", end = 0.8) +
+  scale_linetype_manual(values = linePal, name = "Plant group") +
+  labs(x = 'Time (years)', y = 'Relative biomass') +
+  fig_theme
+
+# virulence figures
+virDensFig <- virDensDat %>%
+  ggplot(aes(x = virulence, y = N, color = plant_group, linetype = plant_group)) +
+  geom_line() +
+  scale_color_viridis_d(name = "Plant group", end = 0.8) +
+  scale_linetype_manual(values = linePal, name = "Plant group") +
+  labs(x = expression(paste('Mv virulence (', day^-1, ')', sep = "")), y = expression(paste('Final density (', m^-2, ')', sep = ""))) +
+  fig_theme
+
+virBioFig <- virBioDat %>%
+  ggplot(aes(x = virulence, y = relBio, color = plant_group, linetype = plant_group)) +
+  geom_line() +
+  scale_color_viridis_d(name = "Plant group", end = 0.8) +
+  scale_linetype_manual(values = linePal, name = "Plant group") +
+  labs(x = expression(paste('Mv virulence (', day^-1, ')', sep = "")), y = 'Final relative biomass') +
+  fig_theme
+
+tiff("../output/discrete_continuous_model_time_series_virulence_figure.tiff", width = 7, height = 5, units = "in", res = 300)
+plot_grid(timeDensFig, timeBioFig, virDensFig, virBioFig,
+          nrow = 2,
+          labels = LETTERS[1:4])
+dev.off()
+
+# text values
+timeDensDat %>% 
+  filter(species %in% c("Perennial adult", "Perennial first-year") & time %in% c(100, 200)) %>%
+  group_by(time) %>%
+  summarise(N = sum(N))
+
+timeBioDat %>% 
+  filter(species %in% c("Perennial adult biomass", "Perennial first-year biomass") & time %in% c(100, 200, 300)) %>%
+  group_by(time) %>%
+  summarise(relBio = sum(relBio),
+            bio = sum(N))
+
+timeDensDat %>%
+  filter(species == "Annual" & time %in% c(200, 300))
+
+timeBioDat %>%
+  filter(species == "Annual biomass" & time %in% c(200, 300))
+
+virDensDat %>%
+  filter(virulence == min(virulence) | N == min(N) | virulence == max(virulence))
+
+virBioDat %>%
+  filter(species %in% c("Perennial adult biomass", "Perennial first-year biomass")) %>%
+  filter(round(virulence, 4) %in% c(0.0000, 0.0067)) %>%
+  group_by(virulence) %>%
+  summarise(relBio = sum(relBio),
+            bio = sum(N))
+
+virBioDat %>%
+  filter(species == "Annual biomass") %>%
+  filter(N == min(N)) %>%
+  mutate(treatment = "control") %>%
+  full_join(timeBioDat %>%
+              filter(species == "Annual biomass" & time == 200) %>%
+              mutate(treatment = "fungicide")) %>%
+  select(treatment, N) %>%
+  pivot_wider(names_from = treatment,
+              values_from = N) %>%
+  mutate(prop = (fungicide - control)/control)
+```
 
