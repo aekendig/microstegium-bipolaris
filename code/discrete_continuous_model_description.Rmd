@@ -1466,98 +1466,117 @@ fig_theme <- theme_bw() +
         strip.text = element_text(size = 8, hjust = 0.2),
         strip.background = element_blank())
 
-linePal = c("solid", "dashed", "dotted")
+linePal = c("solid", "dashed", "solid")
 
 # edit data
-timeDensDat <- modL %>%
-  filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
-                                 species == "Perennial first-year" ~ "first-year Ev",
-                                 species == "Perennial adult" ~ "adult Ev"))
+# timeDensDat <- modL %>%
+#   filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+#   mutate(plant_group = case_when(species == "Annual" ~ "Mv",
+#                                  species == "Perennial first-year" ~ "first-year Ev",
+#                                  species == "Perennial adult" ~ "adult Ev"))
+# 
+# timeBioDat <- modL %>%
+#   filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+#   mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
+#                                  species == "Perennial first-year biomass" ~ "first-year Ev",
+#                                  species == "Perennial adult biomass" ~ "adult Ev")) %>%
+#   group_by(time) %>%
+#   mutate(tot = sum(N)) %>%
+#   ungroup() %>%
+#   mutate(relBio = N/tot)
+# 
+# virDensDat <- outV2 %>%
+#   filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+#   mutate(plant_group = case_when(species == "Annual" ~ "Mv",
+#                                  species == "Perennial first-year" ~ "first-year Ev",
+#                                  species == "Perennial adult" ~ "adult Ev"))
+# 
+# virBioDat <- outV2 %>%
+#   filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+#   mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
+#                                  species == "Perennial first-year biomass" ~ "first-year Ev",
+#                                  species == "Perennial adult biomass" ~ "adult Ev")) %>%
+#   group_by(virulence) %>%
+#   mutate(tot = sum(N)) %>%
+#   ungroup() %>%
+#   mutate(relBio = N/tot)
+# 
+# timeVirDat <- outV %>%
+#   bind_rows() %>%
+#   filter(virulence == virBioDat %>%
+#            filter(species == "Annual biomass") %>%
+#            filter(N == min(N)) %>%
+#            pull(virulence)) %>%
+#   mutate(time = time + 200)
+# 
+# timeVirBioDat <- timeVirDat %>%
+#   full_join(modL %>%
+#               filter(time < 200)) %>%
+#   filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+#   mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
+#                                  species == "Perennial first-year biomass" ~ "first-year Ev",
+#                                  species == "Perennial adult biomass" ~ "adult Ev")) %>%
+#   group_by(time) %>%
+#   mutate(tot = sum(N)) %>%
+#   ungroup() %>%
+#   mutate(relBio = N/tot)
+# 
+# timeVirDensDat <- timeVirDat %>%
+#     full_join(modL %>%
+#               filter(time < 200)) %>%
+#   filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+#   mutate(plant_group = case_when(species == "Annual" ~ "Mv",
+#                                  species == "Perennial first-year" ~ "first-year Ev",
+#                                  species == "Perennial adult" ~ "adult Ev")) 
+# 
+# virTransDensDat <- outVB2 %>%
+#   filter(time >= (max(time) - 50) & species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+#   group_by(species, virulence, transmission) %>%
+#   summarise(N = mean(N)) %>%
+#   ungroup() %>%
+#   mutate(plant_group = case_when(species == "Annual" ~ "Mv",
+#                                  species == "Perennial first-year" ~ "first-year Ev",
+#                                  species == "Perennial adult" ~ "adult Ev"),
+#          virulence_abb = round(virulence, 3),
+#          transmission_abb = round(transmission, 3),
+#          virulenceF = case_when(virulence_abb == 0.000 ~ "observed",
+#                                 virulence_abb == 0.007 ~ "previous studies",
+#                                 virulence_abb == 0.013 ~ "2x previous",
+#                                 virulence_abb == 0.020 ~ "3x previous") %>%
+#            fct_relevel("observed", "previous studies"),
+#          transmissionF = case_when(transmission_abb == 0.038 ~ "observed Mv transmission",
+#                                    transmission_abb == 0.076 ~ "2x obs. Mv transmission",
+#                                    transmission_abb == 0.114 ~ "3x obs. Mv transmission") %>%
+#            fct_relevel("observed Mv transmission")) 
+# 
+# virTransBioDat <- outVB2 %>%
+#   filter(time >= (max(time) - 50) & species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+#   group_by(species, virulence, transmission) %>%
+#   summarise(N = mean(N)) %>%
+#   ungroup() %>%
+#   mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
+#                                  species == "Perennial first-year biomass" ~ "first-year Ev",
+#                                  species == "Perennial adult biomass" ~ "adult Ev"),
+#          virulence_abb = round(virulence, 3),
+#          transmission_abb = round(transmission, 3),
+#          virulenceF = case_when(virulence_abb == 0.000 ~ "observed",
+#                                 virulence_abb == 0.007 ~ "previous studies",
+#                                 virulence_abb == 0.013 ~ "2x previous",
+#                                 virulence_abb == 0.020 ~ "3x previous") %>%
+#            fct_relevel("observed", "previous studies"),
+#          transmissionF = case_when(transmission_abb == 0.038 ~ "observed Mv transmission",
+#                                    transmission_abb == 0.076 ~ "2x obs. Mv transmission",
+#                                    transmission_abb == 0.114 ~ "3x obs. Mv transmission") %>%
+#            fct_relevel("observed Mv transmission")) %>%
+#   group_by(transmissionF, virulenceF) %>%
+#   mutate(tot = sum(N)) %>%
+#   ungroup() %>%
+#   mutate(relBio = N/tot)
 
-timeBioDat <- modL %>%
-  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
-  mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
-                                 species == "Perennial first-year biomass" ~ "first-year Ev",
-                                 species == "Perennial adult biomass" ~ "adult Ev")) %>%
-  group_by(time) %>%
-  mutate(tot = sum(N)) %>%
-  ungroup() %>%
-  mutate(relBio = N/tot)
-
-virDensDat <- outV2 %>%
-  filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
-                                 species == "Perennial first-year" ~ "first-year Ev",
-                                 species == "Perennial adult" ~ "adult Ev"))
-
-virBioDat <- outV2 %>%
-  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
-  mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
-                                 species == "Perennial first-year biomass" ~ "first-year Ev",
-                                 species == "Perennial adult biomass" ~ "adult Ev")) %>%
-  group_by(virulence) %>%
-  mutate(tot = sum(N)) %>%
-  ungroup() %>%
-  mutate(relBio = N/tot)
-
-timeVirDat <- outV %>%
-  bind_rows() %>%
-  filter(virulence == virBioDat %>%
-           filter(species == "Annual biomass") %>%
-           filter(N == min(N)) %>%
-           pull(virulence)) %>%
-  mutate(time = time + 200)
-
-timeVirBioDat <- timeVirDat %>%
-  full_join(modL %>%
-              filter(time < 200)) %>%
-  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
-  mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
-                                 species == "Perennial first-year biomass" ~ "first-year Ev",
-                                 species == "Perennial adult biomass" ~ "adult Ev")) %>%
-  group_by(time) %>%
-  mutate(tot = sum(N)) %>%
-  ungroup() %>%
-  mutate(relBio = N/tot)
-
-timeVirDensDat <- timeVirDat %>%
-    full_join(modL %>%
-              filter(time < 200)) %>%
-  filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
-                                 species == "Perennial first-year" ~ "first-year Ev",
-                                 species == "Perennial adult" ~ "adult Ev")) 
-
-virTransDensDat <- outVB2 %>%
-  filter(time >= (max(time) - 50) & species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-  group_by(species, virulence, transmission) %>%
-  summarise(N = mean(N)) %>%
-  ungroup() %>%
-  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
-                                 species == "Perennial first-year" ~ "first-year Ev",
-                                 species == "Perennial adult" ~ "adult Ev"),
-         virulence_abb = round(virulence, 3),
-         transmission_abb = round(transmission, 3),
-         virulenceF = case_when(virulence_abb == 0.000 ~ "observed",
-                                virulence_abb == 0.007 ~ "previous studies",
-                                virulence_abb == 0.013 ~ "2x previous",
-                                virulence_abb == 0.020 ~ "3x previous") %>%
-           fct_relevel("observed", "previous studies"),
-         transmissionF = case_when(transmission_abb == 0.038 ~ "observed Mv transmission",
-                                   transmission_abb == 0.076 ~ "2x obs. Mv transmission",
-                                   transmission_abb == 0.114 ~ "3x obs. Mv transmission") %>%
-           fct_relevel("observed Mv transmission")) 
-
-virTransBioDat <- outVB2 %>%
-  filter(time >= (max(time) - 50) & species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
-  group_by(species, virulence, transmission) %>%
-  summarise(N = mean(N)) %>%
-  ungroup() %>%
-  mutate(plant_group = case_when(species == "Annual biomass" ~ "Mv",
-                                 species == "Perennial first-year biomass" ~ "first-year Ev",
-                                 species == "Perennial adult biomass" ~ "adult Ev"),
-         virulence_abb = round(virulence, 3),
+# virulence/transmission time series
+outVB3 <- outVB2 %>%
+  mutate(time = time + 200) %>%
+  mutate(virulence_abb = round(virulence, 3),
          transmission_abb = round(transmission, 3),
          virulenceF = case_when(virulence_abb == 0.000 ~ "observed",
                                 virulence_abb == 0.007 ~ "previous studies",
@@ -1568,159 +1587,206 @@ virTransBioDat <- outVB2 %>%
                                    transmission_abb == 0.076 ~ "2x obs. Mv transmission",
                                    transmission_abb == 0.114 ~ "3x obs. Mv transmission") %>%
            fct_relevel("observed Mv transmission")) %>%
-  group_by(transmissionF, virulenceF) %>%
-  mutate(tot = sum(N)) %>%
+  filter((virulenceF == "observed" & transmissionF == "observed Mv transmission") |
+           (virulenceF == "previous studies" & transmissionF == "observed Mv transmission") |
+           (virulenceF == "3x previous" & transmissionF == "3x obs. Mv transmission")) %>%
+  mutate(virTranF = case_when(virulenceF == "observed" ~ "Experiment\nvirulence & transmission",
+                              virulenceF == "previous studies" ~ "Max observed\nvirulence & transmission",
+                              virulenceF == "3x previous" ~ "3x max observed\nvirulence & transmission"),
+         plant_type = case_when(species %in% c("Annual", "Perennial first-year", "Perennial adult") ~ "Density",
+                                species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") ~ "Relative biomass")) %>%
+  filter(!is.na(plant_type))
+
+# calculate relative biomass
+outVB4 <- outVB3 %>%
+  filter(plant_type == "Relative biomass") %>%
+  group_by(time, virTranF) %>%
+  mutate(totBio = sum(N)) %>%
   ungroup() %>%
-  mutate(relBio = N/tot)
+  mutate(N = N/totBio) %>%
+  select(-totBio) %>%
+  full_join(outVB3 %>%
+              filter(plant_type == "Density"))
+
+# format first 200 years
+modVB4 <- modL %>%
+  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+  group_by(time) %>%
+  mutate(totBio = sum(N)) %>%
+  ungroup() %>%
+  mutate(N = N/totBio,
+         plant_type = "Relative biomass") %>%
+  select(-totBio) %>%
+  full_join(modL %>%
+              filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+              mutate(plant_type = "Density"))
+
+# combine with first 200 years
+timeVirTransDat <- outVB4 %>%
+  full_join(modVB4 %>%
+              filter(time < 201) %>%
+              expand_grid(outVB4 %>%
+                            select(virTranF) %>%
+                            unique())) %>%
+  mutate(plant_group = case_when(species %in%  c("Annual", "Annual biomass") ~ "Mv",
+                                 species %in%  c("Perennial first-year", "Perennial first-year biomass") ~ "first-\nyear Ev",
+                                 species %in%  c("Perennial adult", "Perennial adult biomass") ~ "adult Ev"),
+         virTranF =  fct_relevel(virTranF, "Experiment\nvirulence & transmission", "Max observed\nvirulence & transmission")) 
+
+# text
+timeVirTransText <- timeVirTransDat %>%
+  filter(plant_type == "Density")  %>%
+  filter(time %in% c(100, 200) & plant_group == "Mv") %>%
+  mutate(label = case_when(time == 100 ~ "invasion\noccurs",
+                           time == 200 ~ "disease\nemerges"),
+         N = 3600)
 
 # virulence/transmission time series
-timeVirTransDensDat <- outVB2 %>%
-  mutate(time = time + 200) %>%
-  full_join(modL) %>%
-  filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-  mutate(plant_group = case_when(species == "Annual" ~ "Mv",
-                                 species == "Perennial first-year" ~ "first-year Ev",
-                                 species == "Perennial adult" ~ "adult Ev"),
-         virulence_abb = round(virulence, 3),
-         transmission_abb = round(transmission, 3),
-         virulenceF = case_when(virulence_abb == 0.000 ~ "observed",
-                                virulence_abb == 0.007 ~ "previous studies",
-                                virulence_abb == 0.013 ~ "2x previous",
-                                virulence_abb == 0.020 ~ "3x previous") %>%
-           fct_relevel("observed", "previous studies"),
-         transmissionF = case_when(transmission_abb == 0.038 ~ "observed Mv transmission",
-                                   transmission_abb == 0.076 ~ "2x obs. Mv transmission",
-                                   transmission_abb == 0.114 ~ "3x obs. Mv transmission") %>%
-           fct_relevel("observed Mv transmission")) 
-
-# time series figures
-timeDensFig <- timeDensDat %>%
-  ggplot(aes(x = time, y = N, color = plant_group, linetype = plant_group)) +
-  geom_rect(xmin = 250, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "light gray", color = NA, show.legend = F) +
-  geom_line(size = 1.5) +
-  annotate("text", x = 100, y = 0, label = sprintf('\u2190'), hjust = 0) +
-  annotate("text", x = 120, y = 0, label = "invasion occurs", hjust = 0, size = 2.5) +
-  annotate("text", x = 200, y = 3197, label = sprintf('\u2191'), vjust = 1) +
-  annotate("text", x = 200, y = 2900, label = "disease emerges", vjust = 1, size = 2.5) +
-  scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group") +
-  labs(x = 'Time (years)', y = expression(paste('Density (', m^-2, ')', sep = "")), title = 'Observed Mv virulence and transmission') +
+tiff("../output/discrete_continuous_model_time_series_virulence_transmission.tiff", width = 18, height = 11, units = "cm", res = 300)
+ggplot(timeVirTransDat, aes(x = time, y = N)) +
+  geom_rect(xmin = 100, xmax = 200, ymin = -Inf, ymax = Inf, fill = "gray95", color = NA, show.legend = F) +
+  geom_rect(xmin = 200, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "gray75", color = NA, show.legend = F) +
+  geom_line(aes(linetype = plant_group, color = plant_group), size = 0.8) +
+  geom_text(data = timeVirTransText, aes(label = label), color = "black", size = 2.5, hjust = 0, vjust = 0.7) +
+  facet_grid(plant_type ~ virTranF, scales = "free", switch = "y") +
+  scale_color_viridis_d(name = "Plant group", end = 0.7, direction = -1) +
+  scale_linetype_manual(name = "Plant group", values = linePal) +
+  xlab("Time (years)") +
   fig_theme +
-  theme(legend.position = c(0.04, 0.7))
-
-tiff("../output/discrete_continuous_model_time_series_density_figure.tiff", width = 3, height = 3, units = "in", res = 300)
-timeDensFig +
-  theme(legend.position = "none")
+  theme(strip.placement = "outside",
+        strip.text = element_text(size = 10, hjust = 0.5),
+        axis.title.y = element_blank(),
+        legend.position = c(-0.005, 0.85))
 dev.off()
 
-tiff("../output/discrete_continuous_model_time_series_legend_figure.tiff", width = 5, height = 5, units = "in", res = 300)
-timeDensFig +
-  scale_color_viridis_d(name = "Plant group:", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group:") +
-  theme(legend.position = "bottom",
-        legend.direction = "horizontal",
-        legend.key.width = unit(1.5, "cm"),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank())
-dev.off()
-
-timeBioFig <- timeBioDat %>%
-  ggplot(aes(x = time, y = relBio, color = plant_group, linetype = plant_group)) +
-  geom_rect(xmin = 250, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "light gray", color = NA, show.legend = F) +
-  geom_line(size = 1.5) +
-  annotate("text", x = 100, y = 0.05, label = sprintf('\u2190'), hjust = 0) +
-  annotate("text", x = 120, y = 0.05, label = "invasion occurs", hjust = 0, size = 2.5) +
-  annotate("text", x = 200, y = 0.882, label = sprintf('\u2191'), vjust = 1) +
-  annotate("text", x = 200, y = 0.8, label = "disease emerges", vjust = 1, size = 2.5) +
-  scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group") +
-  labs(x = 'Time (years)', y = 'Proportional biomass', title = 'Observed Mv virulence and transmission') +
-  fig_theme
-
-tiff("../output/discrete_continuous_model_time_series_rel_bio_figure.tiff", width = 3, height = 3, units = "in", res = 300)
-timeBioFig
-dev.off()
-
-# virulence figures
-virDensFig <- virDensDat %>%
-  ggplot(aes(x = virulence, y = N, color = plant_group, linetype = plant_group)) +
-  geom_line() +
-  scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group") +
-  labs(x = expression(paste('Mv virulence (', day^-1, ')', sep = "")), y = expression(paste('Final density (', m^-2, ')', sep = ""))) +
-  fig_theme
-
-virBioFig <- virBioDat %>%
-  ggplot(aes(x = virulence, y = relBio, color = plant_group, linetype = plant_group)) +
-  geom_line() +
-  scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group") +
-  labs(x = expression(paste('Mv virulence (', day^-1, ')', sep = "")), y = 'Final relative biomass') +
-  fig_theme
-
-tiff("../output/discrete_continuous_model_time_series_virulence_figure.tiff", width = 7, height = 5, units = "in", res = 300)
-plot_grid(timeDensFig, timeBioFig, virDensFig, virBioFig,
-          nrow = 2,
-          labels = LETTERS[1:4])
-dev.off()
-
-# high virulence time series figures
-timeVirDensFig <- timeVirDensDat %>%
-  ggplot(aes(x = time, y = N, color = plant_group, linetype = plant_group)) +
-  geom_line() +
-  annotate("text", x = 100, y = 0, label = sprintf('\u2190'), hjust = 0) +
-  annotate("text", x = 120, y = 0, label = "invasion occurs", hjust = 0, size = 2) +
-  annotate("text", x = 200, y = 3197, label = sprintf('\u2191'), vjust = 1) +
-  annotate("text", x = 200, y = 2900, label = "disease emerges", vjust = 1, size = 2) +
-  scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group") +
-  labs(x = 'Time (years)', y = expression(paste('Density (', m^-2, ')', sep = "")), title = "Virulence in previous studies") +
-  fig_theme
-
-timeVirBioFig <- timeVirBioDat %>%
-  ggplot(aes(x = time, y = relBio, color = plant_group, linetype = plant_group)) +
-  geom_line() +
-  annotate("text", x = 100, y = 0.05, label = sprintf('\u2190'), hjust = 0) +
-  annotate("text", x = 120, y = 0.05, label = "invasion occurs", hjust = 0, size = 2) +
-  annotate("text", x = 200, y = 0.882, label = sprintf('\u2191'), vjust = 1) +
-  annotate("text", x = 200, y = 0.8, label = "disease emerges", vjust = 1, size = 2) +
-  scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  scale_linetype_manual(values = linePal, name = "Plant group") +
-  labs(x = 'Time (years)', y = 'Relative biomass') +
-  fig_theme
-
-tiff("../output/discrete_continuous_model_time_series_multi_panel_figure.tiff", width = 7, height = 5, units = "in", res = 300)
-plot_grid(timeDensFig + ggtitle("Virulence in this study"), timeBioFig, timeVirDensFig, timeVirBioFig,
-          nrow = 2,
-          labels = LETTERS[1:4])
-dev.off()
-
-# virulence/transmission combinations
-tiff("../output/discrete_continuous_model_virulence_transmission_density_figure.tiff", width = 2, height = 3, units = "in", res = 300)
-ggplot(virTransDensDat, aes(x = virulenceF, y = N, fill = plant_group)) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~ transmissionF, ncol = 1) +
-  scale_fill_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  labs(x = 'Mv virulence') +
-  scale_y_continuous(breaks = c(0, 1500, 3000)) +
-  fig_theme +
-  theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1, vjust = 1),
-        axis.title.y = element_blank())
-dev.off()
-
-tiff("../output/discrete_continuous_model_virulence_transmission_rel_bio_figure.tiff", width = 2, height = 3, units = "in", res = 300)
-ggplot(virTransBioDat, aes(x = virulenceF, y = relBio, fill = plant_group)) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~ transmissionF, ncol = 1) +
-  scale_fill_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
-  labs(x = 'Mv virulence') +
-  scale_y_continuous(breaks = c(0, 0.5, 1)) +
-  fig_theme +
-  theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1, vjust = 1),
-        axis.title.y = element_blank())
-dev.off()
+# # time series figures
+# timeDensFig <- timeDensDat %>%
+#   ggplot(aes(x = time, y = N, color = plant_group, linetype = plant_group)) +
+#   geom_rect(xmin = 250, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "light gray", color = NA, show.legend = F) +
+#   geom_line(size = 1.5) +
+#   annotate("text", x = 100, y = 0, label = sprintf('\u2190'), hjust = 0) +
+#   annotate("text", x = 120, y = 0, label = "invasion occurs", hjust = 0, size = 2.5) +
+#   annotate("text", x = 200, y = 3197, label = sprintf('\u2191'), vjust = 1) +
+#   annotate("text", x = 200, y = 2900, label = "disease emerges", vjust = 1, size = 2.5) +
+#   scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group") +
+#   labs(x = 'Time (years)', y = expression(paste('Density (', m^-2, ')', sep = "")), title = 'Observed Mv virulence and transmission') +
+#   fig_theme +
+#   theme(legend.position = c(0.04, 0.7))
+# 
+# tiff("../output/discrete_continuous_model_time_series_density_figure.tiff", width = 3, height = 3, units = "in", res = 300)
+# timeDensFig +
+#   theme(legend.position = "none")
+# dev.off()
+# 
+# tiff("../output/discrete_continuous_model_time_series_legend_figure.tiff", width = 5, height = 5, units = "in", res = 300)
+# timeDensFig +
+#   scale_color_viridis_d(name = "Plant group:", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group:") +
+#   theme(legend.position = "bottom",
+#         legend.direction = "horizontal",
+#         legend.key.width = unit(1.5, "cm"),
+#         axis.text.x = element_blank(),
+#         axis.text.y = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank())
+# dev.off()
+# 
+# timeBioFig <- timeBioDat %>%
+#   ggplot(aes(x = time, y = relBio, color = plant_group, linetype = plant_group)) +
+#   geom_rect(xmin = 250, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "light gray", color = NA, show.legend = F) +
+#   geom_line(size = 1.5) +
+#   annotate("text", x = 100, y = 0.05, label = sprintf('\u2190'), hjust = 0) +
+#   annotate("text", x = 120, y = 0.05, label = "invasion occurs", hjust = 0, size = 2.5) +
+#   annotate("text", x = 200, y = 0.882, label = sprintf('\u2191'), vjust = 1) +
+#   annotate("text", x = 200, y = 0.8, label = "disease emerges", vjust = 1, size = 2.5) +
+#   scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group") +
+#   labs(x = 'Time (years)', y = 'Proportional biomass', title = 'Observed Mv virulence and transmission') +
+#   fig_theme
+# 
+# tiff("../output/discrete_continuous_model_time_series_rel_bio_figure.tiff", width = 3, height = 3, units = "in", res = 300)
+# timeBioFig
+# dev.off()
+# 
+# # virulence figures
+# virDensFig <- virDensDat %>%
+#   ggplot(aes(x = virulence, y = N, color = plant_group, linetype = plant_group)) +
+#   geom_line() +
+#   scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group") +
+#   labs(x = expression(paste('Mv virulence (', day^-1, ')', sep = "")), y = expression(paste('Final density (', m^-2, ')', sep = ""))) +
+#   fig_theme
+# 
+# virBioFig <- virBioDat %>%
+#   ggplot(aes(x = virulence, y = relBio, color = plant_group, linetype = plant_group)) +
+#   geom_line() +
+#   scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group") +
+#   labs(x = expression(paste('Mv virulence (', day^-1, ')', sep = "")), y = 'Final relative biomass') +
+#   fig_theme
+# 
+# tiff("../output/discrete_continuous_model_time_series_virulence_figure.tiff", width = 7, height = 5, units = "in", res = 300)
+# plot_grid(timeDensFig, timeBioFig, virDensFig, virBioFig,
+#           nrow = 2,
+#           labels = LETTERS[1:4])
+# dev.off()
+# 
+# # high virulence time series figures
+# timeVirDensFig <- timeVirDensDat %>%
+#   ggplot(aes(x = time, y = N, color = plant_group, linetype = plant_group)) +
+#   geom_line() +
+#   annotate("text", x = 100, y = 0, label = sprintf('\u2190'), hjust = 0) +
+#   annotate("text", x = 120, y = 0, label = "invasion occurs", hjust = 0, size = 2) +
+#   annotate("text", x = 200, y = 3197, label = sprintf('\u2191'), vjust = 1) +
+#   annotate("text", x = 200, y = 2900, label = "disease emerges", vjust = 1, size = 2) +
+#   scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group") +
+#   labs(x = 'Time (years)', y = expression(paste('Density (', m^-2, ')', sep = "")), title = "Virulence in previous studies") +
+#   fig_theme
+# 
+# timeVirBioFig <- timeVirBioDat %>%
+#   ggplot(aes(x = time, y = relBio, color = plant_group, linetype = plant_group)) +
+#   geom_line() +
+#   annotate("text", x = 100, y = 0.05, label = sprintf('\u2190'), hjust = 0) +
+#   annotate("text", x = 120, y = 0.05, label = "invasion occurs", hjust = 0, size = 2) +
+#   annotate("text", x = 200, y = 0.882, label = sprintf('\u2191'), vjust = 1) +
+#   annotate("text", x = 200, y = 0.8, label = "disease emerges", vjust = 1, size = 2) +
+#   scale_color_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   scale_linetype_manual(values = linePal, name = "Plant group") +
+#   labs(x = 'Time (years)', y = 'Relative biomass') +
+#   fig_theme
+# 
+# tiff("../output/discrete_continuous_model_time_series_multi_panel_figure.tiff", width = 7, height = 5, units = "in", res = 300)
+# plot_grid(timeDensFig + ggtitle("Virulence in this study"), timeBioFig, timeVirDensFig, timeVirBioFig,
+#           nrow = 2,
+#           labels = LETTERS[1:4])
+# dev.off()
+# 
+# # virulence/transmission combinations
+# tiff("../output/discrete_continuous_model_virulence_transmission_density_figure.tiff", width = 2, height = 3, units = "in", res = 300)
+# ggplot(virTransDensDat, aes(x = virulenceF, y = N, fill = plant_group)) +
+#   geom_bar(stat = "identity") +
+#   facet_wrap(~ transmissionF, ncol = 1) +
+#   scale_fill_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   labs(x = 'Mv virulence') +
+#   scale_y_continuous(breaks = c(0, 1500, 3000)) +
+#   fig_theme +
+#   theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1, vjust = 1),
+#         axis.title.y = element_blank())
+# dev.off()
+# 
+# tiff("../output/discrete_continuous_model_virulence_transmission_rel_bio_figure.tiff", width = 2, height = 3, units = "in", res = 300)
+# ggplot(virTransBioDat, aes(x = virulenceF, y = relBio, fill = plant_group)) +
+#   geom_bar(stat = "identity") +
+#   facet_wrap(~ transmissionF, ncol = 1) +
+#   scale_fill_viridis_d(name = "Plant group", end = 0.8, direction = -1) +
+#   labs(x = 'Mv virulence') +
+#   scale_y_continuous(breaks = c(0, 0.5, 1)) +
+#   fig_theme +
+#   theme(axis.text.x = element_text(size = 8, color = "black", angle = 30, hjust = 1, vjust = 1),
+#         axis.title.y = element_blank())
+# dev.off()
 
 # text values
 timeDensDat %>% 
