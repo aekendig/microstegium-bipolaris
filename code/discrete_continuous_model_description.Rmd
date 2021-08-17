@@ -1647,7 +1647,7 @@ ggplot(timeVirTransDat, aes(x = time, y = N)) +
   geom_rect(xmin = 100, xmax = 200, ymin = -Inf, ymax = Inf, fill = "gray95", color = NA, show.legend = F) +
   geom_rect(xmin = 200, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "gray75", color = NA, show.legend = F) +
   geom_line(aes(linetype = plant_group, color = plant_group), size = 0.8) +
-  geom_text(data = timeVirTransText, aes(label = label), color = "black", size = 2.5, hjust = 0, vjust = 0.7) +
+  geom_text(data = timeVirTransText, aes(label = label), color = "black", size = 2.5, hjust = 0, vjust = 0.6, lineheight = 0.6) +
   facet_grid(plant_type ~ virTranF, scales = "free", switch = "y") +
   scale_color_viridis_d(name = "Plant group", end = 0.7, direction = -1) +
   scale_linetype_manual(name = "Plant group", values = linePal) +

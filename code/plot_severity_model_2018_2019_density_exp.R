@@ -271,6 +271,17 @@ ggplot(sevD2Dat, aes(edge_severity, foc_healthy_change, color = treatment)) +
   geom_smooth(formula = y ~ x, method = "lm") +
   facet_wrap(~ focal, scales = "free")
 
+# edge and background
+ggplot(edgeSevD2Dat2, aes(x = treatment, y = edge_severity)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  stat_summary(geom = "point", fun = "mean") +
+  facet_wrap(~ month)
+
+ggplot(filter(bgSevD2Dat, bg_sp == "Mv"), aes(x = treatment, y = bg_lesions/bg_tot)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+  stat_summary(geom = "point", fun = "mean") +
+  facet_wrap(~ month)
+
 
 #### fit models ####
 
@@ -686,3 +697,76 @@ save(envBioD2Mod, file = "output/dew_biomass_model_2019_density_exp.rda")
 
 hypothesis(envBioD2Mod, c("biomass_c = 0", "biomass_c + biomass_c:monthlate_aug = 0"))
 # no sig effect
+
+
+#### water (control) effect ####
+
+# combine datasets
+ctrlD2Dat <- edgeSevD2Dat2 %>%
+  filter(plot %in% c(2:4) & month != "may") %>%
+  mutate(plant_type = "edge (untreated)") %>%
+  rename(severity = "edge_severity") %>%
+  full_join(bgSevD2Dat %>%
+              filter(bg_sp == "Mv") %>%
+              mutate(severity = bg_lesions/bg_tot,
+                     plant_type = "experimental")) %>%
+  mutate(month = fct_recode(month, 
+                            "early August" = "early_aug",
+                            "July" = "jul",
+                            "June" = "jun",
+                            "late August" = "late_aug") %>%
+           fct_relevel("June", "July", "early August"),
+         treatment = fct_recode(treatment, "control (water)" = "water") %>%
+           fct_relevel("control (water)"),
+         plotf = paste0(site, plot, substr(treatment, 1, 1)),
+         severity2 = case_when(severity == 0 ~ 1e-6, # lowest value is 2.4e-6
+                               TRUE ~ severity))
+
+# sample sizes
+ctrlD2Dat %>%
+  group_by(plant_type, site, treatment) %>%
+  count() %>%
+  data.frame()
+
+ctrlD2Dat %>%
+  group_by(plotf, month) %>%
+  count() %>%
+  filter(n != 2)
+
+# model
+ctrlD2Mod <- brm(severity2 ~ plant_type*treatment*month + (1|plotf),
+                 data = ctrlD2Dat, family = Beta,
+                 prior <- c(prior(normal(0, 10), class = "Intercept"),
+                            prior(normal(0, 10), class = "b")), # use default for sigma
+                 iter = 6000, warmup = 1000, chains = 3, cores = 3)
+
+mod_check_fun(ctrlD2Mod)
+
+# save model
+save(ctrlD2Mod, file = "output/edge_experiment_mv_model_2019_density_exp.rda")
+
+# do experimental plants have different severity than edge?
+jun_ctrl_comp = "inv_logit_scaled(plant_typeexperimental) = inv_logit_scaled(0)"
+jun_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide) = inv_logit_scaled(0)"
+jul_ctrl_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:monthJuly) = inv_logit_scaled(0)"
+jul_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthJuly) = inv_logit_scaled(0)"
+eau_ctrl_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:monthearlyAugust) = inv_logit_scaled(0)"
+eau_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthearlyAugust) = inv_logit_scaled(0)"
+lau_ctrl_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:monthlateAugust) = inv_logit_scaled(0)"
+lau_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthlateAugust) = inv_logit_scaled(0)"
+
+# estimates
+hypothesis(ctrlD2Mod, c(jun_ctrl_comp, jun_fung_comp, jul_ctrl_comp, jul_fung_comp,
+                        eau_ctrl_comp, eau_fung_comp, lau_ctrl_comp, lau_fung_comp))
+
+# figure
+pdf("output/edge_experiment_mv_figure_2019_density_exp.pdf", width = 3.5, height = 10)
+ggplot(ctrlD2Dat, aes(x = treatment, y = severity2, color = plant_type)) +
+  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(0.2)) +
+  stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(0.2)) +
+  facet_wrap(~ month, scales = "free_y", ncol = 1) +
+  labs(x = "Plot treatment", y = "Disease severity (%)") +
+  scale_color_manual(values = c("black", "#20A387FF"), name = "Plant type") +
+  fig_theme +
+  theme(legend.position = c(0.65, 0.95))
+dev.off()
