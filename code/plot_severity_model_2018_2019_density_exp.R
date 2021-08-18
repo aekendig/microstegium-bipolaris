@@ -745,28 +745,40 @@ mod_check_fun(ctrlD2Mod)
 # save model
 save(ctrlD2Mod, file = "output/edge_experiment_mv_model_2019_density_exp.rda")
 
+# logit to prob
+logit2prob <- function(x){
+  exp(x)/(1 + exp(x))
+}
+
 # do experimental plants have different severity than edge?
-jun_ctrl_comp = "inv_logit_scaled(plant_typeexperimental) = inv_logit_scaled(0)"
-jun_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide) = inv_logit_scaled(0)"
-jul_ctrl_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:monthJuly) = inv_logit_scaled(0)"
-jul_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthJuly) = inv_logit_scaled(0)"
-eau_ctrl_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:monthearlyAugust) = inv_logit_scaled(0)"
-eau_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthearlyAugust) = inv_logit_scaled(0)"
-lau_ctrl_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:monthlateAugust) = inv_logit_scaled(0)"
-lau_fung_comp = "inv_logit_scaled(plant_typeexperimental + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthlateAugust) = inv_logit_scaled(0)"
+jun_ctrl_comp = "logit2prob(Intercept + plant_typeexperimental)*100 = logit2prob(Intercept)*100"
+jun_fung_comp = "logit2prob(Intercept + plant_typeexperimental + treatmentfungicide + plant_typeexperimental:treatmentfungicide)*100 = logit2prob(Intercept + treatmentfungicide)*100"
+jul_ctrl_comp = "logit2prob(Intercept + plant_typeexperimental + monthJuly + plant_typeexperimental:monthJuly)*100 = logit2prob(Intercept + monthJuly)*100"
+jul_fung_comp = "logit2prob(Intercept + plant_typeexperimental + treatmentfungicide + monthJuly + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthJuly + treatmentfungicide:monthJuly + plant_typeexperimental:treatmentfungicide:monthJuly)*100 = logit2prob(Intercept + treatmentfungicide + monthJuly + treatmentfungicide:monthJuly)*100"
+eau_ctrl_comp = "logit2prob(Intercept + plant_typeexperimental + monthearlyAugust + plant_typeexperimental:monthearlyAugust)*100 = logit2prob(Intercept + monthearlyAugust)*100"
+eau_fung_comp = "logit2prob(Intercept + plant_typeexperimental + treatmentfungicide + monthearlyAugust + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthearlyAugust + treatmentfungicide:monthearlyAugust + plant_typeexperimental:treatmentfungicide:monthearlyAugust)*100 = logit2prob(Intercept + treatmentfungicide + monthearlyAugust + treatmentfungicide:monthearlyAugust)*100"
+lau_ctrl_comp = "logit2prob(Intercept + plant_typeexperimental + monthlateAugust + plant_typeexperimental:monthlateAugust)*100 = logit2prob(Intercept + monthlateAugust)*100"
+lau_fung_comp = "logit2prob(Intercept + plant_typeexperimental + treatmentfungicide + monthlateAugust + plant_typeexperimental:treatmentfungicide + plant_typeexperimental:monthlateAugust + treatmentfungicide:monthlateAugust + plant_typeexperimental:treatmentfungicide:monthlateAugust)*100 = logit2prob(Intercept + treatmentfungicide + monthlateAugust + treatmentfungicide:monthlateAugust)*100"
 
 # estimates
-hypothesis(ctrlD2Mod, c(jun_ctrl_comp, jun_fung_comp, jul_ctrl_comp, jul_fung_comp,
-                        eau_ctrl_comp, eau_fung_comp, lau_ctrl_comp, lau_fung_comp))
+ctrlD2hyps <- hypothesis(ctrlD2Mod, c(jun_ctrl_comp, jun_fung_comp, jul_ctrl_comp, jul_fung_comp,
+                                      eau_ctrl_comp, eau_fung_comp, lau_ctrl_comp, lau_fung_comp))
+
+ctrlD2hypsOut <- ctrlD2hyps[[1]] %>%
+  as_tibble() %>%
+  mutate(Month = rep(c("June", "July", "early August", "late August"), each = 2),
+         treatment = rep(c("control (water)", "fungicide"), 4))
+
+write_csv(ctrlD2hypsOut, "output/edge_experiment_mv_2019_density_exp.csv")
 
 # figure
-pdf("output/edge_experiment_mv_figure_2019_density_exp.pdf", width = 3.5, height = 10)
+pdf("output/edge_experiment_mv_figure_2019_density_exp.pdf", width = 2.5, height = 8)
 ggplot(ctrlD2Dat, aes(x = treatment, y = severity2, color = plant_type)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(0.2)) +
-  stat_summary(geom = "point", fun = "mean", size = 3, position = position_dodge(0.2)) +
+  stat_summary(geom = "point", fun = "mean", size = 2.5, position = position_dodge(0.2)) +
   facet_wrap(~ month, scales = "free_y", ncol = 1) +
   labs(x = "Plot treatment", y = "Disease severity (%)") +
   scale_color_manual(values = c("black", "#20A387FF"), name = "Plant type") +
   fig_theme +
-  theme(legend.position = c(0.65, 0.95))
+  theme(legend.position = c(0.46, 0.94))
 dev.off()
