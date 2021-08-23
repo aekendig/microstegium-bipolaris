@@ -2,7 +2,7 @@
 
 # file: plot_severity_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/30/21
+# date last edited: 8/18/21
 # goal: effects of within and outside of plot severity
 
 
@@ -341,6 +341,32 @@ write_csv(sevD1hyps[[1]], "output/plot_transmission_intra_vs_inter_2018_density_
 write_csv(sevD2hyps[[1]], "output/plot_transmission_intra_vs_inter_2019_density_exp.csv")
 
 
+#### baseline infection ####
+
+mv_ctrl_base <- "Intercept = 0"
+evS_ctrl_base <- "Intercept + focs = 0"
+evA_ctrl_base <- "Intercept + foca = 0"
+
+mv_fung_base <- "Intercept + fungicide = 0"
+evS_fung_base <- "Intercept + focs + fungicide + focs:fungicide = 0"
+evA_fung_base <- "Intercept + foca + fungicide + foca:fungicide = 0"
+
+sevD1base <- hypothesis(sevD1Mod,
+                        c(mv_ctrl_base, mv_fung_base, evS_ctrl_base, evS_fung_base, evA_ctrl_base, evA_fung_base))[[1]] %>%
+  as_tibble() %>%
+  mutate(treatment = rep(c("control (water)", "fungicide"), 3),
+         focal = rep(c("Mv", "Ev first-year", "Ev adult"), each = 2))
+
+sevD2base <- hypothesis(sevD2Mod,
+                        c(mv_ctrl_base, mv_fung_base, evS_ctrl_base, evS_fung_base, evA_ctrl_base, evA_fung_base))[[1]] %>%
+  as_tibble() %>%
+  mutate(treatment = rep(c("control (water)", "fungicide"), 3),
+         focal = rep(c("Mv", "Ev first-year", "Ev adult"), each = 2))
+
+write_csv(sevD1base, "output/plot_transmission_baseline_2018_density_exp.csv")
+write_csv(sevD2base, "output/plot_transmission_baseline_2019_density_exp.csv")
+
+
 #### edge effects ####
 
 mv_ctrl_edge <- "edge_severity = 0"
@@ -356,7 +382,14 @@ edgeD2hyps <- hypothesis(sevD2Mod,
                           evA_ctrl_edge, evA_fung_edge))
 # all are significantly different than zero
 
-write_csv(edgeD2hyps[[1]], "output/edge_transmission_2019_density_exp.csv")
+edgeD2hyps2 <- edgeD2hyps[[1]] %>%
+  as_tibble() %>%
+  mutate(treatment = rep(c("control (water)", "fungicide"), 3),
+         foc = rep(c("m", "s", "a"), each = 2),
+         sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
+                         TRUE ~ "includes 0"))
+
+write_csv(edgeD2hyps2, "output/edge_transmission_2019_density_exp.csv")
 
 
 #### figure ####
@@ -405,11 +438,37 @@ predD2Dat <- tibble(foc = c("a", "s", "m")) %>%
 
 predDat <- predD1Dat %>%
   full_join(predD2Dat) %>%
-  mutate(focal = fct_recode(foc, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a"),
-         background = fct_recode(bg, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a"),
+  mutate(focal = fct_recode(foc, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a") %>%
+           fct_relevel("Ev adult", "Ev first-year"),
+         background = fct_recode(bg, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a") %>%
+           fct_relevel("Ev adult", "Ev first-year"),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev(),
          bg_severity = bg_severity * 100)
+
+# edge severity
+sevD2Dat %>%
+  group_by(treatment) %>%
+  summarise(minEdge = min(edge_severity),
+            maxEdge = max(edge_severity))
+
+predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
+                        focal = c("Ev adult", "Ev first-year", "Mv")) %>%
+  expand_grid(tibble(treatment = rep(c("control (water)", "fungicide"), each = 100),
+                     edge_severity = c(seq(0, 0.0856, length.out = 100),
+                                       seq(0, 0.0639, length.out = 100)))) %>%
+  mutate(year = "2019",
+         plotf = "A",
+         bg = "m",
+         background = "Mv",
+         bg_severity = 0,
+         fungicide = case_when(treatment == "control (water)" ~ 0,
+                               treatment == "fungicide" ~ 1)) %>%
+  mutate(foc_healthy_change = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+         lower = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
+         upper = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"],
+         edge_severity = edge_severity * 100,
+         treatment = fct_rev(treatment))
 
 # Mv background
 mv_mv_ctrl_beta = "bg_severity = 0"
@@ -427,7 +486,7 @@ mv_evS_fung_beta = "bg_severity +  bg_severity:bgs + bg_severity:fungicide + bg_
 evA_evS_ctrl_beta = "bg_severity +  bg_severity:bgs + bg_severity:foca + bg_severity:foca:bgs = 0"
 evA_evS_fung_beta = "bg_severity +  bg_severity:bgs + bg_severity:foca + bg_severity:foca:bgs + bg_severity:fungicide +  bg_severity:bgs:fungicide + bg_severity:foca:fungicide + bg_severity:foca:bgs:fungicide = 0"
 
-# EvA intra vs. inter
+# EvA background
 evA_evA_ctrl_beta = "bg_severity + bg_severity:foca + bg_severity:bga + bg_severity:foca:bga = 0"
 evA_evA_fung_beta = "bg_severity + bg_severity:foca + bg_severity:bga + bg_severity:foca:bga + bg_severity:fungicide + bg_severity:foca:fungicide + bg_severity:bga:fungicide + bg_severity:foca:bga:fungicide = 0"
 mv_evA_ctrl_beta = "bg_severity +  bg_severity:bga = 0"
@@ -500,16 +559,17 @@ predDat2 <- predDat %>%
 
 # raw data
 figDat <- sevD1Dat %>%
-  select(month, site, plot, treatment, focal, background, bg_severity, foc_healthy_change) %>%
+  select(month, site, plot, treatment, focal, background, bg_severity, edge_severity, foc_healthy_change) %>%
   mutate(year = "2018") %>%
   full_join(sevD2Dat %>%
-              select(month, site, plot, treatment, focal, background, bg_severity, foc_healthy_change) %>%
+              select(month, site, plot, treatment, focal, background, bg_severity, edge_severity, foc_healthy_change) %>%
               mutate(year = "2019")) %>%
   mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_relevel("control (water)"),
          focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
          background = fct_recode(background, "Ev first-year" = "Ev seedling"),
-         bg_severity = bg_severity * 100)
+         bg_severity = bg_severity * 100,
+         edge_severity = edge_severity * 100)
 
 # betas for figure
 # sig beta values
@@ -534,6 +594,34 @@ betaDat2 <- betaDat %>%
               select(-c(dat, upper))) %>%
   mutate(parm = round(Estimate, 2))
 
+# add sig to pred data
+predD2EdgeDat2 <- predD2EdgeDat %>%
+  left_join(edgeD2hyps2 %>%
+              select(foc, treatment, sig))
+
+# edge coefficients for figure
+edgeD2hyps3 <- edgeD2hyps2 %>%
+  filter(sig == "omits 0") %>%
+  left_join(predD2EdgeDat %>%
+              group_by(foc, focal) %>%
+              summarise(edge_severity = max(edge_severity),
+                        upper = max(upper)) %>%
+              ungroup()) %>%
+  left_join(sevD2Dat %>%
+              group_by(foc) %>%
+              summarise(dat = max(foc_healthy_change)) %>%
+              ungroup()) %>%
+  rowwise() %>%
+  mutate(foc_healthy_change = max(c(dat, upper))) %>%
+  ungroup() %>%
+  select(-c(dat, upper)) %>%
+  mutate(parm = round(Estimate, 2),
+         foc_healthy_change = case_when(treatment == "fungicide" & foc == "a" ~ foc_healthy_change - 1,
+                                        treatment == "fungicide" & foc == "s" ~ foc_healthy_change - 0.5,
+                                        treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.3,
+                                        TRUE ~ foc_healthy_change),
+         background = "Mv")
+
 # figure settings
 fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
@@ -547,28 +635,28 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 8),
         legend.background = element_blank(),
         legend.position = "none",
-        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
+        legend.margin = margin(-0.1, 0, 0, 0, unit = "cm"),
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
         strip.placement = "outside")
 
 col_pal = c("black", "#238A8DFF")
 
-yearText <- tibble(year = c("2018", "2019"),
-                   bg_severity = c(0, 0),
-                   foc_healthy_change = c(2, 3),
-                   background = "Ev adult",
-                   focal = "Ev adult",
-                   treatment = "fungicide")
+# yearText <- tibble(year = c("2018", "2019"),
+#                    bg_severity = c(0, 0),
+#                    foc_healthy_change = c(2, 3),
+#                    background = "Ev adult",
+#                    focal = "Ev adult",
+#                    treatment = "fungicide")
 
 textSize = 3
 
-# year 1
+# 2018 figure
 pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = foc_healthy_change)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2018"), aes(color = treatment), alpha = 0.5, size = 0.5) +
-  geom_text(data = filter(yearText, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0, vjust = 1) +
+  # geom_text(data = filter(yearText, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0, vjust = 1) +
   # geom_text(data = filter(betaDat2, year == "2018"), 
   #           aes(label = paste("beta", " == ", parm, sep = ""), 
   #               color = treatment), parse = T, hjust = 1, vjust = 0, show.legend = F, size = textSize) +
@@ -585,12 +673,16 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = f
   theme(legend.position = "bottom",
         legend.direction = "horizontal")
 
-# fungicide figure
+tiff("output/plot_transmission_pairwise_figure_2018_density_exp.tiff", width = 9, height = 9, units = "cm", res = 300)
+pairD1Fig
+dev.off()
+
+# 2019 figure
 pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = foc_healthy_change)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2019"), aes(color = treatment), alpha = 0.5, size = 0.5) +
-  geom_text(data = filter(yearText, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0, vjust = 1) +
+  # geom_text(data = filter(yearText, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0, vjust = 1) +
   geom_text(data = filter(betaDat2, year == "2019"), 
             aes(label = paste("beta", " == ", parm, sep = ""), 
                 color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
@@ -604,21 +696,46 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = f
   xlab("Initial disease severity (%)") +
   ylab("Change in infected tissue") +
   fig_theme +
-  theme(axis.title.y = element_blank(),
-        strip.text.y = element_blank())
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal")
+
+edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_change)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
+  geom_line(aes(color = treatment)) +
+  geom_point(data = filter(figDat, year == "2019") %>% 
+               mutate(background = "Mv"), 
+             aes(color = treatment), alpha = 0.5, size = 0.5) +
+  geom_text(data = edgeD2hyps3, 
+            aes(label = paste("beta", " == ", parm, sep = ""), 
+                color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
+  facet_grid(rows = vars(focal),
+             #cols = vars(background),
+             scales = "free",
+             switch = "both") +
+  # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
+  scale_color_manual(values = col_pal, name = "Treatment") +
+  scale_fill_manual(values = col_pal, name = "Treatment") +
+  xlab("Initial edge\nMv disease\nseverity (%)") +
+  ylab("Change in infected tissue") +
+  fig_theme +
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        strip.text.y = element_blank(),
+        axis.title.x = element_text(size = 10, margin = margin(t = 0, r = 0, b = -0.3, l = 0)))
 
 # legend
-leg <- get_legend(pairD1Fig)
+leg <- get_legend(pairD2Fig)
 
 # combine plots
-combFig <- plot_grid(pairD1Fig + theme(legend.position = "none"), pairD2Fig,
+combFig <- plot_grid(pairD2Fig + theme(legend.position = "none"), 
+                     edgeD2Fig,
                      nrow = 1,
                      labels = LETTERS[1:2],
-                     rel_widths = c(1, 0.87),
-                     label_x = c(0, -0.01))
+                     rel_widths = c(1, 0.33),
+                     hjust = c(0, 0.3))
 
 # combine
-pdf("output/plot_transmission_pairwise_figure_2018_2019_density_exp.pdf", width = 7, height = 3.5)
+tiff("output/plot_transmission_pairwise_figure_2019_density_exp.tiff", width = 11, height = 9, units = "cm", res = 300)
 plot_grid(combFig, leg,
           nrow = 2,
           rel_heights = c(0.8, 0.06))
@@ -667,16 +784,54 @@ evS_fung_canopy_hyp <- "canopy_cover.prop + fungicide:canopy_cover.prop + focs:c
 evA_ctrl_canopy_hyp <- "canopy_cover.prop + foca:canopy_cover.prop = 0"
 evA_fung_canopy_hyp <- "canopy_cover.prop + fungicide:canopy_cover.prop + foca:canopy_cover.prop + foca:fungicide:canopy_cover.prop = 0"
 
-hypothesis(envSevD1Mod, c(mv_ctrl_soil_hyp, mv_fung_soil_hyp, mv_ctrl_canopy_hyp, mv_fung_canopy_hyp,
+envD1Hyps <- hypothesis(envSevD1Mod, c(mv_ctrl_soil_hyp, mv_fung_soil_hyp, mv_ctrl_canopy_hyp, mv_fung_canopy_hyp,
                           evS_ctrl_soil_hyp, evS_fung_soil_hyp, evS_ctrl_canopy_hyp, evS_fung_canopy_hyp,
-                          evA_ctrl_soil_hyp, evA_fung_soil_hyp, evA_ctrl_canopy_hyp, evA_fung_canopy_hyp))
+                          evA_ctrl_soil_hyp, evA_fung_soil_hyp, evA_ctrl_canopy_hyp, evA_fung_canopy_hyp))[[1]] %>%
+  as_tibble() %>%
+  mutate(treatment = rep(c("control (water)", "fungicide"), 6),
+         foc = rep(c("Mv", "Ev first-year", "Ev adult"), each = 4),
+         env_var = rep(rep(c("soil moisture", "canopy cover"), each = 2), 3)) %>%
+  select(foc, env_var, treatment, Estimate:CI.Upper)
 # no significant effects
+
+write_csv(envD1Hyps, "output/environmental_infection_change_coefficients_2018_density_exp.csv")
 
 mv_ctrl_dew_hyp <- "dew_c = 0"
 evS_ctrl_dew_hyp <- "dew_c + focs:dew_c = 0"
 evA_ctrl_dew_hyp <- "dew_c + foca:dew_c = 0"
 
-hypothesis(envSevD2Mod, c(mv_ctrl_dew_hyp, evS_ctrl_dew_hyp, evA_ctrl_dew_hyp))
+envD2Hyps <- hypothesis(envSevD2Mod, c(mv_ctrl_dew_hyp, evS_ctrl_dew_hyp, evA_ctrl_dew_hyp))[[1]] %>%
+  as_tibble() %>%
+  mutate(treatment = "control (water)",
+         foc = c("Mv", "Ev first-year", "Ev adult"),
+         env_var = "dew intensity") %>%
+  select(foc, env_var, treatment, Estimate:CI.Upper)
+
+# Ev adult and dew intensity
+ggplot(filter(envD2Dat2, foc == "a"), aes(dew_c, foc_healthy_change)) +
+  geom_point()
+
+# remove high Ev adult value and refit model
+envD2Dat3 <- envD2Dat2 %>%
+  filter(!(foc == "a" & foc_healthy_change > 3))
+
+envSevD2Mod2 <- brm(foc_healthy_change ~ foc * dew_c + (1|plotf),
+                   data = envD2Dat3, family = gaussian,
+                   prior <- c(prior(normal(0, 1), class = "Intercept"),
+                              prior(normal(0, 1), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+
+save(envSevD2Mod2, file = "output/environmental_infection_change_model2_2019_density_exp.rda")
+
+envD2Hyps2 <- envD2Hyps %>%
+  full_join(hypothesis(envSevD2Mod2, evA_ctrl_dew_hyp)[[1]] %>%
+              as_tibble() %>%
+              mutate(treatment = "control (water)",
+                     foc = "Ev adult without highest value",
+                     env_var = "dew intensity"))
+# sig effect is lost
+
+write_csv(envD2Hyps2, "output/environmental_infection_change_coefficients_2019_density_exp.csv")
 
 # biomass effect on dew intensity
 ggplot(envBioD2Dat, aes(x = biomass_tot)) +

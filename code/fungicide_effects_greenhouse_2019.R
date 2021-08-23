@@ -2,7 +2,7 @@
 
 # file: fungicide_effects_greenhouse_2019
 # author: Amy Kendig
-# date last edited: 7/6/20
+# date last edited: 8/18/21
 # goal: see how fungicide treatment affects Mv biomass and seed head production, Ev biomass
 
 
@@ -13,10 +13,14 @@ rm(list=ls())
 
 # load packages
 library(tidyverse)
+library(brms)
 
 # import data
 mv_dat <- read_csv("./data/mv_biomass_seeds_height_jun_2019_fungicide_exp.csv")
 ev_dat <- read_csv("./data/ev_biomass_dec_2019_fungicide_exp.csv")
+
+# model functions
+source("code/brms_model_fitting_functions.R")
 
 
 #### edit data ####
@@ -29,7 +33,8 @@ unique(ev_dat$notes)
 # fungicide column
 mv_dat2 <- mv_dat %>%
   filter(is.na(notes)) %>%
-  mutate(fungicide = recode(treatment, fungicide = "1", water = "0"))
+  mutate(fungicide = recode(treatment, fungicide = "1", water = "0"),
+         log_bio.g = log(weight.g))
 
 # combine live and dead weight
 # fungicide column
@@ -37,7 +42,8 @@ ev_dat2 <- ev_dat %>%
   group_by(treatment, pot, sp) %>%
   summarise(weight.g = sum(weight.g)) %>%
   ungroup() %>%
-  mutate(fungicide = recode(treatment, fungicide = "1", water = "0"))
+  mutate(fungicide = recode(treatment, fungicide = "1", water = "0"),
+         log_bio.g = log(weight.g))
 
 
 #### visualize ####
@@ -60,7 +66,7 @@ temp_theme <- theme_bw() +
         plot.title = element_text(size = 10, hjust = 0.5))
 
 # save to pdf
-pdf("output/fungicide_effects_greenhouse_2019.pdf")
+# pdf("output/fungicide_effects_greenhouse_2019.pdf")
 
 # Mv biomass
 mv_dat2 %>%
@@ -117,41 +123,58 @@ mv_dat2 %>%
   temp_theme
 
 # close pdf
-dev.off()
+# dev.off()
+
 
 #### statistical models ####
 
 # Mv biomass
-mv_fung_bio_mod <- t.test(weight.g ~ fungicide, data = mv_dat2)
-mv_fung_bio_mod
-# fungicide mean: 21.05
-# water mean: 23.80
-# no significant effect of fungicide
+mvBioGhMod <- brm(log_bio.g ~ fungicide,
+                  data = mv_dat2, family = gaussian,
+                  prior <- c(prior(normal(0, 10), class = Intercept),
+                             prior(normal(0, 10), class = b)),
+                  iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(mvBioGhMod)
+
+# effect size
+mv_dat2 %>%
+  group_by(fungicide) %>%
+  summarise(bio = mean(weight.g)) %>%
+  ungroup()
+
+hypothesis(mvBioGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
 
 # Ev biomass
-ev_fung_bio_mod <- t.test(weight.g ~ fungicide, data = ev_dat2)
-ev_fung_bio_mod
-# fungicide mean: 13.84
-# water mean: 13.39
-# no significant effect of fungicide
+evBioGhMod <- brm(log_bio.g ~ fungicide,
+                  data = ev_dat2, family = gaussian,
+                  prior <- c(prior(normal(0, 10), class = Intercept),
+                             prior(normal(0, 10), class = b)),
+                  iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(evBioGhMod)
+
+# effect size
+ev_dat2 %>%
+  group_by(fungicide) %>%
+  summarise(bio = mean(weight.g)) %>%
+  ungroup()
+
+hypothesis(evBioGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
   
 # Mv seed heads
-mv_fung_seed_mod <- t.test(seed_heads ~ fungicide, data = mv_dat2)
-mv_fung_seed_mod
-# fungicide mean: 30
-# water mean: 37
-# no significant effect of fungicide
+mean(mv_dat2$seed_heads)
+var(mv_dat2$seed_heads) # twice as large
 
-# Mv height
-mv_fung_height_mod <- t.test(height.in ~ fungicide, data = mv_dat2)
-mv_fung_height_mod
-# fungicide mean: 42.2
-# water mean: 41.2
-# no significant effect of fungicide
+mvSeedGhMod <- brm(seed_heads ~ fungicide,
+                   data = mv_dat2, family = negbinomial,
+                   prior <- c(prior(normal(0, 10), class = Intercept),
+                              prior(normal(0, 10), class = b)),
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(mvSeedGhMod)
 
-# Seeds by biomass
-mv_seed_bio_mod <- lm(seed_heads ~ weight.g * fungicide, data = mv_dat2)
-summary(mv_seed_bio_mod)
-# water slope: 0.64
-# fungicide slope: 0.82
-# no significant effect of fungicide
+# effect size
+mv_dat2 %>%
+  group_by(fungicide) %>%
+  summarise(seeds = mean(seed_heads)) %>%
+  ungroup()
+
+hypothesis(mvSeedGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")

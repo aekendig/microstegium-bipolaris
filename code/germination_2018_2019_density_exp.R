@@ -71,11 +71,11 @@ mvGermD1Dat <- mvGermD1Dat1 %>%
               mutate(seeds_dark = pmax(seeds_dark_check_1, seeds_dark_check_2, na.rm = T),
                      seeds_light = pmax(seeds_light_check_1, seeds_light_check_2, na.rm = T)) %>%
               select(site_plot, trial, seeds, germination_final, seeds_dark, seeds_light)) %>%
-  mutate(seeds_infect = rowSums(cbind(seeds_dark, seeds_light), na.rm = T),
+  mutate(seeds_infect = case_when(seeds_dark > 0 | seeds_light > 0 ~ 1,
+                                  TRUE ~ 0), # a single seed can be infected with dark or light
          prop_germ = germination_final / seeds,
          prop_dark = seeds_dark / seeds,
          prop_light = seeds_light / seeds,
-         prop_infect = seeds_infect / seeds,
          site = gsub(" .*$", "", site_plot),
          plot = gsub(".* ","", site_plot) %>% 
            gsub("[^[:digit:]]", "", .) %>% 
@@ -90,6 +90,9 @@ mvGermD1Dat <- mvGermD1Dat1 %>%
          plotf = paste0(site, plot, substr(treatment, 1, 1))) %>%
   left_join(sevD1Dat2 %>%
               filter(sp == "Mv"))
+
+# infection variable
+unique(mvGermD1Dat$seeds_infect) # all samples have some infection
 
 # check
 filter(mvGermD1Dat, prop_germ > 1 | prop_dark > 1 | prop_light > 1 | prop_infect > 1) %>%
@@ -158,6 +161,13 @@ mvGermD1Dat %>%
          prop_dark, prop_light, prop_germ) %>%
   ggpairs()
 
+ggplot(mvGermD1Dat, aes(treatment, prop_dark)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", fun = "mean")
+
+# light/dark infection correlation
+cor.test(~ prop_dark + prop_light, data = mvGermD1Dat)
+
 # model
 mvGermD1Mod <- brm(data = mvGermD1Dat, family = binomial,
                    germination_final | trials(seeds) ~ prop_dark + prop_light + (1|plotf),
@@ -176,6 +186,14 @@ mvGermD1Mod2 <- brm(data = mvGermD1Dat, family = binomial,
 summary(mvGermD1Mod2)
 # no effect of severity
 
+mvGermD1Mod3 <- brm(data = mvGermD1Dat, family = binomial,
+                    germination_final | trials(seeds) ~ fungicide + (1|plotf),
+                    prior <- c(prior(normal(0, 10), class = "Intercept"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3)
+summary(mvGermD1Mod3)
+# fungicide doesn't affect germination
+
 mvPropDarkMod <- brm(data = mvGermD1Dat, family = binomial,
                      seeds_dark | trials(seeds) ~ sep_severity + (1|plotf),
                      prior <- c(prior(normal(0, 10), class = "Intercept"),
@@ -183,6 +201,14 @@ mvPropDarkMod <- brm(data = mvGermD1Dat, family = binomial,
                      iter = 6000, warmup = 1000, chains = 3, cores = 3)
 mod_check_fun(mvPropDarkMod)
 # severity increases prop dark
+
+mvPropDarkMod2 <- brm(data = mvGermD1Dat, family = binomial,
+                     seeds_dark | trials(seeds) ~ fungicide + (1|plotf),
+                     prior <- c(prior(normal(0, 10), class = "Intercept"),
+                                prior(normal(0, 10), class = "b")), # use default for sigma
+                     iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(mvPropDarkMod2)
+# fungicide decreases prop dark
 
 mvPropLightMod <- brm(data = mvGermD1Dat, family = binomial,
                      seeds_light | trials(seeds) ~ sep_severity + (1|plotf),
@@ -192,10 +218,28 @@ mvPropLightMod <- brm(data = mvGermD1Dat, family = binomial,
 mod_check_fun(mvPropLightMod)
 # severity increases prop light
 
+mvPropLightMod2 <- brm(data = mvGermD1Dat, family = binomial,
+                      seeds_light | trials(seeds) ~ fungicide + (1|plotf),
+                      prior <- c(prior(normal(0, 10), class = "Intercept"),
+                                 prior(normal(0, 10), class = "b")), # use default for sigma
+                      iter = 6000, warmup = 1000, chains = 3, cores = 3)
+mod_check_fun(mvPropLightMod2)
+# fungicide doesn't affect prop light
+
 # save
 save(mvGermD1Mod, file = "output/mv_germination_infection_model_2018_density_exp.rda")
 save(mvPropDarkMod, file = "output/mv_seed_infection_dark_model_2018_density_exp.rda")
+save(mvPropDarkMod2, file = "output/mv_seed_infection_dark_fungicide_model_2018_density_exp.rda")
 save(mvPropLightMod, file = "output/mv_seed_infection_light_model_2018_density_exp.rda")
+save(mvPropLightMod2, file = "output/mv_seed_infection_light_fungicide_model_2018_density_exp.rda")
+
+# logit to prob
+logit2prob <- function(x){
+  exp(x)/(1 + exp(x))
+}
+
+# fungicide effect
+hypothesis(mvPropDarkMod2, "logit2prob(Intercept + fungicide) - logit2prob(Intercept) = 0")
 
 
 #### Ev model ####
@@ -272,8 +316,15 @@ mvGermSim <- tibble(prop_dark = seq(min(mvGermD1Dat$prop_dark), max(mvGermD1Dat$
          upper = fitted(mvGermD1Mod, newdata = ., allow_new_levels = T)[, "Q97.5"]/seeds)
 
 # figures
+mvFungFig <- ggplot(mvGermD1Dat, aes(treatment, prop_dark)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", fun = "mean", size = 2) +
+  fig_theme +
+  xlab("Plot treatment") +
+  ylab("Proportion seeds infected")
+
 mvDarkFig <- ggplot(mvGermD1Dat, aes(sep_severity, prop_dark)) +
-  geom_point(alpha = 0.5) +
+  geom_point(alpha = 0.7, size = 0.7) +
   geom_line(data = mvPropDarkSim) +
   geom_ribbon(data = mvPropDarkSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
   fig_theme +
@@ -281,16 +332,17 @@ mvDarkFig <- ggplot(mvGermD1Dat, aes(sep_severity, prop_dark)) +
   ylab("Proportion seeds infected")
 
 mvGermFig <- ggplot(mvGermD1Dat, aes(prop_dark, prop_germ)) +
-  geom_point(alpha = 0.5) +
+  geom_point(alpha = 0.7, size = 0.7) +
   geom_line(data = mvGermSim) +
   geom_ribbon(data = mvGermSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
   fig_theme +
   xlab("Proportion seeds infected") +
   ylab("Proportion seeds germinated") +
-  theme(axis.title.y = element_text(size = 10, hjust = 0.1))
+  theme(axis.title.y = element_text(size = 10, hjust = -0.05))
 
-pdf("output/mv_germination_infection_figure_2018_density_exp.pdf", width = 5, height = 2.5)
-plot_grid(mvDarkFig, mvGermFig,
+tiff("output/mv_germination_infection_figure_2018_density_exp.tiff", width = 18, height = 6, units = "cm", res = 300)
+plot_grid(mvFungFig, mvDarkFig, mvGermFig,
           nrow = 1,
-          labels = LETTERS[1:2])
+          labels = LETTERS[1:3],
+          vjust = 1.1)
 dev.off()

@@ -1,16 +1,25 @@
 Parameter,Description,Estimate,Lower,Upper,Units,Source
-alpha_AA,annual-annual competition,0.013325888282785997,0.005028007194962317,0.021738628673857695,g^-1^,experiment
-alpha_AF,annual-first-year perennial competition,0,NA,NA,g^-1^,experiment
-alpha_AP,annual-adult perennial competition,0.11776585206455635,0.03414297217376576,0.2004934157535779,g^-1^,experiment
-alpha_FA,first-year perennial-annual competition,0.010916809778947897,0.002695791253033321,0.019624505876737787,g^-1^,experiment
-alpha_FF,first-year perennial-first-year perennial competition,0,NA,NA,g^-1^,experiment
-alpha_FP,first-year perennial-adult perennial competition,0.09884663575097966,0.006711404995399441,0.18410313055644423,g^-1^,experiment
-alpha_PA,adult perennial-annual competition,0,NA,NA,g^-1^,experiment
-alpha_PF,adult perennial-first-year perennial competition,0,NA,NA,g^-1^,experiment
-alpha_PP,adult perennial-adult perennial competition,0.1639066258481008,0.020143355508809815,0.29815250387882686,g^-1^,experiment
-r_A,annual growth rate,0.01658013947107645,0.013605144515694936,0.019779444365636986,day^-1^,experiment
-r_F,perennial first-year growth rate,0.002930569591388302,-2.733496927509654e-4,0.005987106114349083,day^-1^,experiment
-r_P,perennial adult growth rate,0.011466222587980895,0.007259689325162276,0.015349420657722873,day^-1^,experiment
+alpha_AA,annual-annual competition,0,NA,NA,g^-1^,experiment
+alpha_AA_dis,annual-first-year perennial competition,0.011259717200090303,0.0017883331362832339,0.021630854431439,g^-1^,experiment
+alpha_AF,annual-adult perennial competition,0,NA,NA,g^-1^,experiment
+alpha_AF_dis,first-year perennial-annual competition,0,NA,NA,g^-1^,experiment
+alpha_AP,first-year perennial-first-year perennial competition,0.06639390666406932,0.03767926288460944,0.09381946235081652,g^-1^,experiment
+alpha_AP_dis,first-year perennial-adult perennial competition,0,NA,NA,g^-1^,experiment
+alpha_FA,adult perennial-annual competition,0.009822421786346612,0.002701769412984964,0.0170561848503901,g^-1^,experiment
+alpha_FA_dis,adult perennial-first-year perennial competition,0.011319741926667598,9.491685436740821e-4,0.0218503945208079,g^-1^,experiment
+alpha_FF,adult perennial-adult perennial competition,0,NA,NA,g^-1^,experiment
+alpha_FF_dis,annual-annual competition with disease,0,NA,NA,g^-1^,experiment
+alpha_FP,annual-first-year perennial competition with disease,0.05903469996980091,0.028121502854291165,0.09236108215515638,g^-1^,experiment
+alpha_FP_dis,annual-adult perennial competition with disease,0,NA,NA,g^-1^,experiment
+alpha_PA,first-year perennial-annual competition with disease,0,NA,NA,g^-1^,experiment
+alpha_PA_dis,first-year perennial-first-year perennial competition with disease,0,NA,NA,g^-1^,experiment
+alpha_PF,first-year perennial-adult perennial competition with disease,0,NA,NA,g^-1^,experiment
+alpha_PF_dis,adult perennial-annual competition with disease,0,NA,NA,g^-1^,experiment
+alpha_PP,adult perennial-first-year perennial competition with disease,0,NA,NA,g^-1^,experiment
+alpha_PP_dis,adult perennial-adult perennial competition with disease,0,NA,NA,g^-1^,experiment
+r_A,annual growth rate,0.01671973883372064,0.013803490731322388,0.020229658997258277,day^-1^,experiment
+r_F,perennial first-year growth rate,0.0029289208613614377,-3.2496379003369715e-4,0.00621374052714847,day^-1^,experiment
+r_P,perennial adult growth rate,0.010617827540873686,0.006924701303112918,0.014602355350936947,day^-1^,experiment
 beta_AA,annual-annual transmission,0.03821817221375853,0.011980078852740902,0.06704606456224907,day^-1^ g^-1^,experiment
 beta_AF,annual-first-year perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
 beta_AP,annual-adult perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
