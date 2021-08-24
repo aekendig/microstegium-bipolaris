@@ -36,6 +36,11 @@ mv_dat2 <- mv_dat %>%
   mutate(fungicide = recode(treatment, fungicide = "1", water = "0"),
          log_bio.g = log(weight.g))
 
+# save for demo
+mv_dat2 %>%
+  mutate(treatment = fct_recode(treatment, "control" = "water")) %>%
+  write_csv("intermediate-data/fungicide_greenhouse_experiment.csv")
+
 # combine live and dead weight
 # fungicide column
 ev_dat2 <- ev_dat %>%
