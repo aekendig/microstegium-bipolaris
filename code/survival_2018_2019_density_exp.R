@@ -178,7 +178,7 @@ mod_check_fun(adultSurvD1Mod)
 save(adultSurvD1Mod, file = "output/ev_adult_survival_model_2018_2019_density_exp.rda")
 
 
-#### coefficients ####
+#### severity effect coefficients ####
 
 mv_hyp = "jul_severity = 0"
 evS_hyp = "jul_severity + jul_severity:focs = 0"
@@ -203,6 +203,25 @@ survCoef <- survD1Coef %>%
   select(year, focal, season, Estimate:CI.Upper)
 
 write_csv(survCoef, "output/survival_severity_coefficients_2018_2019_density_exp.csv")
+
+
+#### adult survival coefficients ####
+
+# logit to prob
+logit2prob <- function(x){
+  exp(x)/(1 + exp(x))
+}
+
+# coefficients
+sumSurvCoef <- "logit2prob(Intercept + foca) = 0"
+winSurvCoef <- "logit2prob(Intercept) = 0"
+annSurvCoef <- "logit2prob(Intercept) = 0"
+
+# estimates
+hypothesis(survSevD1Mod, sumSurvCoef) # 1
+hypothesis(survSevD2Mod, sumSurvCoef) # .94, but severity increased survival
+hypothesis(winSurvSevD1Mod, winSurvCoef) # .98, but severity increased survival
+hypothesis(adultSurvD1Mod, annSurvCoef) # .88
 
 
 #### 2018 Mv model ####
