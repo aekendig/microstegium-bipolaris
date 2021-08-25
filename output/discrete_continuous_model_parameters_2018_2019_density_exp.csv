@@ -1,15 +1,15 @@
 Parameter,Description,Estimate,Lower,Upper,Units,Source
 alpha_AA,annual-annual competition,0,NA,NA,g^-1^,experiment
-alpha_AA_dis,annual-first-year perennial competition,0.011259717200090303,0.0017883331362832339,0.021630854431439,g^-1^,experiment
+alpha_AA_dis,annual-first-year perennial competition,0.0011259717200090302,1.7883331362832339e-4,0.0021630854431439,g^-1^,experiment
 alpha_AF,annual-adult perennial competition,0,NA,NA,g^-1^,experiment
 alpha_AF_dis,first-year perennial-annual competition,0,NA,NA,g^-1^,experiment
-alpha_AP,first-year perennial-first-year perennial competition,0.06639390666406932,0.03767926288460944,0.09381946235081652,g^-1^,experiment
+alpha_AP,first-year perennial-first-year perennial competition,0.0066393906664069325,0.003767926288460944,0.009381946235081652,g^-1^,experiment
 alpha_AP_dis,first-year perennial-adult perennial competition,0,NA,NA,g^-1^,experiment
-alpha_FA,adult perennial-annual competition,0.009822421786346612,0.002701769412984964,0.0170561848503901,g^-1^,experiment
-alpha_FA_dis,adult perennial-first-year perennial competition,0.011319741926667598,9.491685436740821e-4,0.0218503945208079,g^-1^,experiment
+alpha_FA,adult perennial-annual competition,9.822421786346612e-4,2.701769412984964e-4,0.0017056184850390101,g^-1^,experiment
+alpha_FA_dis,adult perennial-first-year perennial competition,0.0011319741926667597,9.491685436740821e-5,0.00218503945208079,g^-1^,experiment
 alpha_FF,adult perennial-adult perennial competition,0,NA,NA,g^-1^,experiment
 alpha_FF_dis,annual-annual competition with disease,0,NA,NA,g^-1^,experiment
-alpha_FP,annual-first-year perennial competition with disease,0.05903469996980091,0.028121502854291165,0.09236108215515638,g^-1^,experiment
+alpha_FP,annual-first-year perennial competition with disease,0.005903469996980091,0.0028121502854291163,0.009236108215515638,g^-1^,experiment
 alpha_FP_dis,annual-adult perennial competition with disease,0,NA,NA,g^-1^,experiment
 alpha_PA,first-year perennial-annual competition with disease,0,NA,NA,g^-1^,experiment
 alpha_PA_dis,first-year perennial-first-year perennial competition with disease,0,NA,NA,g^-1^,experiment
@@ -39,23 +39,24 @@ c_F,first-year perennial seed conversion,8.476030789055871,6.997022970125732,9.9
 c_P,adult perennial seed conversion,19.084498055179633,16.209390679370646,21.98089920102739,seeds g^-1^,experiment
 e_A,annual establishment fraction,0.9490323342553639,0.9144625556014616,0.9806709158889197,"NA",experiment
 e_P,perennial establishment fraction,0.5531020953855147,0.4065253408230047,0.6958544000552291,"NA",experiment
-l_P,adult perennial survival fraction,0.8764804924301219,0.6196207826181906,0.9826180206947736,"NA",experiment
-w_F,first-year perennial non-growing season survival fraction,0.9017668915846908,0.83239147097254,0.9626079575851093,"NA",experiment
+l,adult perennial survival fraction,0.8764804924301219,0.6196207826181906,0.9826180206947736,"NA",experiment
 b_A,annual initial biomass,0.031,NA,NA,g,experiment
 b_F,first-year perennial initial biomass,0.004,NA,NA,g,experiment
 b_P,adult perennial initial biomass,0.031,NA,NA,g,experiment
-beta_Al,litter transmission to annuals,0.01,NA,NA,day^-1^ g^-1^,"NA"
-beta_Fl,litter transmission to first-year perennials,0.01,NA,NA,day^-1^ g^-1^,"NA"
-beta_Pl,litter transmission to adult perennials,0.01,NA,NA,day^-1^ g^-1^,"NA"
+gamma_A,annual sensitivity to litter,0.001184393821520858,4.191629405253904e-4,0.0020098330356090677,g^-1^,Benitez et al. 2021
+gamma_P,annual sensitivity to litter,5.029738597082376e-4,9.334561098983917e-6,9.899256961051154e-4,g^-1^,Benitez et al. 2021
+beta_AC,litter transmission to annuals,0.001,NA,NA,day^-1^ g^-1^,"NA"
+beta_FC,litter transmission to first-year perennials,0.001,NA,NA,day^-1^ g^-1^,"NA"
+beta_PC,litter transmission to adult perennials,0.001,NA,NA,day^-1^ g^-1^,"NA"
 k_A,transmission saturation constant for annuals,10,NA,NA,g,"NA"
 k_F,transmission saturation constant for first-year perennials,10,NA,NA,g,"NA"
 k_P,transmission saturation constant for adult perennials,10,NA,NA,g,"NA"
 v_A,annual infected tissue loss,1e-20,NA,NA,day^-1^,"NA"
 v_F,perennial first-year infected tissue loss,1e-20,NA,NA,day^-1^,"NA"
 v_P,perennial adult infected tissue loss,1e-20,NA,NA,day^-1^,"NA"
-h,inoculum loss from litter,0.1,NA,NA,day^-1^,"NA"
+h,inoculum addition to litter,5500,NA,NA,g^-1^,Benitez et al. 2020
+b,inoculum loss from litter,0.9,NA,NA,day^-1^,"NA"
 s_A,annual surviving seed fraction,0.15,NA,NA,"NA",Redwood et al. 2018
 s_P,perennial surviving seed fraction,0.05,NA,NA,"NA",Garrison and Stier 2010
-gamma_A,litter suppression of annuals,0,NA,NA,g^-1^,"NA"
-gamma_P,litter suppression of perennial first-years,0,NA,NA,g^-1^,"NA"
 d,annual litter decomposition fraction,0.59,NA,NA,"NA",DeMeester and Richter 2010
+m,biomass mortality,0.001,NA,NA,day^-1^,"NA"

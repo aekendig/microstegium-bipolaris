@@ -14,78 +14,6 @@ library(deSolve)
 library(cowplot)
 ```
 
-# Continuous time model
-This model describes changes in the biomass of annuals ($A$), first-year perennials ($F$), and adult perennials ($P$) over the growing season. Biomass is affected by disease and competition. We assume all biomass belonging to one plant group (e.g., stems, leaves, etc.) experiences the same growth rate, competitive effects, and disease transmission. The biomass of plant group $i$, where $i = A, F, P$, can either be susceptible ($S$) or infected ($I$). The total biomass of a plant group is $B$ and inoculum in the litter produced by annuals is $l$. Inoculum is lost from the litter over the growing season as rate $h$.      
-
-\begin{equation}
-\begin{gathered}
-dB_{i}/dt = r_{i}B_{i}(1 - \alpha_{iA}B_{A} - \alpha_{iF}B_{F} - \alpha_{iP}B_{P}) - v_{i}I_{i}
-\\
-dI_{i}/dt = \frac{\beta_{il}S_{i}l + \beta_{iA}S_{i}I_{A} + \beta_{iF}S_{i}I_{F} + \beta_{iP}S_{i}I_{P}}{k_{i} + B_{i}} - v_{i}I_{i}
-\\
-dl/dt = -hl
-\\
-B_{i,t} = S_{i,t} + I_{i,t}
-\end{gathered}
-\end{equation}
-
-Total biomass grows at a rate $r_{i}$, which is slowed due to competition ($\alpha$ values). Infection ($\beta$ values) moves biomass from the susceptible to infected category. Transmission is asymptotic (Antonovics et al. 1995, McCallum et al. 2001) to represent saturating contact rates with increasing density. Both susceptible and infected biomass contribute to competition because susceptible biomass contributes to photosynthesis and resource uptake and both types of biomass contribute to shading. Infected biomass does not grow, but is converted from susceptible biomass. Infected biomass is lost at a rate $v_{i}$ due to processes such as shedding or cell death.   
-
-We simulate the continuous time model for the number of days in a growing season ($T$). The initial states of the variables are derived from the discrete time model and described below.  
-
-# Discrete time model
-This model describes annual changes in the population densities of annual plant seeds ($A$), perennial plant seeds ($F$), and perennial adult plants ($P$).  
-
-Because we found that infected annual seeds have reduced germination, we separately track susceptible $A_{S}$ and infected $A_{I}$ annual seeds. Susceptible annual seeds either stay dormant in the seed bank or germinate ($g_{S}$) while infected seeds can only germinate at a reduced fraction ($g_{I}$) and do not survive for another year in the seed bank. If seeds germinate, they establish and grow regardless of whether they are infected. The seeds that germinate and establish are used to initiate the continuous time model ($S_{A,0}$) with initial biomass $b_{A}$. The final biomass of annual plants in the continuous time model ($B_{A,T}$) is used to estimate seed production with a conversion constant $c_{A}$. We assume a fraction $p$ of the seeds produced are infected, based on the empirical relationship between leaf severity (Estimated with $I_{A,T}/B_{A,T}$) and seed infection. Each gram of annual litter ($L$) reduces the establishment of annuals ($E_{A}$) by $\gamma_{A}$.
-
-\begin{equation}
-\begin{gathered}
-A_{S}[t+1] = s_{A}(1 - g_{S})A_{S}[t] + (1-p)c_{A}B_{A,T}[t]
-\\
-A_{I}[t+1] = pc_{A}B_{A,T}[t]
-\\
-S_{A,0} = g_{S}E_{A}b_{A}A_{S}[t] + g_{I}E_{A}b_{A}A_{I}[t]
-\\
-p = \frac{e^{p_{0} + p_{1}I_{A,T}[t]/B_{A,T}[t]}}{1 + e^{p_{0} + p_{1}I_{A,T}[t]/B_{A,T}[t]}}
-\\
-E_{A} = e_{A}/(1 + \gamma_{A}L[t])
-\end{gathered}
-\end{equation}
-
-The processes the determine perennial plant seeds are similar to those for annual plant seeds except that perennial seeds can be produced either by first year plants or by adults.
-
-\begin{equation}
-\begin{gathered}
-F[t+1] = s_{P}(1 - g_{P})F[t] + c_{F}B_{F,T}[t] + c_{P}B_{P,T}[t]
-\\
-S_{F,0} = g_{P}E_{P}b_{F}F[t]
-\\
-E_{P} = e_{P}/(1 + \gamma_{P}L[t])
-\end{gathered}
-\end{equation}
-
-Perennial adult plants are either adults  that survived through the year or seeds that germinated, established, and survived through the non-growing season (e.g., winter).
-
-\begin{equation}
-\begin{gathered}
-P[t+1] = l_{P}P[t] + g_{P}E_{P}w_{F}F[t]
-\\
-S_{P,0} = b_{P}P[t]
-\end{gathered}
-\end{equation}
-
-The litter is composed of litter remaining from the previous year and new litter produced by annuals. Infected annual biomass from the previous year becomes the inoculum source at the beginning of the growing season.
-
-\begin{equation}
-\begin{gathered}
-L[t+1] = (1 - d)L[t] + B_{A,T}[t]
-\\
-l_{0} = I_{A,T}[t-1]
-\end{gathered}
-\end{equation}
-
-# Parameters
-
 ```{r parameters, include=FALSE}
 #### growth ####
 
@@ -118,28 +46,30 @@ growth_mod_parms <- posterior_samples(growthD2Mod2)  %>%
   transmute(r_A = Intercept,
             r_F = Intercept + focs,
             r_P = Intercept + foca,
-            alpha_AA = - 1 * (plot_biomass + plot_biomass_fungicide),
+            alpha_AA = (plot_biomass + plot_biomass_fungicide),
             # alpha_AA = 1/max(stricker$biomass_g_m2),
-            alpha_FA = - 1 * (plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide),
-            alpha_PA = - 1 * (plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide),
-            alpha_AF = - 1 * (plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide),
-            alpha_FF = - 1 * (plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide),
-            alpha_PF = - 1 * (plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide),
-            alpha_AP = - 1 * (plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide),
-            alpha_FP = - 1 * (plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide),
-            alpha_PP = - 1 * (plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide),
-            alpha_AA_dis = - 1 * plot_biomass,
-            alpha_FA_dis = - 1 * (plot_biomass + plot_biomass_focs),
-            alpha_PA_dis = - 1 * (plot_biomass + plot_biomass_foca),
-            alpha_AF_dis = - 1 * (plot_biomass + plot_biomass_bgs),
-            alpha_FF_dis = - 1 * (plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs),
-            alpha_PF_dis = - 1 * (plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs),
-            alpha_AP_dis = - 1 * (plot_biomass + plot_biomass_bga),
-            alpha_FP_dis = - 1 * (plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga),
-            alpha_PP_dis = - 1 * (plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga)) %>%
+            alpha_FA = (plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide),
+            alpha_PA = (plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide),
+            alpha_AF = (plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide),
+            alpha_FF = (plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide),
+            alpha_PF = (plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide),
+            alpha_AP = (plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide),
+            alpha_FP = (plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide),
+            alpha_PP = (plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide),
+            alpha_AA_dis = plot_biomass,
+            alpha_FA_dis = (plot_biomass + plot_biomass_focs),
+            alpha_PA_dis = (plot_biomass + plot_biomass_foca),
+            alpha_AF_dis = (plot_biomass + plot_biomass_bgs),
+            alpha_FF_dis = (plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs),
+            alpha_PF_dis = (plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs),
+            alpha_AP_dis = (plot_biomass + plot_biomass_bga),
+            alpha_FP_dis = (plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga),
+            alpha_PP_dis = (plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga)) %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
+  mutate(estimate = case_when(substr(parameter, 1, 1) == "r" ~ estimate,
+                              TRUE ~ estimate * -1)) %>% # scale all competition coefficients
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
@@ -388,23 +318,23 @@ evA_surv_parms <- posterior_samples(adultSurvD1Mod)  %>%
 
 #### non-growing season survival ####
 
-load("../output/winter_survival_severity_model_2018_density_exp.rda")
-
-ngs_surv_parms <- posterior_samples(winSurvSevD1Mod)  %>%
-  rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(w = exp(Intercept + focs)/(1 + exp(Intercept + focs))) %>%
-  pivot_longer(cols = everything(),
-               names_to = "parameter",
-               values_to = "estimate") %>%
-  group_by(parameter) %>%
-  mean_hdi(estimate) %>%
-  transmute(Parameter = parameter,
-            Description = "first-year perennial non-growing season survival fraction",
-            Estimate = estimate,
-            Lower = .lower,
-            Upper = .upper,
-            Units = "NA",
-            Source = "experiment")
+# load("../output/winter_survival_severity_model_2018_density_exp.rda")
+# 
+# ngs_surv_parms <- posterior_samples(winSurvSevD1Mod)  %>%
+#   rename_with(str_replace, pattern = "b_", replacement = "") %>%
+#   transmute(w = exp(Intercept + focs)/(1 + exp(Intercept + focs))) %>%
+#   pivot_longer(cols = everything(),
+#                names_to = "parameter",
+#                values_to = "estimate") %>%
+#   group_by(parameter) %>%
+#   mean_hdi(estimate) %>%
+#   transmute(Parameter = parameter,
+#             Description = "first-year perennial non-growing season survival fraction",
+#             Estimate = estimate,
+#             Lower = .lower,
+#             Upper = .upper,
+#             Units = "NA",
+#             Source = "experiment")
 
 
 #### initial biomass ####
@@ -418,22 +348,61 @@ init_bio_parms <- tibble(Parameter = c("b_A", "b_F", "b_P"),
                                          "adult perennial initial biomass"),
                          Estimate = c(min(mvBioD2Dat$biomass_weight.g, na.rm = T)/10,
                                       min(filter(evBioD2Dat, ID %in% c("1", "2", "3"))$weight, na.rm = T)/10,
-                                      min(filter(evBioD2Dat, ID == "A")$weight, na.rm = T)/10), 
-                         Lower = rep(NA_real_, 3), 
-                         Upper = rep(NA_real_, 3), 
+                                      min(filter(evBioD2Dat, ID == "A")$weight, na.rm = T)/10),
+                         Lower = rep(NA_real_, 3),
+                         Upper = rep(NA_real_, 3),
                          Units = rep("g", 3),
                          Source = rep("experiment", 3))
 
 
+#### litter sensitivity ####
+
+load("../output/litter_reu_mv_establishment_model.rda")
+
+mv_lit_parms <- posterior_samples(mv_bh_mod)  %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(gamma_A = beta_Intercept) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  mean_hdi(estimate) %>%
+  transmute(Parameter = parameter,
+            Description = "annual sensitivity to litter",
+            Estimate = estimate,
+            Lower = .lower,
+            Upper = .upper,
+            Units = "g^-1^",
+            Source = "Benitez et al. 2021")
+
+load("../output/litter_reu_ev_establishment_model.rda")
+
+ev_lit_parms <- posterior_samples(ev_bh_mod)  %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(gamma_P = beta_Intercept) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  mean_hdi(estimate) %>%
+  transmute(Parameter = parameter,
+            Description = "annual sensitivity to litter",
+            Estimate = estimate,
+            Lower = .lower,
+            Upper = .upper,
+            Units = "g^-1^",
+            Source = "Benitez et al. 2021")
+
+
 #### literature/estimated parameters ####
 
-lit_parms <- tibble(Parameter = c("beta_Al", "beta_Fl", "beta_Pl", 
+lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC", 
                                   "k_A", "k_F", "k_P",
                                   "v_A", "v_F", "v_P", 
-                                  "h", "m",
+                                  "h", "b",
                                   "s_A", "s_P", 
-                                  "gamma_A", "gamma_P", 
-                                  "d"),
+                                  "d",
+                                  "m"),
                     Description = c("litter transmission to annuals",
                                     "litter transmission to first-year perennials",
                                     "litter transmission to adult perennials",
@@ -447,14 +416,13 @@ lit_parms <- tibble(Parameter = c("beta_Al", "beta_Fl", "beta_Pl",
                                     "inoculum loss from litter",
                                     "annual surviving seed fraction",
                                     "perennial surviving seed fraction",
-                                    "litter suppression of annuals",
-                                    "litter suppression of perennial first-years",
-                                    "annual litter decomposition fraction"),
-                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-20, 3), 5500, 0.1, 0.15, 0.05, 0, 0, 0.59),
-                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "NA", "NA", "DeMeester and Richter 2010")) %>%
+                                    "annual litter decomposition fraction",
+                                    "biomass mortality"),
+                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-20, 3), 5500, 0.9, 0.15, 0.05, 0.59, 0.005),
+                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "DeMeester and Richter 2010", "NA")) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
-         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), rep("g^-1^", 2), "NA"))
+         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), "NA", "day^-1^"))
 
 
 #### combine ####
@@ -468,8 +436,10 @@ parms <- growth_mod_parms %>%
   full_join(evA_seed_parms) %>%
   full_join(est_mod_parms) %>%
   full_join(evA_surv_parms) %>%
-  full_join(ngs_surv_parms) %>%
+  # full_join(ngs_surv_parms) %>%
   full_join(init_bio_parms) %>%
+  full_join(mv_lit_parms) %>%
+  full_join(ev_lit_parms) %>%
   full_join(lit_parms)
 
 write_csv(parms, "../output/discrete_continuous_model_parameters_2018_2019_density_exp.csv")
@@ -512,9 +482,9 @@ cont_mod_fun <- function(t, x, params) {
   alpha_PF <- as.numeric(params[params$Parameter == "alpha_PF", "Estimate"])
   alpha_PP <- as.numeric(params[params$Parameter == "alpha_PP", "Estimate"])
 
-  beta_Al <- as.numeric(params[params$Parameter == "beta_Al", "Estimate"])
-  beta_Fl <- as.numeric(params[params$Parameter == "beta_Fl", "Estimate"])
-  beta_Pl <- as.numeric(params[params$Parameter == "beta_Pl", "Estimate"])
+  beta_AC <- as.numeric(params[params$Parameter == "beta_AC", "Estimate"])
+  beta_FC <- as.numeric(params[params$Parameter == "beta_FC", "Estimate"])
+  beta_PC <- as.numeric(params[params$Parameter == "beta_PC", "Estimate"])
   beta_AA <- as.numeric(params[params$Parameter == "beta_AA", "Estimate"])
   beta_AF <- as.numeric(params[params$Parameter == "beta_AF", "Estimate"])
   beta_AP <- as.numeric(params[params$Parameter == "beta_AP", "Estimate"])
@@ -534,6 +504,7 @@ cont_mod_fun <- function(t, x, params) {
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
 
   h <- as.numeric(params[params$Parameter == "h", "Estimate"])
+  b <- as.numeric(params[params$Parameter == "b", "Estimate"])
   m <- as.numeric(params[params$Parameter == "m", "Estimate"])
   
   # derived values
@@ -545,14 +516,14 @@ cont_mod_fun <- function(t, x, params) {
   S_P <- B_P - I_P
   
   # model with asymptotic transmission
-  dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - v_A * I_A / B_A
-  dLogBFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F - alpha_FP * B_P) - v_F * I_F / B_F
-  dLogBPdt <- r_P * (1 - alpha_PA * B_A - alpha_PF * B_F - alpha_PP * B_P) - v_P * I_P / B_P
-  dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F + beta_AP * S_A * I_P)/(k_A + B_A) - v_A * I_A
-  dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F + beta_FP * S_F * I_P)/(k_F + B_F) - v_F * I_F
-  dIPdt <- (beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PF * S_P * I_F + beta_PP * S_P * I_P)/(k_P + B_P) - v_P * I_P
+  dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - m - v_A * I_A / B_A
+  dLogBFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F - alpha_FP * B_P) - m - v_F * I_F / B_F
+  dLogBPdt <- r_P * (1 - alpha_PA * B_A - alpha_PF * B_F - alpha_PP * B_P) - m - v_P * I_P / B_P
+  dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F + beta_AP * S_A * I_P)/(k_A + B_A) - (m + v_A) * I_A
+  dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F + beta_FP * S_F * I_P)/(k_F + B_F) - (m + v_F) * I_F
+  dIPdt <- (beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PF * S_P * I_F + beta_PP * S_P * I_P)/(k_P + B_P) - (m + v_P) * I_P
   dDdt <- v_A * I_A
-  dCdt <- h * D - m * C
+  dCdt <- h * D - b * C
   
   # model with linear transmission
   # dLogSAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - (beta_AC * C + beta_AA * I_A + beta_AF * I_F + beta_AP * I_P)
@@ -571,7 +542,7 @@ cont_mod_fun <- function(t, x, params) {
   list(dxdt)
 }
 ```
-We simulate the dynamics of each plant group alone and then all together over 160 days. Populations are initiated with 3000 plants and 4 grams of inoculum. We also simulated multiple starting values for plant density and litter inoculum and a range of virulence values.
+We simulate the dynamics of each plant group alone and then all together over 160 days. Populations are initiated with 10 plants and 1 gram of inoculum. We also simulated multiple starting values for plant density and litter inoculum and a range of virulence values.
 
 
 ### Annual alone
@@ -579,9 +550,9 @@ We simulate the dynamics of each plant group alone and then all together over 16
 
 # input values
 times <- seq(0, 160, by = 1)
-xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 3000),
-            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-            C = 4)
+xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 10),
+            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
 
 # apply function
 out <- ode(y = xstart, times = times, func = cont_mod_fun, parms = parms) %>%
@@ -597,28 +568,26 @@ outA <- out %>%
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
   select(-c(LogB_A, LogB_F, LogB_P)) %>%
+  rename("I_C" = "C", "I_D" = "D") %>%
   pivot_longer(cols = -time,
                names_to = c("state", "plant"),
                names_pattern = "(.)_(.)",
-               values_to = "pop") %>%
-  mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-         state = case_when(is.na(state) ~ "I",
-                           TRUE ~ state))
+               values_to = "pop")
 
 # create figure
 outA %>%
-  filter(plant == "litter") %>%
-  ggplot(aes(x = time, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  filter(plant %in% c("C", "D")) %>%
+  ggplot(aes(x = time, y = pop)) +
+  geom_line() +
   theme_classic() +
+  facet_wrap(~ plant, scales = "free_y") +
   theme(legend.key.width = unit(1.5, 'cm')) +
-  labs(x='Time (days)', y='Litter (g)', title = "Litter (same for all simulations)")
+  labs(x='Time (days)', title = "Conidia/Litter")
 
 outA %>%
-  filter(plant != "litter") %>%
+  filter(!(plant %in% c("C", "D"))) %>%
   ggplot(aes(x = time, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Time (days)', y='Biomass (g)')
@@ -633,8 +602,8 @@ outLA <- vector(mode = "list", length = length(starts))
 for(i in 1:length(starts)){
 
   xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i]),
-            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100)
+            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
 
   # apply function
   out <- ode(func = cont_mod_fun, y = xstart, times = times, parms = parms) %>%
@@ -650,15 +619,12 @@ for(i in 1:length(starts)){
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
     select(-c(LogB_A, LogB_F, LogB_P)) %>%
+      rename("I_C" = "C", "I_D" = "D") %>%
     pivot_longer(cols = -time,
                  names_to = c("state", "plant"),
                  names_pattern = "(.)_(.)",
                  values_to = "pop") %>%
-    mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-           state = case_when(is.na(state) ~ "I",
-                            TRUE ~ state),
-           starting = starts[i])
+    mutate(starting = starts[i])
 }
 
 # collapse list
@@ -668,15 +634,15 @@ outLA2 <- outLA %>%
 
 # figure
 outLA2 %>%
-  filter(plant != "litter") %>%
+  filter(plant != "C") %>%
   ggplot(aes(x = starting, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Initial population size', y='End of season biomass (g)')
 
-# multiple litter starting values
-starts <- seq(1, 1000, by = 50)
+# multiple conidia starting values
+starts <- seq(1, 101, by = 10)
 
 # empty list
 outLL <- vector(mode = "list", length = length(starts))
@@ -685,8 +651,8 @@ outLL <- vector(mode = "list", length = length(starts))
 for(i in 1:length(starts)){
 
   xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 5000),
-            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * starts[i])
+            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]) * starts[i])
 
   # apply function
   out <- ode(func = cont_mod_fun, y = xstart, times = times, parms = parms) %>%
@@ -702,15 +668,12 @@ for(i in 1:length(starts)){
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
     select(-c(LogB_A, LogB_F, LogB_P)) %>%
+    rename("I_C" = "C", "I_D" = "D") %>%
     pivot_longer(cols = -time,
                  names_to = c("state", "plant"),
                  names_pattern = "(.)_(.)",
                  values_to = "pop") %>%
-    mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-           state = case_when(is.na(state) ~ "I",
-                            TRUE ~ state),
-           starting = starts[i])
+    mutate(starting = starts[i])
 }
 
 # collapse list
@@ -720,9 +683,9 @@ outLL2 <- outLL %>%
 
 # figure
 outLL2 %>%
-  filter(plant != "litter") %>%
+  filter(plant != "C") %>%
   ggplot(aes(x = starting, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Initial litter inoculum', y='End of season biomass (g)')
@@ -738,9 +701,9 @@ outLV <- vector(mode = "list", length = length(vir))
 for(i in 1:length(vir)){
 
   xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 3000),
-            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-            l = 4)
-  
+            LogB_F = log(1e-10), LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
+
   # set virulence value
   parms_in <- parms %>%
     mutate(Estimate = case_when(Parameter == "v_A" ~ vir[i],
@@ -760,15 +723,12 @@ for(i in 1:length(vir)){
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
     select(-c(LogB_A, LogB_F, LogB_P)) %>%
+    rename("I_C" = "C", "I_D" = "D") %>%
     pivot_longer(cols = -time,
                  names_to = c("state", "plant"),
                  names_pattern = "(.)_(.)",
                  values_to = "pop") %>%
-    mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-           state = case_when(is.na(state) ~ "I",
-                            TRUE ~ state),
-           virulence = vir[i])
+    mutate(virulence = vir[i])
 }
 
 # collapse list
@@ -778,9 +738,16 @@ outLV2 <- outLV %>%
 
 # figure
 outLV2 %>%
-  filter(plant != "litter") %>%
+  filter(plant == "C") %>%
+  ggplot(aes(x = virulence, y = pop, linetype = state)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Annual virulence', y='End of season conidia')
+
+outLV2 %>%
+  filter(plant != "C") %>%
   ggplot(aes(x = virulence, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Annual virulence', y='End of season biomass (g)')
@@ -793,9 +760,9 @@ outLV2 %>%
 # input values
 times <- seq(0, 160)
 xstart <- c(LogB_A = log(1e-10), 
-            LogB_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 5000),
-            LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100)
+            LogB_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 10),
+            LogB_P = log(1e-10), I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
 
 # apply function
 ode(
@@ -816,20 +783,17 @@ outF <- out %>%
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
     select(-c(LogB_A, LogB_F, LogB_P)) %>%
+    rename("I_C" = "C", "I_D" = "D") %>%
   pivot_longer(cols = -time,
                names_to = c("state", "plant"),
                names_pattern = "(.)_(.)",
-               values_to = "pop") %>%
-  mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-         state = case_when(is.na(state) ~ "I",
-                           TRUE ~ state))
+               values_to = "pop")
 
 # create figure
 outF %>%
-  filter(plant == "F") %>%
+  filter(plant != "C") %>%
   ggplot(aes(x = time, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Time (days)', y='Biomass (g)')
@@ -842,9 +806,9 @@ outF %>%
 times <- seq(0, 160)
 xstart <- c(LogB_A = log(1e-10), 
             LogB_F = log(1e-10),
-            LogB_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 5000), 
-            I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100)
+            LogB_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10), 
+            I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
 
 # apply function
 ode(
@@ -865,20 +829,17 @@ outP <- out %>%
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
     select(-c(LogB_A, LogB_F, LogB_P)) %>%
+    rename("I_C" = "C", "I_D" = "D") %>%
   pivot_longer(cols = -time,
                names_to = c("state", "plant"),
                names_pattern = "(.)_(.)",
-               values_to = "pop") %>%
-  mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-         state = case_when(is.na(state) ~ "I",
-                           TRUE ~ state))
+               values_to = "pop")
 
 # create figure
 outP %>%
-  filter(plant == "P") %>%
+  filter(plant != "C") %>%
   ggplot(aes(x = time, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Time (days)', y='Biomass (g)')
@@ -889,11 +850,12 @@ outP %>%
 
 # input values
 times <- seq(0, 160)
-xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 5000),
-            LogB_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 5000),
-            LogB_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 5000),
-            I_A = 0, I_F = 0, I_P = 0,
-            l = as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 100)
+xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 10),
+            LogB_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 10),
+            LogB_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10),
+            I_A = 0, I_F = 0, I_P = 0, D = 0,
+            C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
+            # C = 0)
 
 # apply function
 ode(
@@ -914,20 +876,17 @@ outT <- out %>%
          S_F = B_F - I_F,
          S_P = B_P - I_P) %>%
     select(-c(LogB_A, LogB_F, LogB_P)) %>%
+    rename("I_C" = "C", "I_D" = "D") %>%
   pivot_longer(cols = -time,
                names_to = c("state", "plant"),
                names_pattern = "(.)_(.)",
-               values_to = "pop") %>%
-  mutate(plant = case_when(is.na(plant) ~ "litter",
-                             TRUE ~ plant),
-         state = case_when(is.na(state) ~ "I",
-                           TRUE ~ state))
+               values_to = "pop")
 
 # create figure
 outT %>%
-  filter(plant != "litter") %>%
+  filter(plant != "C") %>%
   ggplot(aes(x = time, y = pop, color = plant, linetype = state)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   theme(legend.key.width = unit(1.5, 'cm')) +
   labs(x='Time (days)', y='Biomass (g)')
@@ -935,7 +894,7 @@ outT %>%
 
 ## Discrete time model
 ```{r discrete-model, echo = F}
-disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_days, disc_parms, con_parms){
+disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_parms, con_parms){
   
   # initialize populations
   A_S <- rep(NA,simtime)
@@ -952,10 +911,9 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
   I_A <- rep(NA,simtime)
   I_F <- rep(NA,simtime)
   I_P <- rep(NA,simtime)
+  D <- rep(NA,simtime)
   C_0 <- rep(NA,simtime)
   I_A0 <- rep(NA,simtime)
-  S_P0 <- rep(NA,simtime)
-  S_F0 <- rep(NA,simtime)
   
   A_S[1] <- AS0
   A_I[1] <- AI0
@@ -964,8 +922,6 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
   L[1] <- L0
   C_0[1] <- C0
   I_A0[1] <- IA0
-  S_P0[1] <- SP0
-  S_F0[1] <- SF0
   
   # parameters
   parms <- disc_parms
@@ -985,6 +941,7 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
   c_F <- as.numeric(parms[parms$Parameter == "c_F", "Estimate"])
   c_P <- as.numeric(parms[parms$Parameter == "c_P", "Estimate"])
   b_F <- as.numeric(parms[parms$Parameter == "b_F", "Estimate"])
+  b_P <- as.numeric(parms[parms$Parameter == "b_P", "Estimate"])
   e_P <- as.numeric(parms[parms$Parameter == "e_P", "Estimate"])
   gamma_P <- as.numeric(parms[parms$Parameter == "gamma_P", "Estimate"])
   
@@ -1001,11 +958,16 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
     E_A <- e_A/(1 + gamma_A * L[t])
     E_P <- e_P/(1 + gamma_P * L[t])
     
+    # initial conditions
+    LogB_A0 <- ifelse((A_S[t] + A_I[t]) > 0, log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]), log(1e-100))
+    LogB_F0 <- ifelse(F1[t] > 0, log(g_P * E_P * b_F * F1[t]), log(1e-10))
+    LogB_P0 <- ifelse(P[t] > 0, log(b_P * P[t]), log(1e-10))
+    
     # biomass at the end of the growing season
     out <- ode(func = cont_mod_fun,
-               y = c(LogB_A = log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]),
-                     LogB_F = log(g_P * E_P * b_F * F1[t]),
-                     LogB_P = log(l * (S_P0[t] + S_F0[t])),
+               y = c(LogB_A = LogB_A0,
+                     LogB_F = LogB_F0,
+                     LogB_P = LogB_P0,
                      I_A = 0, I_F = 0, I_P = 0, D = 0,
                      C = C_0[t] + h * I_A0[t]),
                times = grow_days,
@@ -1037,11 +999,29 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
     I_F[t] <- as.numeric(out2$I_F)
     I_P[t] <- as.numeric(out2$I_P)
     
+    D[t] <- as.numeric(out2$D)
+    
     # values for next year
-    C_0[t+1] <- C[t] # conidia
+    C_0[t+1] <- as.numeric(out2$C) # conidia
     I_A0[t+1] <- I_A[t] # conidia
-    S_P0[t+1] <- S_P[t] # perennial biomass
-    S_F0[t+1] <- S_F[t] # perennial biomass
+    
+    # correct to prevent negative/crazy small numbers
+    B_A[t] = ifelse(B_A[t] < 1e-10, 0, B_A[t])
+    B_F[t] = ifelse(B_F[t] < 1e-10, 0, B_F[t])
+    B_P[t] = ifelse(B_P[t] < 1e-10, 0, B_P[t])
+    
+    S_A[t] = ifelse(S_A[t] < 1e-10, 0, S_A[t])
+    S_F[t] = ifelse(S_F[t] < 1e-10, 0, S_F[t])
+    S_P[t] = ifelse(S_P[t] < 1e-10, 0, S_P[t])
+    
+    I_A[t] = ifelse(I_A[t] < 1e-10, 0, I_A[t])
+    I_F[t] = ifelse(I_F[t] < 1e-10, 0, I_F[t])
+    I_P[t] = ifelse(I_P[t] < 1e-10, 0, I_P[t])
+    
+    D[t] = ifelse(D[t] < 1e-10, 0, D[t])
+    C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
+    I_A0[t+1] = ifelse(I_A0[t+1] < 1e-10, 0, I_A0[t+1])
+
     
     # proportion seeds infected
     p <- ifelse(B_A[t] > 0, exp(p0 + p1 * I_A[t]/B_A[t])/(1 + exp(p0 + p1 * I_A[t]/B_A[t])), 0)
@@ -1049,7 +1029,7 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
     # population size
     A_S[t+1] = s_A * (1 - g_S) * A_S[t] +  B_A[t] * c_A * (1-p)
     A_I[t+1] = B_A[t] * c_A * p
-    L[t+1] = (1 - d) * L[t] + B_A[t]   
+    L[t+1] = (1 - d) * L[t] + B_A[t] + D[t]  
     F1[t+1] = s_P * (1 - g_P) * F1[t] + c_F * B_F[t] + c_P * B_P[t]
     P[t+1] = l * P[t] + g_P * E_P * l * F1[t]
     
@@ -1067,11 +1047,16 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
     E_A <- e_A/(1 + gamma_A * L[simtime])
     E_P <- e_P/(1 + gamma_P * L[simtime])
     
+    # initial conditions
+    LogB_A0 <- ifelse((A_S[simtime] + A_I[simtime]) > 0, log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime]), log(1e-100))
+    LogB_F0 <- ifelse(F1[simtime] > 0, log(g_P * E_P * b_F * F1[simtime]), log(1e-10))
+    LogB_P0 <- ifelse(P[simtime] > 0, log(b_P * P[simtime]), log(1e-10))
+    
     # biomass at the end of the growing season
     out3 <- ode(func = cont_mod_fun,
-               y = c(LogB_A = log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime]),
-                     LogB_F = log(g_P * E_P * b_F * F1[simtime]),
-                     LogB_P = log(l * (S_P0[simtime] + S_F0[simtime])),
+               y = c(LogB_A = LogB_A0,
+                     LogB_F = LogB_F0,
+                     LogB_P = LogB_P0,
                      I_A = 0, I_F = 0, I_P = 0, D = 0,
                      C = C_0[simtime] + h * I_A0[simtime]),
                times = grow_days,
@@ -1107,7 +1092,7 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
   A_T <- A_S + A_I
   
   # population data
-  dfN <- tibble(time = rep(1:simtime, 15),
+  dfN <- tibble(time = rep(1:simtime, 16),
                 species = rep(c("Susceptible annual",
                                 "Infected annual",
                                 "Annual",
@@ -1122,9 +1107,10 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
                                 "Perennial adult susceptible biomass",
                                 "Annual infected biomass",
                                 "Perennial first-year infected biomass",
-                                "Perennial adult infected biomass"), 
+                                "Perennial adult infected biomass",
+                                "Conidia"), 
                               each = simtime),
-                N = c(A_S, A_I, A_T, F1, P, L, B_A, B_F, B_P, S_A, S_F, S_P, I_A, I_F, I_P))
+                N = c(A_S, A_I, A_T, F1, P, L, B_A, B_F, B_P, S_A, S_F, S_P, I_A, I_F, I_P, C_0))
 
   # return
   return(dfN)
@@ -1135,14 +1121,14 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, SP0, SF0, simtime, gs_day
 ```{r A-only-discrete, echo = F}
 
 # input values
-modA <- disc_mod_fun(AS0 = 100, AI0 = 0, F0 = 1e-10, P0 = 1e-10, L0 = 0, IA0 = 1, simtime = 10, gs_days = 160, disc_parms = parms, con_parms = parms)
+modA <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 0, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modA %>%
   filter(species %in% c("Susceptible annual", "Infected annual", "Annual", "Perennial first-year", "Perennial adult") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Number of plants')
 
@@ -1150,7 +1136,7 @@ modA %>%
   filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 
@@ -1158,7 +1144,7 @@ modA %>%
   filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 ```
@@ -1168,14 +1154,14 @@ modA %>%
 ```{r F-only-discrete, echo = F}
 
 # input values
-modF <- disc_mod_fun(AS0 = 1e-100, AI0 = 0, F0 = 10, P0 = 1e-10, L0 = 0, IA0 = 1, simtime = 100, gs_days = 160, disc_parms = parms, con_parms = parms)
+modF <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modF %>%
   filter(species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Number of plants')
 
@@ -1183,7 +1169,7 @@ modF %>%
   filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 
@@ -1191,7 +1177,7 @@ modF %>%
   filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 ```
@@ -1200,14 +1186,14 @@ modF %>%
 ```{r P-only-discrete, echo = F}
 
 # input values
-modP <- disc_mod_fun(AS0 = 1e-100, AI0 = 0, F0 = 1e-10, P0 = 100, L0 = 0, IA0 = 1, simtime = 100, gs_days = 160, disc_parms = parms, con_parms = parms)
+modP <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modP %>%
   filter(species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Number of plants')
 
@@ -1215,7 +1201,7 @@ modP %>%
   filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 
@@ -1223,7 +1209,7 @@ modP %>%
   filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 ```
@@ -1232,14 +1218,14 @@ modP %>%
 ```{r all-discrete, echo = F}
 
 # input values
-modT <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 10, P0 = 10, L0 = 0, IA0 = 1, simtime = 100, gs_days = 160, disc_parms = parms, con_parms = parms)
+modT <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 10, P0 = 10, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modT %>%
   filter(species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Number of plants')
 
@@ -1247,7 +1233,7 @@ modT %>%
   filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 
@@ -1255,7 +1241,7 @@ modT %>%
   filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
            !is.na(N)) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 ```
@@ -1269,12 +1255,12 @@ To simulate historical and future dynamics, we start with a community consisting
 
 # disease-free parms
 parms_df <- parms %>%
-  mutate(Estimate = case_when(Parameter %in% c("beta_Al", "beta_Fl", "beta_Pl", "p1") ~ 0,
+  mutate(Estimate = case_when(Parameter %in% c("beta_AC", "beta_FC", "beta_PC", "p1") ~ 0,
                               Parameter == "p0" ~ -100,
                               TRUE ~ Estimate))
 
 # perennial only
-modL1 <- disc_mod_fun(AS0 = 1e-100, AI0 = 0, F0 = 10, P0 = 1e-100, L0 = 0, IA0 = 0, simtime = 100, gs_days = 160,
+modL1 <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, simtime = 100, gs_days = 160,
                       disc_parms = parms_df, con_parms = parms_df)
 
 # input values for next simulation
@@ -1297,6 +1283,7 @@ modL2 <- disc_mod_fun(AS0 = 10,
                       F0 = modL2_in$F0,
                       P0 = modL2_in$P0,
                       L0 = 0,
+                      C0 = 0,
                       IA0 = 0,
                       simtime = 100, gs_days = 160, disc_parms = parms_df, con_parms = parms_df)
 
@@ -1325,7 +1312,8 @@ modL3 <- disc_mod_fun(AS0 = modL3_in$AS0,
                       F0 = modL3_in$F0,
                       P0 = modL3_in$P0,
                       L0 = modL3_in$L0,
-                      IA0 = modL3_in$BA/10,
+                      C = as.numeric(parms[parms$Parameter == "h", "Estimate"]),
+                      IA0 = 0,
                       simtime = 100, gs_days = 160, disc_parms = parms_d, con_parms = parms_d)
 
 # combine
@@ -1342,14 +1330,14 @@ modL <- modL1 %>%
 modL %>%
   filter(species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult")) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Number of plants')
 
 modL %>%
   filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
   ggplot(aes(x = time, y = N, color = species)) +
-  geom_line(size = 2) +
+  geom_line() +
   theme_classic() +
   labs(x='Time (years)', y='Biomass (g)')
 
@@ -1362,6 +1350,10 @@ modL %>%
 
 # save dataset
 write_csv(modL, "../output/discrete_continuous_model_time_series.csv")
+
+#### start here ####
+
+# why is the drop in annual biomass so large? What are the C values?
 ```
 # Virulence simulation
 ```{r virulence simulation}
