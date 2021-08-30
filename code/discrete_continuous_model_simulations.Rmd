@@ -301,7 +301,7 @@ est_mod_parms <- posterior_samples(survSevD1Mod)  %>%
 load("../output/ev_adult_survival_model_2018_2019_density_exp.rda")
 
 evA_surv_parms <- posterior_samples(adultSurvD1Mod)  %>%
-  transmute(l = exp(b_Intercept)/(1 + exp(b_Intercept))) %>%
+  transmute(l_P = exp(b_Intercept)/(1 + exp(b_Intercept))) %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
@@ -314,6 +314,24 @@ evA_surv_parms <- posterior_samples(adultSurvD1Mod)  %>%
             Upper = .upper,
             Units = "NA",
             Source = "experiment")
+
+
+#### adult biomass survival ####
+
+ev_fung_gh <- read_csv("../data/ev_biomass_dec_2019_fungicide_exp.csv")
+
+evA_bio_surv_parms <- ev_fung_gh %>%
+  select(-notes) %>%
+  pivot_wider(names_from = biomass_type,
+              values_from = weight.g) %>%
+  mutate(prop_live = live / (dead + live)) %>%
+  summarise(Estimate = mean(prop_live, na.rm = T) * evA_surv_parms$Estimate) %>%
+  mutate(Parameter = "l_B",
+         Description = "adult perennial surviving biomass",
+         Lower = NA,
+         Upper = NA,
+         Units = "NA",
+         Source = "experiment")
 
 
 #### non-growing season survival ####
@@ -402,7 +420,7 @@ lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC",
                                   "h", "b",
                                   "s_A", "s_P", 
                                   "d",
-                                  "m"),
+                                  "m_A", "m_F", "m_P"),
                     Description = c("litter transmission to annuals",
                                     "litter transmission to first-year perennials",
                                     "litter transmission to adult perennials",
@@ -417,12 +435,14 @@ lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC",
                                     "annual surviving seed fraction",
                                     "perennial surviving seed fraction",
                                     "annual litter decomposition fraction",
-                                    "biomass mortality"),
-                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-20, 3), 5500, 0.9, 0.15, 0.05, 0.59, 0.005),
-                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "DeMeester and Richter 2010", "NA")) %>%
+                                    "annual biomass mortality",
+                                    "perennial first-year biomass mortality",
+                                    "perennial adult biomass mortality"),
+                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-20, 3), 5500, 0.9, 0.15, 0.05, 0.59, 0.0045, 0.0045, 0.0045),
+                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "DeMeester and Richter 2010", rep("NA", 3))) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
-         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), "NA", "day^-1^"))
+         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), "NA", rep("day^-1^", 3)))
 
 
 #### combine ####
@@ -436,6 +456,7 @@ parms <- growth_mod_parms %>%
   full_join(evA_seed_parms) %>%
   full_join(est_mod_parms) %>%
   full_join(evA_surv_parms) %>%
+  full_join(evA_bio_surv_parms) %>%
   # full_join(ngs_surv_parms) %>%
   full_join(init_bio_parms) %>%
   full_join(mv_lit_parms) %>%
@@ -502,10 +523,13 @@ cont_mod_fun <- function(t, x, params) {
   v_A <- as.numeric(params[params$Parameter == "v_A", "Estimate"])
   v_F <- as.numeric(params[params$Parameter == "v_F", "Estimate"])
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
+  
+  m_A <- as.numeric(params[params$Parameter == "m_A", "Estimate"])
+  m_F <- as.numeric(params[params$Parameter == "m_F", "Estimate"])
+  m_P <- as.numeric(params[params$Parameter == "m_P", "Estimate"])
 
   h <- as.numeric(params[params$Parameter == "h", "Estimate"])
   b <- as.numeric(params[params$Parameter == "b", "Estimate"])
-  m <- as.numeric(params[params$Parameter == "m", "Estimate"])
   
   # derived values
   B_A <- exp(LogB_A)
@@ -516,12 +540,12 @@ cont_mod_fun <- function(t, x, params) {
   S_P <- B_P - I_P
   
   # model with asymptotic transmission
-  dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - m - v_A * I_A / B_A
-  dLogBFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F - alpha_FP * B_P) - m - v_F * I_F / B_F
-  dLogBPdt <- r_P * (1 - alpha_PA * B_A - alpha_PF * B_F - alpha_PP * B_P) - m - v_P * I_P / B_P
-  dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F + beta_AP * S_A * I_P)/(k_A + B_A) - (m + v_A) * I_A
-  dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F + beta_FP * S_F * I_P)/(k_F + B_F) - (m + v_F) * I_F
-  dIPdt <- (beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PF * S_P * I_F + beta_PP * S_P * I_P)/(k_P + B_P) - (m + v_P) * I_P
+  dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - m_A - v_A * I_A / B_A
+  dLogBFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F - alpha_FP * B_P) - m_F - v_F * I_F / B_F
+  dLogBPdt <- r_P * (1 - alpha_PA * B_A - alpha_PF * B_F - alpha_PP * B_P) - m_P - v_P * I_P / B_P
+  dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F + beta_AP * S_A * I_P)/(k_A + B_A) - (m_A + v_A) * I_A
+  dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F + beta_FP * S_F * I_P)/(k_F + B_F) - (m_F + v_F) * I_F
+  dIPdt <- (beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PF * S_P * I_F + beta_PP * S_P * I_P)/(k_P + B_P) - (m_P + v_P) * I_P
   dDdt <- v_A * I_A
   dCdt <- h * D - b * C
   
@@ -894,7 +918,7 @@ outT %>%
 
 ## Discrete time model
 ```{r discrete-model, echo = F}
-disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_parms, con_parms){
+disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, BP0, BF0, simtime, gs_days, disc_parms, con_parms){
   
   # initialize populations
   A_S <- rep(NA,simtime)
@@ -914,6 +938,8 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
   D <- rep(NA,simtime)
   C_0 <- rep(NA,simtime)
   I_A0 <- rep(NA,simtime)
+  B_P0 <- rep(NA,simtime)
+  B_F0 <- rep(NA,simtime)
   
   A_S[1] <- AS0
   A_I[1] <- AI0
@@ -922,6 +948,8 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
   L[1] <- L0
   C_0[1] <- C0
   I_A0[1] <- IA0
+  B_P0[1] <- BP0
+  B_F0[1] <- BF0
   
   # parameters
   parms <- disc_parms
@@ -944,8 +972,9 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
   b_P <- as.numeric(parms[parms$Parameter == "b_P", "Estimate"])
   e_P <- as.numeric(parms[parms$Parameter == "e_P", "Estimate"])
   gamma_P <- as.numeric(parms[parms$Parameter == "gamma_P", "Estimate"])
+  l_P <- as.numeric(parms[parms$Parameter == "l_P", "Estimate"])
+  l_B <- as.numeric(parms[parms$Parameter == "l_B", "Estimate"])
   
-  l <- as.numeric(parms[parms$Parameter == "l", "Estimate"])
   d <- as.numeric(parms[parms$Parameter == "d", "Estimate"])
   h <- as.numeric(parms[parms$Parameter == "h", "Estimate"])
   
@@ -960,8 +989,8 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
     
     # initial conditions
     LogB_A0 <- ifelse((A_S[t] + A_I[t]) > 0, log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]), log(1e-100))
-    LogB_F0 <- ifelse(F1[t] > 0, log(g_P * E_P * b_F * F1[t]), log(1e-10))
-    LogB_P0 <- ifelse(P[t] > 0, log(b_P * P[t]), log(1e-10))
+    LogB_F0 <- ifelse(F1[t] > 0, log(g_P * E_P * b_F * F1[t]), log(1e-100))
+    LogB_P0 <- ifelse(B_P0[t] + B_F0[t] > 0, log(l_B * (B_P0[t] + B_F0[t])), log(1e-100))
     
     # biomass at the end of the growing season
     out <- ode(func = cont_mod_fun,
@@ -1004,6 +1033,8 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
     # values for next year
     C_0[t+1] <- as.numeric(out2$C) # conidia
     I_A0[t+1] <- I_A[t] # conidia
+    B_P0[t+1] <- B_P[t] # perennial biomass
+    B_F0[t+1] <- B_F[t] # perennial biomass
     
     # correct to prevent negative/crazy small numbers
     B_A[t] = ifelse(B_A[t] < 1e-10, 0, B_A[t])
@@ -1021,6 +1052,8 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
     D[t] = ifelse(D[t] < 1e-10, 0, D[t])
     C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
     I_A0[t+1] = ifelse(I_A0[t+1] < 1e-10, 0, I_A0[t+1])
+    B_P0[t+1] = ifelse(B_P0[t+1] < 1e-10, 0, B_P0[t+1])
+    B_F0[t+1] = ifelse(B_F0[t+1] < 1e-10, 0, B_F0[t+1])
 
     
     # proportion seeds infected
@@ -1031,7 +1064,7 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
     A_I[t+1] = B_A[t] * c_A * p
     L[t+1] = (1 - d) * L[t] + B_A[t] + D[t]  
     F1[t+1] = s_P * (1 - g_P) * F1[t] + c_F * B_F[t] + c_P * B_P[t]
-    P[t+1] = l * P[t] + g_P * E_P * l * F1[t]
+    P[t+1] = l_P * P[t] + g_P * E_P * l_P * F1[t]
     
     # correct to prevent negative numbers
     A_S[t+1] = ifelse(A_S[t+1] < 0, 0, A_S[t+1])
@@ -1049,8 +1082,8 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
     
     # initial conditions
     LogB_A0 <- ifelse((A_S[simtime] + A_I[simtime]) > 0, log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime]), log(1e-100))
-    LogB_F0 <- ifelse(F1[simtime] > 0, log(g_P * E_P * b_F * F1[simtime]), log(1e-10))
-    LogB_P0 <- ifelse(P[simtime] > 0, log(b_P * P[simtime]), log(1e-10))
+    LogB_F0 <- ifelse(F1[simtime] > 0, log(g_P * E_P * b_F * F1[simtime]), log(1e-100))
+    LogB_P0 <- ifelse(B_P0[simtime] + B_F0[simtime] > 0, log(l_B * (B_P0[simtime] + B_F0[simtime])), log(1e-100))
     
     # biomass at the end of the growing season
     out3 <- ode(func = cont_mod_fun,
@@ -1121,7 +1154,7 @@ disc_mod_fun = function(AS0, AI0, F0, P0, L0, C0, IA0, simtime, gs_days, disc_pa
 ```{r A-only-discrete, echo = F}
 
 # input values
-modA <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 0, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
+modA <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 0, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, BP0 = 0, BF0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modA %>%
@@ -1154,7 +1187,7 @@ modA %>%
 ```{r F-only-discrete, echo = F}
 
 # input values
-modF <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
+modF <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, BP0 = 0, BF0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modF %>%
@@ -1186,7 +1219,7 @@ modF %>%
 ```{r P-only-discrete, echo = F}
 
 # input values
-modP <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
+modP <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, BP0 = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, BF0 = 0, simtime = 100, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modP %>%
@@ -1218,7 +1251,7 @@ modP %>%
 ```{r all-discrete, echo = F}
 
 # input values
-modT <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 10, P0 = 10, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
+modT <- disc_mod_fun(AS0 = 10, AI0 = 0, F0 = 10, P0 = 10, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, BP0 = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, BF0 = 0, simtime = 50, gs_days = 160, disc_parms = parms, con_parms = parms)
 
 # create figure
 modT %>%
@@ -1260,37 +1293,60 @@ parms_df <- parms %>%
                               TRUE ~ Estimate))
 
 # perennial only
-modL1 <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, simtime = 100, gs_days = 160,
+modL1 <- disc_mod_fun(AS0 = 0, AI0 = 0, F0 = 100, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, BP0 = 0, BF0 = 0, simtime = 100, gs_days = 160,
                       disc_parms = parms_df, con_parms = parms_df)
 
 # input values for next simulation
 modL2_in <- modL1 %>%
   filter(time == max(time) &
-           species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult", "Litter", "Annual infected biomass")) %>%
+           species %in% c("Perennial first-year", "Perennial adult", "Perennial adult biomass", "Perennial first-year biomass")) %>%
   select(-time) %>%
   pivot_wider(names_from = species,
               values_from = N) %>%
-  rename(AS0 = "Susceptible annual",
-         AI0 = "Infected annual",
-         F0 = "Perennial first-year",
+  rename(F0 = "Perennial first-year",
          P0 = "Perennial adult",
-         L0 = "Litter",
-         IA0 = "Annual infected biomass")
+         BP0 = "Perennial adult biomass",
+         BF0 = "Perennial first-year biomass")
 
-# annual invades without disease
-modL2 <- disc_mod_fun(AS0 = 10,
+# perennial only
+modL2_per <- disc_mod_fun(AS0 = 0,
                       AI0 = 0,
                       F0 = modL2_in$F0,
                       P0 = modL2_in$P0,
                       L0 = 0,
                       C0 = 0,
                       IA0 = 0,
+                      BP0 = modL2_in$BP0,
+                      BF0 = modL2_in$BF0,
+                      simtime = 100, gs_days = 160, disc_parms = parms_df, con_parms = parms_df)
+
+# annual invades without disease
+modL2_inv <- disc_mod_fun(AS0 = 10,
+                      AI0 = 0,
+                      F0 = modL2_in$F0,
+                      P0 = modL2_in$P0,
+                      L0 = 0,
+                      C0 = 0,
+                      IA0 = 0,
+                      BP0 = modL2_in$BP0,
+                      BF0 = modL2_in$BF0,
                       simtime = 100, gs_days = 160, disc_parms = parms_df, con_parms = parms_df)
 
 # input values for next simulation
-modL3_in <- modL2 %>%
+modL3_in_per <- modL2_per %>%
   filter(time == max(time) &
-           species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult", "Litter", "Annual biomass")) %>%
+           species %in% c("Perennial first-year", "Perennial adult", "Perennial adult biomass", "Perennial first-year biomass")) %>%
+  select(-time) %>%
+  pivot_wider(names_from = species,
+              values_from = N) %>%
+  rename(F0 = "Perennial first-year",
+         P0 = "Perennial adult",
+         BP0 = "Perennial adult biomass",
+         BF0 = "Perennial first-year biomass")
+
+modL3_in_inv <- modL2_inv %>%
+  filter(time == max(time) &
+           species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult", "Litter", "Annual biomass", "Perennial adult biomass", "Perennial first-year biomass")) %>%
   select(-time) %>%
   pivot_wider(names_from = species,
               values_from = N) %>%
@@ -1299,118 +1355,216 @@ modL3_in <- modL2 %>%
          F0 = "Perennial first-year",
          P0 = "Perennial adult",
          L0 = "Litter",
-         BA = "Annual biomass")
+         BA = "Annual biomass",
+         BP0 = "Perennial adult biomass",
+         BF0 = "Perennial first-year biomass")
 
 # parameters with disease competition coefficients
 parms_d <- parms %>%
   filter(!Parameter %in% c("alpha_AA", "alpha_AF", "alpha_AP", "alpha_FA", "alpha_FF", "alpha_FP", "alpha_PA", "alpha_PF", "alpha_PP")) %>%
   mutate(Parameter = str_replace(Parameter, "_dis", ""))
 
+# perennial only
+modL3_per <- disc_mod_fun(AS0 = 0,
+                      AI0 = 0,
+                      F0 = modL3_in_per$F0,
+                      P0 = modL3_in_per$P0,
+                      L0 = 0,
+                      C = 0,
+                      IA0 = 0,
+                      BP0 = modL3_in_per$BP0,
+                      BF0 = modL3_in_per$BF0,
+                      simtime = 100, gs_days = 160, disc_parms = parms_df, con_parms = parms_df)
+
+# invasion only
+modL3_inv <- disc_mod_fun(AS0 = modL3_in_inv$AS0,
+                      AI0 = 0,
+                      F0 = modL3_in_inv$F0,
+                      P0 = modL3_in_inv$P0,
+                      L0 = modL3_in_inv$L0,
+                      C = 0,
+                      IA0 = 0,
+                      BP0 = modL3_in_inv$BP0,
+                      BF0 = modL3_in_inv$BF0,
+                      simtime = 100, gs_days = 160, disc_parms = parms_df, con_parms = parms_df)
+
 # disease appears
-modL3 <- disc_mod_fun(AS0 = modL3_in$AS0,
-                      AI0 = modL3_in$AI0,
-                      F0 = modL3_in$F0,
-                      P0 = modL3_in$P0,
-                      L0 = modL3_in$L0,
+modL3_dis <- disc_mod_fun(AS0 = modL3_in_inv$AS0,
+                      AI0 = modL3_in_inv$AI0,
+                      F0 = modL3_in_inv$F0,
+                      P0 = modL3_in_inv$P0,
+                      L0 = modL3_in_inv$L0,
                       C = as.numeric(parms[parms$Parameter == "h", "Estimate"]),
                       IA0 = 0,
+                      BP0 = modL3_in_inv$BP0,
+                      BF0 = modL3_in_inv$BF0,
                       simtime = 100, gs_days = 160, disc_parms = parms_d, con_parms = parms_d)
 
 # combine
 modL <- modL1 %>%
-  full_join(modL2 %>%
+  full_join(modL2_per %>%
               mutate(time = time + 100)) %>%
-  full_join(modL3 %>%
-              mutate(time = time + 200))
-
-# import data
-# modL <- read_csv("../output/discrete_continuous_model_time_series.csv")
-
-# create figure
-modL %>%
-  filter(species %in% c("Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult")) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Number of plants')
-
-modL %>%
-  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Biomass (g)')
-
-modL %>%
-  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass")) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Biomass (g)')
+  full_join(modL3_per %>%
+              mutate(time = time + 200)) %>%
+  mutate(scenario = "Ev alone") %>%
+  full_join(modL2_inv %>%
+              mutate(time = time + 100,
+                     scenario = "invasion")) %>%
+  full_join(modL3_inv %>%
+              mutate(time = time + 200,
+                     scenario = "invasion")) %>%
+  full_join(modL3_dis %>%
+              mutate(time = time + 200,
+                     scenario = "disease"))
 
 # save dataset
 write_csv(modL, "../output/discrete_continuous_model_time_series.csv")
-
-#### start here ####
-
-# why is the drop in annual biomass so large? What are the C values?
 ```
+# Long-term simulation figure
+```{r figure}
+
+# figure settings
+fig_theme <- theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.title.y = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.background = element_blank(),
+        legend.key = element_rect(fill = NA),
+        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
+        plot.title = element_text(size = 8, hjust = 0.2),
+        strip.text = element_text(size = 8, hjust = 0.2),
+        strip.background = element_blank())
+
+linePal = c("solid", "dashed", "dotted")
+
+# format data
+modL_fig_dat <- modL %>%
+  filter(species %in% c("Annual biomass", "Perennial first-year biomass", "Perennial adult biomass")) %>%
+  group_by(time, scenario) %>%
+  mutate(totBio = sum(N)) %>%
+  ungroup() %>%
+  mutate(N = N/totBio,
+         plant_type = "Relative biomass") %>%
+  select(-totBio) %>%
+  full_join(modL %>%
+              filter(species %in% c("Perennial first-year biomass", "Perennial adult biomass")) %>%
+              mutate(plant_type = "Perennial biomass")) %>%
+  full_join(modL %>%
+              filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+              mutate(plant_type = "Density")) %>%
+    full_join(modL %>%
+              filter(species %in% c("Perennial first-year", "Perennial adult")) %>%
+              mutate(plant_type = "Perennial density")) %>%
+  full_join(modL %>%
+              filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
+              mutate(N = log(N),
+                     plant_type = "Log density")) %>%
+  mutate(plant_group = case_when(species %in%  c("Annual", "Annual biomass") ~ "Mv",
+                                 species %in%  c("Perennial first-year", "Perennial first-year biomass") ~ "first-\nyear Ev",
+                                 species %in%  c("Perennial adult", "Perennial adult biomass") ~ "adult Ev"),
+         scenario = fct_relevel(scenario, "Ev alone", "invasion"))
+
+# figure
+ggplot(modL_fig_dat, aes(x = time, y = N)) +
+  geom_line(aes(color = plant_group, linetype = scenario), size = 0.8) +
+  facet_wrap(~ plant_type, scales = "free") +
+  scale_color_viridis_d(name = "Plant group", end = 0.7, direction = -1) +
+  scale_linetype_manual(name = "Plant group", values = linePal) +
+  xlab("Time (years)") +
+  fig_theme +
+  theme(strip.placement = "outside",
+        strip.text = element_text(size = 10, hjust = 0.5),
+        axis.title.y = element_blank())
+
+# Mv biomass
+modL %>%
+  filter(species == "Annual biomass" & time == 300 & scenario != "Ev alone") %>%
+  pivot_wider(names_from = scenario,
+              values_from = N) %>%
+  mutate(disease_change = (invasion - disease) / invasion)
+
+```
+
 # Virulence simulation
+#### start here ####
+# vary Ev virulence too
+# may not need transmission
 ```{r virulence simulation}
 
-# # virulence values
-# vir <- seq(0, 0.03, length.out = 100)
-# vir[1] <- 1e-20 # make first value non-zero
-# 
-# # empty list
-# outV <- vector(mode = "list", length = length(vir))
-# 
-# # cycle through virulence
-# for(i in 1:length(vir)){
-#   
-#   # set virulence value
-#   parms_in <- parms %>%
-#     mutate(Estimate = case_when(Parameter == "v_A" ~ vir[i],
-#                                 TRUE ~ Estimate))
-#   # simulation
-#   modV <- disc_mod_fun(AS0 = modL3_in$AS0,
-#                        AI0 = modL3_in$AI0,
-#                        F0 = modL3_in$F0,
-#                        P0 = modL3_in$P0,
-#                        L0 = modL3_in$L0,
-#                        IA0 = modL3_in$BA/10,
-#                        simtime = 100, gs_days = 160, disc_parms = parms_in, con_parms = parms_in)
-#                       
-#   # save data table
-#   outV[[i]] <- modV %>%
-#     mutate(virulence = vir[i])
-#   }
-# 
-# # collapse list
-# outV2 <- outV %>%
-#   bind_rows() %>%
-#   filter(time == max(time))
-# 
+# virulence values
+vir <- seq(0, 0.03, length.out = 10)
+vir[1] <- 1e-20 # make first value non-zero
+
+
+# empty list
+outV <- vector(mode = "list", length = length(vir))
+
+# cycle through virulence
+for(i in 1:length(vir)){
+
+  # set virulence value
+  parms_d_v <- parms_d %>%
+    mutate(Estimate = case_when(Parameter == "v_A" ~ vir[i],
+                                TRUE ~ Estimate))
+  # simulation
+  modV <- disc_mod_fun(AS0 = modL3_in$AS0,
+                       AI0 = modL3_in$AI0,
+                       F0 = modL3_in$F0,
+                       P0 = modL3_in$P0,
+                       L0 = modL3_in$L0,
+                       C = as.numeric(parms[parms$Parameter == "h", "Estimate"]),
+                       IA0 = 0,
+                       simtime = 100, gs_days = 160, disc_parms = parms_d_v, con_parms = parms_d_v)
+
+  # save data table
+  outV[[i]] <- modV %>%
+    mutate(virulence = vir[i])
+  }
+
+# collapse list
+outV2 <- outV %>%
+  bind_rows() %>%
+  filter(time == max(time))
+
+# save dataset
+write_csv(outV2, "../output/discrete_continous_model_virulence_simulation.csv")
+
 # import data
-outV2 <- read_csv("../output/discrete_continous_model_virulence_simulation.csv")
+# outV2 <- read_csv("../output/discrete_continous_model_virulence_simulation.csv")
 
 # figure
 filter(outV2, species %in% c("Susceptible annual", "Infected annual", "Annual", "Perennial first-year", "Perennial adult") & !is.na(N)) %>%
-  ggplot(aes(x = virulence, y = N, color = species)) +
+  ggplot(aes(x = virulence, y = log(N), color = species)) +
   geom_line() +
   theme_classic() +
   labs(x='Annual virulence', y='Number of plants')
 
 filter(outV2, species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") & !is.na(N)) %>%
-  ggplot(aes(x = virulence, y = N, color = species)) +
+  ggplot(aes(x = virulence, y = log(N), color = species)) +
   geom_line() +
   theme_classic() +
   labs(x='Annual virulence', y='Biomass (g)')
-# 
-# # save dataset
-# write_csv(outV2, "../output/discrete_continous_model_virulence_simulation.csv")
+```
+
+# Biomass loss
+```{r biomass loss}
+
+# biomass loss with increased virulence
+outV2 %>%
+  filter(species == "Annual biomass") %>%
+  mutate(N_v0 = outV2 %>% filter(species == "Annual biomass" & virulence < 1e-10) %>% pull(N),
+         disease_change = (N_v0 - N) / N_v0) %>%
+  ggplot(aes(virulence, disease_change)) +
+  geom_line()
 
 ```
+
 # Virulence/transmission simulation
 ```{r virulence transmission simulation}
 

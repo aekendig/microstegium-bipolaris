@@ -39,7 +39,8 @@ c_F,first-year perennial seed conversion,8.476030789055871,6.997022970125732,9.9
 c_P,adult perennial seed conversion,19.084498055179633,16.209390679370646,21.98089920102739,seeds g^-1^,experiment
 e_A,annual establishment fraction,0.9490323342553639,0.9144625556014616,0.9806709158889197,"NA",experiment
 e_P,perennial establishment fraction,0.5531020953855147,0.4065253408230047,0.6958544000552291,"NA",experiment
-l,adult perennial survival fraction,0.8764804924301219,0.6196207826181906,0.9826180206947736,"NA",experiment
+l_P,adult perennial survival fraction,0.8764804924301219,0.6196207826181906,0.9826180206947736,"NA",experiment
+l_B,adult perennial surviving biomass,0.38042768251224895,NA,NA,"NA",experiment
 b_A,annual initial biomass,0.031,NA,NA,g,experiment
 b_F,first-year perennial initial biomass,0.004,NA,NA,g,experiment
 b_P,adult perennial initial biomass,0.031,NA,NA,g,experiment
@@ -59,4 +60,6 @@ b,inoculum loss from litter,0.9,NA,NA,day^-1^,"NA"
 s_A,annual surviving seed fraction,0.15,NA,NA,"NA",Redwood et al. 2018
 s_P,perennial surviving seed fraction,0.05,NA,NA,"NA",Garrison and Stier 2010
 d,annual litter decomposition fraction,0.59,NA,NA,"NA",DeMeester and Richter 2010
-m,biomass mortality,0.001,NA,NA,day^-1^,"NA"
+m_A,annual biomass mortality,0.0045,NA,NA,day^-1^,"NA"
+m_F,perennial first-year biomass mortality,0.0045,NA,NA,day^-1^,"NA"
+m_P,perennial adult biomass mortality,0.0045,NA,NA,day^-1^,"NA"
