@@ -4,6 +4,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+# to do:
+# higher density dependence of Ev and Mv
+# sensitivity analysis of model
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library(tidyverse)
@@ -1419,9 +1422,15 @@ modL <- modL1 %>%
 
 # save dataset
 write_csv(modL, "../output/discrete_continuous_model_time_series.csv")
+# modL <- read_csv("../output/discrete_continuous_model_time_series.csv")
 ```
 # Long-term simulation figure
 ```{r figure}
+
+# changes to add
+# per meter squared on axes
+# annotations for events
+# include litter in Mv biomass to explain spike
 
 # figure settings
 fig_theme <- theme_bw() +
@@ -1436,12 +1445,13 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 8),
         legend.background = element_blank(),
         legend.key = element_rect(fill = NA),
-        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
+        legend.margin = margin(-0.1, -0.1, -0.1, -0.1, unit = "cm"),
         plot.title = element_text(size = 8, hjust = 0.2),
         strip.text = element_text(size = 8, hjust = 0.2),
         strip.background = element_blank())
 
 linePal = c("solid", "dashed", "dotted")
+colPal = c("#55C667FF", "#238A8DFF", "#404788FF")
 
 # format data
 modL_fig_dat <- modL %>%
@@ -1454,47 +1464,83 @@ modL_fig_dat <- modL %>%
   select(-totBio) %>%
   full_join(modL %>%
               filter(species %in% c("Perennial first-year biomass", "Perennial adult biomass")) %>%
-              mutate(plant_type = "Perennial biomass")) %>%
-  full_join(modL %>%
-              filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-              mutate(plant_type = "Density")) %>%
+              mutate(plant_type = "Ev biomass")) %>%
+    full_join(modL %>%
+              filter(species == "Annual biomass") %>%
+              mutate(plant_type = "Mv biomass")) %>%
     full_join(modL %>%
               filter(species %in% c("Perennial first-year", "Perennial adult")) %>%
-              mutate(plant_type = "Perennial density")) %>%
+              mutate(plant_type = "Ev density")) %>%
   full_join(modL %>%
-              filter(species %in% c("Annual", "Perennial first-year", "Perennial adult")) %>%
-              mutate(N = log(N),
-                     plant_type = "Log density")) %>%
+              filter(species == "Annual") %>%
+              mutate(plant_type = "Mv density")) %>%
   mutate(plant_group = case_when(species %in%  c("Annual", "Annual biomass") ~ "Mv",
                                  species %in%  c("Perennial first-year", "Perennial first-year biomass") ~ "first-\nyear Ev",
                                  species %in%  c("Perennial adult", "Perennial adult biomass") ~ "adult Ev"),
          scenario = fct_relevel(scenario, "Ev alone", "invasion"))
 
-# figure
-ggplot(modL_fig_dat, aes(x = time, y = N)) +
-  geom_line(aes(color = plant_group, linetype = scenario), size = 0.8) +
-  facet_wrap(~ plant_type, scales = "free") +
-  scale_color_viridis_d(name = "Plant group", end = 0.7, direction = -1) +
-  scale_linetype_manual(name = "Plant group", values = linePal) +
-  xlab("Time (years)") +
+# relative biomass
+rel_bio_fig <- ggplot(filter(modL_fig_dat, plant_type == "Relative biomass"),
+       aes(x = time, y = N, color = plant_group, linetype = scenario)) +
+  geom_line() +
+  scale_color_manual(name = "Plant group", values = colPal) +
+  scale_linetype_manual(name = "Scenario", values = linePal) +
+  fig_theme
+
+# figure for legend
+leg <- get_legend(rel_bio_fig)
+
+# Ev biomass
+ev_bio_fig <- ggplot(filter(modL_fig_dat, plant_type == "Ev biomass"), 
+       aes(x = time, y = N, color = plant_group, linetype = scenario)) +
+  geom_rect(xmin = 100, xmax = 200, ymin = -Inf, ymax = Inf, fill = "gray95", color = NA, show.legend = F) +
+  geom_rect(xmin = 200, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "gray75", color = NA, show.legend = F) +
+  geom_line(size = 0.8) +
+  scale_color_manual(name = "Plant group", values = colPal[1:2]) +
+  scale_linetype_manual(name = "Scenario", values = linePal) +
+  ylab("Biomass (g)") +
   fig_theme +
-  theme(strip.placement = "outside",
-        strip.text = element_text(size = 10, hjust = 0.5),
-        axis.title.y = element_blank())
+  theme(axis.title.x = element_blank(),
+        legend.position = "none")
 
 # Mv biomass
-modL %>%
-  filter(species == "Annual biomass" & time == 300 & scenario != "Ev alone") %>%
-  pivot_wider(names_from = scenario,
-              values_from = N) %>%
-  mutate(disease_change = (invasion - disease) / invasion)
+mv_bio_fig <- ev_bio_fig %+%
+  filter(modL_fig_dat, plant_type == "Mv biomass") +
+  scale_color_manual(name = "Plant group", values = colPal[3]) +
+  theme(axis.title.y = element_blank())
+
+# Ev density
+ev_dens_fig <- ev_bio_fig %+%
+  filter(modL_fig_dat, plant_type == "Ev density") +
+  ylab("Density") +
+  xlab("Time (years)") +
+  theme(axis.title.x = element_text(size = 10))
+
+# Mv density
+mv_dens_fig <- ev_dens_fig %+%
+  filter(modL_fig_dat, plant_type == "Mv density") +
+  scale_color_manual(name = "Plant group", values = colPal[3]) +
+  xlab("Time (years)") +
+  theme(axis.title.y = element_blank())
+
+# combine
+combo_fig <- plot_grid(ev_bio_fig, mv_bio_fig,
+          ev_dens_fig, mv_dens_fig,
+          nrow = 2,
+          labels = LETTERS[1:4])
+
+plot_grid(combo_fig, leg,
+          nrow = 1,
+          rel_widths = c(1, 0.3))
+
+rel_bio_fig
 
 ```
+# Sensitivity analysis
+### https://daphnia.ecology.uga.edu/drakelab/wp-content/uploads/2016/07/sismid-lhs-lecture.pdf
+
 
 # Virulence simulation
-#### start here ####
-# vary Ev virulence too
-# may not need transmission
 ```{r virulence simulation}
 
 # virulence values
