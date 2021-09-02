@@ -188,9 +188,6 @@ plotDisD2Dat <- evDisMayD2Dat %>%
 plotDisD2Dat %>%
   filter(leaves_infec > leaves_tot)
 
-#### start here: make sure NA values are legit ####
-# make sure dead plants are removed from 2018 data too
-
 # severity
 plotSevD2Dat <- sevD2Dat %>%
   filter(month != "sep") %>% # too much data missing
