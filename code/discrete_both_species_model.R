@@ -72,50 +72,90 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
     E_P <- e_P/(1 + gamma_P * L[t])
     
     # initial conditions, prevent taking log of negative values or zero
-    LogB_A0 <- ifelse((A_S[t] + A_I[t]) > 0, log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]), log(1e-10))
-    LogB_F0 <- ifelse(F1[t] > 0, log(g_P * E_P * b_F * F1[t]), log(1e-10))
-    LogB_P0 <- ifelse(B_P0[t] + B_F0[t] > 0, log(l_B * (B_P0[t] + B_F0[t])), log(1e-10))
+    LogB_A0 <- log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t])
+    LogB_F0 <- log(g_P * E_P * b_F * F1[t])
+    LogB_P0 <- log(l_B * (B_P0[t] + B_F0[t]))
     
     # biomass at the end of the growing season
-    out <- ode(func = cont_both_mod,
-               y = c(LogB_A = LogB_A0,
-                     LogB_F = LogB_F0,
-                     LogB_P = LogB_P0,
-                     I_A = 0, I_F = 0, I_P = 0, D = 0,
-                     C = C_0[t] + h * (I_A0[t] + I_F0[t] + I_P0[t])),
-               times = grow_days,
-               parms = con_parms) %>%
-      as.data.frame()
-    
-    # modify output
-    out2 <- out %>%
-      as_tibble() %>%
-      filter(time == gs_days) %>%
-      mutate(B_A = exp(LogB_A),
-             B_F = exp(LogB_F),
-             B_P = exp(LogB_P),
-             S_A = B_A - I_A,
-             S_F = B_F - I_F,
-             S_P = B_P - I_P) %>%
-      select(-c(LogB_A, LogB_F, LogB_P))
+    # only model perennials if annual is absent & vice versa
+    if((A_S[t] + A_I[t]) > 1e-10 & (F1[t] > 1e-10 | (B_P0[t] + B_F0[t]) > 1e-10)){
+      out <- ode(func = cont_both_mod,
+                 y = c(LogB_A = LogB_A0,
+                       LogB_F = LogB_F0,
+                       LogB_P = LogB_P0,
+                       I_A = 0, I_F = 0, I_P = 0, D = 0,
+                       C = C_0[t] + h * (I_A0[t] + I_F0[t] + I_P0[t])),
+                 times = grow_days,
+                 parms = con_parms) %>%
+        as.data.frame() %>%
+        as_tibble() %>%
+        filter(time == gs_days) %>%
+        mutate(B_A = exp(LogB_A),
+               B_F = exp(LogB_F),
+               B_P = exp(LogB_P),
+               S_A = B_A - I_A,
+               S_F = B_F - I_F,
+               S_P = B_P - I_P) %>%
+        select(-c(LogB_A, LogB_F, LogB_P))
+    }else if(F1[t] > 1e-10 | (B_P0[t] + B_F0[t]) > 1e-10){
+      out <- ode(func = cont_perennial_mod,
+                 y = c(LogB_F = LogB_F0,
+                       LogB_P = LogB_P0,
+                       I_F = 0, I_P = 0, D = 0,
+                       C = C_0[t] + h * (I_F0[t] + I_P0[t])),
+                 times = grow_days,
+                 parms = con_parms) %>%
+        as.data.frame() %>%
+        as_tibble() %>%
+        filter(time == gs_days) %>%
+        mutate(B_A = 0,
+               I_A = 0,
+               B_F = exp(LogB_F),
+               B_P = exp(LogB_P),
+               S_A = B_A - I_A,
+               S_F = B_F - I_F,
+               S_P = B_P - I_P) %>%
+        select(-c(LogB_F, LogB_P))
+    }else if((A_S[t] + A_I[t]) > 1e-10){
+      out <- ode(func = cont_annual_mod,
+                 y = c(LogB_A = LogB_A0,
+                       I_A = 0, D = 0,
+                       C = C_0[t] + h * (I_A0[t])),
+                 times = grow_days,
+                 parms = con_parms) %>%
+        as.data.frame() %>%
+        as_tibble() %>%
+        filter(time == gs_days) %>%
+        mutate(B_A = exp(LogB_A),
+               B_F = 0,
+               I_F = 0,
+               B_P = 0,
+               I_P = 0,
+               S_A = B_A - I_A,
+               S_F = B_F - I_F,
+               S_P = B_P - I_P) %>%
+        select(-LogB_A)
+    }else{
+      print("both species gone")
+    }
     
     # save biomass
-    B_A[t] <- as.numeric(out2$B_A)
-    B_F[t] <- as.numeric(out2$B_F)
-    B_P[t] <- as.numeric(out2$B_P)
+    B_A[t] <- as.numeric(out$B_A)
+    B_F[t] <- as.numeric(out$B_F)
+    B_P[t] <- as.numeric(out$B_P)
     
-    S_A[t] <- as.numeric(out2$S_A)
-    S_F[t] <- as.numeric(out2$S_F)
-    S_P[t] <- as.numeric(out2$S_P)
+    S_A[t] <- as.numeric(out$S_A)
+    S_F[t] <- as.numeric(out$S_F)
+    S_P[t] <- as.numeric(out$S_P)
     
-    I_A[t] <- as.numeric(out2$I_A)
-    I_F[t] <- as.numeric(out2$I_F)
-    I_P[t] <- as.numeric(out2$I_P)
+    I_A[t] <- as.numeric(out$I_A)
+    I_F[t] <- as.numeric(out$I_F)
+    I_P[t] <- as.numeric(out$I_P)
     
-    D[t] <- as.numeric(out2$D)
+    D[t] <- as.numeric(out$D)
     
     # values for next year
-    C_0[t+1] <- as.numeric(out2$C) # conidia
+    C_0[t+1] <- as.numeric(out$C) # conidia
     I_A0[t+1] <- I_A[t] # conidia
     I_F0[t+1] <- I_F[t] # conidia
     I_P0[t+1] <- I_P[t] # conidia
@@ -134,7 +174,7 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
     I_A[t] = ifelse(I_A[t] < 1e-10, 0, I_A[t])
     I_F[t] = ifelse(I_F[t] < 1e-10, 0, I_F[t])
     I_P[t] = ifelse(I_P[t] < 1e-10, 0, I_P[t])
-    
+
     D[t] = ifelse(D[t] < 1e-10, 0, D[t])
     C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
     I_A0[t+1] = ifelse(I_A0[t+1] < 1e-10, 0, I_A0[t+1])
@@ -169,45 +209,84 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
   E_P <- e_P/(1 + gamma_P * L[simtime])
   
   # initial conditions
-  LogB_A0 <- ifelse((A_S[simtime] + A_I[simtime]) > 0, log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime]), log(1e-10))
-  LogB_F0 <- ifelse(F1[simtime] > 0, log(g_P * E_P * b_F * F1[simtime]), log(1e-10))
-  LogB_P0 <- ifelse(B_P0[simtime] + B_F0[simtime] > 0, log(l_B * (B_P0[simtime] + B_F0[simtime])), log(1e-10))
+  LogB_A0 <- log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime])
+  LogB_F0 <- log(g_P * E_P * b_F * F1[simtime])
+  LogB_P0 <- log(l_B * (B_P0[simtime] + B_F0[simtime]))
   
   # biomass at the end of the growing season
-  out3 <- ode(func = cont_both_mod,
-              y = c(LogB_A = LogB_A0,
-                    LogB_F = LogB_F0,
-                    LogB_P = LogB_P0,
-                    I_A = 0, I_F = 0, I_P = 0, D = 0,
-                    C = C_0[simtime] + h * (I_A0[simtime] + I_F0[simtime] + I_P0[simtime])),
-              times = grow_days,
-              parms = con_parms) %>%
-    as.data.frame()
-  
-  # modify output
-  out4 <- out3 %>%
-    as_tibble() %>%
-    filter(time == gs_days) %>%
-    mutate(B_A = exp(LogB_A),
-           B_F = exp(LogB_F),
-           B_P = exp(LogB_P),
-           S_A = B_A - I_A,
-           S_F = B_F - I_F,
-           S_P = B_P - I_P) %>%
-    select(-c(LogB_A, LogB_F, LogB_P))
+  if((A_S[simtime] + A_I[simtime]) > 1e-10 & (F1[simtime] > 1e-10 | (B_P0[simtime] + B_F0[simtime]) > 1e-10)){
+    out2 <- ode(func = cont_both_mod,
+               y = c(LogB_A = LogB_A0,
+                     LogB_F = LogB_F0,
+                     LogB_P = LogB_P0,
+                     I_A = 0, I_F = 0, I_P = 0, D = 0,
+                     C = C_0[simtime] + h * (I_A0[simtime] + I_F0[simtime] + I_P0[simtime])),
+               times = grow_days,
+               parms = con_parms) %>%
+      as.data.frame() %>%
+      as_tibble() %>%
+      filter(time == gs_days) %>%
+      mutate(B_A = exp(LogB_A),
+             B_F = exp(LogB_F),
+             B_P = exp(LogB_P),
+             S_A = B_A - I_A,
+             S_F = B_F - I_F,
+             S_P = B_P - I_P) %>%
+      select(-c(LogB_A, LogB_F, LogB_P))
+  }else if(F1[simtime] > 1e-10 | (B_P0[simtime] + B_F0[simtime]) > 1e-10){
+    out2 <- ode(func = cont_perennial_mod,
+               y = c(LogB_F = LogB_F0,
+                     LogB_P = LogB_P0,
+                     I_F = 0, I_P = 0, D = 0,
+                     C = C_0[simtime] + h * (I_F0[simtime] + I_P0[simtime])),
+               times = grow_days,
+               parms = con_parms) %>%
+      as.data.frame() %>%
+      as_tibble() %>%
+      filter(time == gs_days) %>%
+      mutate(B_A = 0,
+             I_A = 0,
+             B_F = exp(LogB_F),
+             B_P = exp(LogB_P),
+             S_A = B_A - I_A,
+             S_F = B_F - I_F,
+             S_P = B_P - I_P) %>%
+      select(-c(LogB_F, LogB_P))
+  }else if((A_S[simtime] + A_I[simtime]) > 1e-10){
+    out2 <- ode(func = cont_annual_mod,
+               y = c(LogB_A = LogB_A0,
+                     I_A = 0, D = 0,
+                     C = C_0[simtime] + h * (I_A0[simtime])),
+               times = grow_days,
+               parms = con_parms) %>%
+      as.data.frame() %>%
+      as_tibble() %>%
+      filter(time == gs_days) %>%
+      mutate(B_A = exp(LogB_A),
+             B_F = 0,
+             I_F = 0,
+             B_P = 0,
+             I_P = 0,
+             S_A = B_A - I_A,
+             S_F = B_F - I_F,
+             S_P = B_P - I_P) %>%
+      select(-LogB_A)
+  }else{
+    print("both species gone")
+  }
   
   # save biomass
-  B_A[simtime] <- as.numeric(out4$B_A)
-  B_F[simtime] <- as.numeric(out4$B_F)
-  B_P[simtime] <- as.numeric(out4$B_P)
+  B_A[simtime] <- as.numeric(out2$B_A)
+  B_F[simtime] <- as.numeric(out2$B_F)
+  B_P[simtime] <- as.numeric(out2$B_P)
   
-  S_A[simtime] <- as.numeric(out4$S_A)
-  S_F[simtime] <- as.numeric(out4$S_F)
-  S_P[simtime] <- as.numeric(out4$S_P)
+  S_A[simtime] <- as.numeric(out2$S_A)
+  S_F[simtime] <- as.numeric(out2$S_F)
+  S_P[simtime] <- as.numeric(out2$S_P)
   
-  I_A[simtime] <- as.numeric(out4$I_A)
-  I_F[simtime] <- as.numeric(out4$I_F)
-  I_P[simtime] <- as.numeric(out4$I_P)
+  I_A[simtime] <- as.numeric(out2$I_A)
+  I_F[simtime] <- as.numeric(out2$I_F)
+  I_P[simtime] <- as.numeric(out2$I_P)
   
   # total annual density
   A_T <- A_S + A_I

@@ -42,7 +42,7 @@ disc_annual_mod <- function(AS0, AI0, L0, C0, IA0, simtime, gs_days, disc_parms,
     E_A <- e_A/(1 + gamma_A * L[t])
     
     # initial conditions, prevent taking log of negative values or zero
-    LogB_A0 <- ifelse((A_S[t] + A_I[t]) > 0, log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]), log(1e-10))
+    LogB_A0 <- ifelse((A_S[t] + A_I[t]) > 1e-10, log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]), log(1e-10))
     
     # biomass at the end of the growing season
     out <- ode(func = cont_annual_mod,

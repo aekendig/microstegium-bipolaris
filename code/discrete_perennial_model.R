@@ -52,8 +52,8 @@ disc_perennial_mod <- function(F0, P0, L0, C0, IF0, IP0, BP0, BF0, simtime, gs_d
     E_P <- e_P/(1 + gamma_P * L[t])
     
     # initial conditions, prevent taking log of negative values or zero
-    LogB_F0 <- ifelse(F1[t] > 0, log(g_P * E_P * b_F * F1[t]), log(1e-10))
-    LogB_P0 <- ifelse(B_P0[t] + B_F0[t] > 0, log(l_B * (B_P0[t] + B_F0[t])), log(1e-10))
+    LogB_F0 <- ifelse(F1[t] > 1e-10, log(g_P * E_P * b_F * F1[t]), log(1e-10))
+    LogB_P0 <- ifelse((B_P0[t] + B_F0[t]) > 1e-10, log(l_B * (B_P0[t] + B_F0[t])), log(1e-10))
     
     # biomass at the end of the growing season
     out <- ode(func = cont_perennial_mod,
