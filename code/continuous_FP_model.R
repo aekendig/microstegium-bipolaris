@@ -1,4 +1,4 @@
-cont_perennial_mod <- function(t, x, params) {
+cont_FP_mod <- function(t, x, params) {
   
   # initial conditions
   LogB_F <- x[1]

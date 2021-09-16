@@ -1,4 +1,4 @@
-cont_both_mod <- function(t, x, params) {
+cont_AFP_mod <- function(t, x, params) {
   
   # initial conditions
   LogB_A <- x[1]

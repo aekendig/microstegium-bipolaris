@@ -51,19 +51,26 @@ disc_perennial_mod <- function(F0, P0, L0, C0, IF0, IP0, BP0, BF0, simtime, gs_d
     # seedling establishment
     E_P <- e_P/(1 + gamma_P * L[t])
     
+    # new adult growth establishment
+    L_B <- l_B/(1 + gamma_P * L[t])
+    
     # initial conditions, prevent taking log of negative values or zero
-    LogB_F0 <- ifelse(F1[t] > 1e-10, log(g_P * E_P * b_F * F1[t]), log(1e-10))
-    LogB_P0 <- ifelse((B_P0[t] + B_F0[t]) > 1e-10, log(l_B * (B_P0[t] + B_F0[t])), log(1e-10))
+    LogB_F0 <- log(g_P * E_P * b_F * F1[t])
+    LogB_P0 <- log(L_B * (B_P0[t] + B_F0[t]))
     
     # biomass at the end of the growing season
-    out <- ode(func = cont_perennial_mod,
-               y = c(LogB_F = LogB_F0,
-                     LogB_P = LogB_P0,
-                     I_F = 0, I_P = 0, D = 0,
-                     C = C_0[t] + h * (I_F0[t] + I_P0[t])),
-               times = grow_days,
-               parms = con_parms) %>%
-      as.data.frame()
+    if(F1[t] > 0 | (B_P0[t] + B_F0[t]) > 0){
+      out <- ode(func = cont_perennial_mod,
+                 y = c(LogB_F = LogB_F0,
+                       LogB_P = LogB_P0,
+                       I_F = 0, I_P = 0, D = 0,
+                       C = C_0[t] + h * (I_F0[t] + I_P0[t])),
+                 times = grow_days,
+                 parms = con_parms) %>%
+        as.data.frame()
+    } else{
+      print("perennial gone")
+    }
     
     # modify output
     out2 <- out %>%
@@ -87,13 +94,6 @@ disc_perennial_mod <- function(F0, P0, L0, C0, IF0, IP0, BP0, BF0, simtime, gs_d
     
     D[t] <- as.numeric(out2$D)
     
-    # values for next year
-    C_0[t+1] <- as.numeric(out2$C) # conidia
-    I_F0[t+1] <- I_F[t] # conidia
-    I_P0[t+1] <- I_P[t] # conidia
-    B_P0[t+1] <- B_P[t] # perennial biomass
-    B_F0[t+1] <- B_F[t] # perennial biomass
-    
     # correct to prevent negative/crazy small numbers
     B_F[t] = ifelse(B_F[t] < 1e-10, 0, B_F[t])
     B_P[t] = ifelse(B_P[t] < 1e-10, 0, B_P[t])
@@ -105,14 +105,17 @@ disc_perennial_mod <- function(F0, P0, L0, C0, IF0, IP0, BP0, BF0, simtime, gs_d
     I_P[t] = ifelse(I_P[t] < 1e-10, 0, I_P[t])
     
     D[t] = ifelse(D[t] < 1e-10, 0, D[t])
+    
+    # values for next year
+    C_0[t+1] <- as.numeric(out2$C) # conidia
     C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
-    I_F0[t+1] = ifelse(I_F0[t+1] < 1e-10, 0, I_F0[t+1])
-    I_P0[t+1] = ifelse(I_P0[t+1] < 1e-10, 0, I_P0[t+1])
-    B_P0[t+1] = ifelse(B_P0[t+1] < 1e-10, 0, B_P0[t+1])
-    B_F0[t+1] = ifelse(B_F0[t+1] < 1e-10, 0, B_F0[t+1])
+    I_F0[t+1] <- I_F[t] # conidia
+    I_P0[t+1] <- I_P[t] # conidia
+    B_P0[t+1] <- B_P[t] # perennial biomass
+    B_F0[t+1] <- B_F[t] # perennial biomass
     
     # population size
-    L[t+1] = (1 - l_B) * (B_F[t] + B_P[t]) + D[t] + (1 - d) * L[t] 
+    L[t+1] = B_F[t] + B_P[t] + D[t] + (1 - d) * L[t] 
     F1[t+1] = s_P * (1 - g_P) * F1[t] + c_F * B_F[t] + c_P * B_P[t]
     P[t+1] = l_P * P[t] + g_P * E_P * l_P * F1[t]
     
@@ -127,19 +130,26 @@ disc_perennial_mod <- function(F0, P0, L0, C0, IF0, IP0, BP0, BF0, simtime, gs_d
   # seedling establishment
   E_P <- e_P/(1 + gamma_P * L[simtime])
   
+  # new adult growth establishment
+  L_B <- l_B/(1 + gamma_P * L[simtime])
+  
   # initial conditions
-  LogB_F0 <- ifelse(F1[simtime] > 0, log(g_P * E_P * b_F * F1[simtime]), log(1e-10))
-  LogB_P0 <- ifelse(B_P0[simtime] + B_F0[simtime] > 0, log(l_B * (B_P0[simtime] + B_F0[simtime])), log(1e-10))
+  LogB_F0 <- log(g_P * E_P * b_F * F1[simtime])
+  LogB_P0 <- log(L_B * (B_P0[simtime] + B_F0[simtime]))
   
   # biomass at the end of the growing season
-  out3 <- ode(func = cont_perennial_mod,
-              y = c(LogB_F = LogB_F0,
-                    LogB_P = LogB_P0,
-                    I_F = 0, I_P = 0, D = 0,
-                    C = C_0[simtime] + h * (I_F0[simtime] + I_P0[simtime])),
-              times = grow_days,
-              parms = con_parms) %>%
-    as.data.frame()
+  if(F1[simtime] > 0 | (B_P0[simtime] + B_F0[simtime]) > 0){
+    out3 <- ode(func = cont_perennial_mod,
+                y = c(LogB_F = LogB_F0,
+                      LogB_P = LogB_P0,
+                      I_F = 0, I_P = 0, D = 0,
+                      C = C_0[simtime] + h * (I_F0[simtime] + I_P0[simtime])),
+                times = grow_days,
+                parms = con_parms) %>%
+      as.data.frame()
+  } else{
+    print("perennial gone")
+  }
   
   # modify output
   out4 <- out3 %>%

@@ -1,4 +1,4 @@
-cont_annual_mod <- function(t, x, params) {
+cont_A_mod <- function(t, x, params) {
   
   # initial conditions
   LogB_A <- x[1]

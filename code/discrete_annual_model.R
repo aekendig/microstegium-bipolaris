@@ -41,17 +41,22 @@ disc_annual_mod <- function(AS0, AI0, L0, C0, IA0, simtime, gs_days, disc_parms,
     # seedling establishment
     E_A <- e_A/(1 + gamma_A * L[t])
     
-    # initial conditions, prevent taking log of negative values or zero
-    LogB_A0 <- ifelse((A_S[t] + A_I[t]) > 1e-10, log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t]), log(1e-10))
+    # initial conditions
+    LogB_A0 <- log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t])
     
     # biomass at the end of the growing season
-    out <- ode(func = cont_annual_mod,
-               y = c(LogB_A = LogB_A0,
-                     I_A = 0, D = 0,
-                     C = C_0[t] + h * I_A0[t]),
-               times = grow_days,
-               parms = con_parms) %>%
-      as.data.frame()
+    if((A_S[t] + A_I[t]) > 0){
+      out <- ode(func = cont_annual_mod,
+                 y = c(LogB_A = LogB_A0,
+                       I_A = 0, D = 0,
+                       C = C_0[t] + h * I_A0[t]),
+                 times = grow_days,
+                 parms = con_parms) %>%
+        as.data.frame()
+    }else{
+      print("annual gone")
+    }
+    
     
     # modify output
     out2 <- out %>%
@@ -67,18 +72,16 @@ disc_annual_mod <- function(AS0, AI0, L0, C0, IA0, simtime, gs_days, disc_parms,
     I_A[t] <- as.numeric(out2$I_A)
     D[t] <- as.numeric(out2$D)
     
-    # values for next year
-    C_0[t+1] <- as.numeric(out2$C) # conidia
-    I_A0[t+1] <- I_A[t] # conidia
-    
     # correct to prevent negative/crazy small numbers
     B_A[t] = ifelse(B_A[t] < 1e-10, 0, B_A[t])
     S_A[t] = ifelse(S_A[t] < 1e-10, 0, S_A[t])
     I_A[t] = ifelse(I_A[t] < 1e-10, 0, I_A[t])
     D[t] = ifelse(D[t] < 1e-10, 0, D[t])
     
+    # values for next year
+    C_0[t+1] <- as.numeric(out2$C) # conidia
     C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
-    I_A0[t+1] = ifelse(I_A0[t+1] < 1e-10, 0, I_A0[t+1])
+    I_A0[t+1] <- I_A[t] # conidia
     
     # proportion seeds infected
     p <- ifelse(B_A[t] > 0, exp(p0 + p1 * I_A[t]/B_A[t])/(1 + exp(p0 + p1 * I_A[t]/B_A[t])), 0)
@@ -100,16 +103,21 @@ disc_annual_mod <- function(AS0, AI0, L0, C0, IA0, simtime, gs_days, disc_parms,
   E_A <- e_A/(1 + gamma_A * L[simtime])
   
   # initial conditions
-  LogB_A0 <- ifelse((A_S[simtime] + A_I[simtime]) > 0, log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime]), log(1e-10))
+  LogB_A0 <- log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime])
   
   # biomass at the end of the growing season
-  out3 <- ode(func = cont_annual_mod,
-              y = c(LogB_A = LogB_A0,
-                    I_A = 0, D = 0,
-                    C = C_0[simtime] + h * I_A0[simtime]),
-              times = grow_days,
-              parms = con_parms) %>%
-    as.data.frame()
+  if((A_S[simtime] + A_I[simtime]) > 0){
+    out3 <- ode(func = cont_annual_mod,
+                y = c(LogB_A = LogB_A0,
+                      I_A = 0, D = 0,
+                      C = C_0[simtime] + h * I_A0[simtime]),
+                times = grow_days,
+                parms = con_parms) %>%
+      as.data.frame()
+  }else{
+    print("annual gone")
+  }
+  
   
   # modify output
   out4 <- out3 %>%

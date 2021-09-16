@@ -71,14 +71,17 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
     E_A <- e_A/(1 + gamma_A * L[t])
     E_P <- e_P/(1 + gamma_P * L[t])
     
-    # initial conditions, prevent taking log of negative values or zero
+    # new adult growth establishment
+    L_B <- l_B/(1 + gamma_P * L[t])
+    
+    # initial conditions
     LogB_A0 <- log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t])
     LogB_F0 <- log(g_P * E_P * b_F * F1[t])
-    LogB_P0 <- log(l_B * (B_P0[t] + B_F0[t]))
+    LogB_P0 <- log(L_B * (B_P0[t] + B_F0[t]))
     
     # biomass at the end of the growing season
     # only model perennials if annual is absent & vice versa
-    if((A_S[t] + A_I[t]) > 1e-10 & (F1[t] > 1e-10 | (B_P0[t] + B_F0[t]) > 1e-10)){
+    if((A_S[t] + A_I[t]) > 0 & (F1[t] > 0 | (B_P0[t] + B_F0[t]) > 0)){
       out <- ode(func = cont_both_mod,
                  y = c(LogB_A = LogB_A0,
                        LogB_F = LogB_F0,
@@ -97,7 +100,7 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
                S_F = B_F - I_F,
                S_P = B_P - I_P) %>%
         select(-c(LogB_A, LogB_F, LogB_P))
-    }else if(F1[t] > 1e-10 | (B_P0[t] + B_F0[t]) > 1e-10){
+    }else if(F1[t] > 0 | (B_P0[t] + B_F0[t]) > 0){
       out <- ode(func = cont_perennial_mod,
                  y = c(LogB_F = LogB_F0,
                        LogB_P = LogB_P0,
@@ -116,7 +119,7 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
                S_F = B_F - I_F,
                S_P = B_P - I_P) %>%
         select(-c(LogB_F, LogB_P))
-    }else if((A_S[t] + A_I[t]) > 1e-10){
+    }else if((A_S[t] + A_I[t]) > 0){
       out <- ode(func = cont_annual_mod,
                  y = c(LogB_A = LogB_A0,
                        I_A = 0, D = 0,
@@ -154,14 +157,6 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
     
     D[t] <- as.numeric(out$D)
     
-    # values for next year
-    C_0[t+1] <- as.numeric(out$C) # conidia
-    I_A0[t+1] <- I_A[t] # conidia
-    I_F0[t+1] <- I_F[t] # conidia
-    I_P0[t+1] <- I_P[t] # conidia
-    B_P0[t+1] <- B_P[t] # perennial biomass
-    B_F0[t+1] <- B_F[t] # perennial biomass
-    
     # correct to prevent negative/crazy small numbers
     B_A[t] = ifelse(B_A[t] < 1e-10, 0, B_A[t])
     B_F[t] = ifelse(B_F[t] < 1e-10, 0, B_F[t])
@@ -176,13 +171,15 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
     I_P[t] = ifelse(I_P[t] < 1e-10, 0, I_P[t])
 
     D[t] = ifelse(D[t] < 1e-10, 0, D[t])
-    C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
-    I_A0[t+1] = ifelse(I_A0[t+1] < 1e-10, 0, I_A0[t+1])
-    I_F0[t+1] = ifelse(I_F0[t+1] < 1e-10, 0, I_F0[t+1])
-    I_P0[t+1] = ifelse(I_P0[t+1] < 1e-10, 0, I_P0[t+1])
-    B_P0[t+1] = ifelse(B_P0[t+1] < 1e-10, 0, B_P0[t+1])
-    B_F0[t+1] = ifelse(B_F0[t+1] < 1e-10, 0, B_F0[t+1])
     
+    # values for next year
+    C_0[t+1] <- as.numeric(out$C) # conidia
+    C_0[t+1] = ifelse(C_0[t+1] < 1e-10, 0, C_0[t+1])
+    I_A0[t+1] <- I_A[t] # conidia
+    I_F0[t+1] <- I_F[t] # conidia
+    I_P0[t+1] <- I_P[t] # conidia
+    B_P0[t+1] <- B_P[t] # perennial biomass
+    B_F0[t+1] <- B_F[t] # perennial biomass
     
     # proportion seeds infected
     p <- ifelse(B_A[t] > 0, exp(p0 + p1 * I_A[t]/B_A[t])/(1 + exp(p0 + p1 * I_A[t]/B_A[t])), 0)
@@ -190,7 +187,7 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
     # population size
     A_S[t+1] = s_A * (1 - g_S) * A_S[t] +  B_A[t] * c_A * (1-p)
     A_I[t+1] = B_A[t] * c_A * p
-    L[t+1] = B_A[t] + (1 - l_B) * (B_F[t] + B_P[t]) + D[t] + (1 - d) * L[t] 
+    L[t+1] = B_A[t] + B_F[t] + B_P[t] + D[t] + (1 - d) * L[t] 
     F1[t+1] = s_P * (1 - g_P) * F1[t] + c_F * B_F[t] + c_P * B_P[t]
     P[t+1] = l_P * P[t] + g_P * E_P * l_P * F1[t]
     
@@ -208,13 +205,16 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
   E_A <- e_A/(1 + gamma_A * L[simtime])
   E_P <- e_P/(1 + gamma_P * L[simtime])
   
+  # new adult growth establishment
+  L_B <- l_B/(1 + gamma_P * L[simtime])
+  
   # initial conditions
   LogB_A0 <- log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime])
   LogB_F0 <- log(g_P * E_P * b_F * F1[simtime])
-  LogB_P0 <- log(l_B * (B_P0[simtime] + B_F0[simtime]))
+  LogB_P0 <- log(L_B * (B_P0[simtime] + B_F0[simtime]))
   
   # biomass at the end of the growing season
-  if((A_S[simtime] + A_I[simtime]) > 1e-10 & (F1[simtime] > 1e-10 | (B_P0[simtime] + B_F0[simtime]) > 1e-10)){
+  if((A_S[simtime] + A_I[simtime]) > 0 & (F1[simtime] > 0 | (B_P0[simtime] + B_F0[simtime]) > 0)){
     out2 <- ode(func = cont_both_mod,
                y = c(LogB_A = LogB_A0,
                      LogB_F = LogB_F0,
@@ -233,7 +233,7 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
              S_F = B_F - I_F,
              S_P = B_P - I_P) %>%
       select(-c(LogB_A, LogB_F, LogB_P))
-  }else if(F1[simtime] > 1e-10 | (B_P0[simtime] + B_F0[simtime]) > 1e-10){
+  }else if(F1[simtime] > 0 | (B_P0[simtime] + B_F0[simtime]) > 0){
     out2 <- ode(func = cont_perennial_mod,
                y = c(LogB_F = LogB_F0,
                      LogB_P = LogB_P0,
@@ -252,7 +252,7 @@ disc_both_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, sim
              S_F = B_F - I_F,
              S_P = B_P - I_P) %>%
       select(-c(LogB_F, LogB_P))
-  }else if((A_S[simtime] + A_I[simtime]) > 1e-10){
+  }else if((A_S[simtime] + A_I[simtime]) > 0){
     out2 <- ode(func = cont_annual_mod,
                y = c(LogB_A = LogB_A0,
                      I_A = 0, D = 0,
