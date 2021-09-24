@@ -57,7 +57,7 @@ disc_AFP_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, simt
   e_P <- as.numeric(parms[parms$Parameter == "e_P", "Estimate"])
   gamma_P <- as.numeric(parms[parms$Parameter == "gamma_P", "Estimate"])
   l_P <- as.numeric(parms[parms$Parameter == "l_P", "Estimate"])
-  l_B <- as.numeric(parms[parms$Parameter == "l_B", "Estimate"])
+  n_P <- as.numeric(parms[parms$Parameter == "n_P", "Estimate"])
   
   d <- as.numeric(parms[parms$Parameter == "d", "Estimate"])
   h <- as.numeric(parms[parms$Parameter == "h", "Estimate"])
@@ -72,12 +72,12 @@ disc_AFP_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, simt
     E_P <- e_P/(1 + gamma_P * L[t])
     
     # new adult growth establishment
-    L_B <- l_B/(1 + gamma_P * L[t])
+    N_P <- n_P/(1 + gamma_P * L[t])
     
     # initial conditions
     B_A_in <- log(g_S * E_A * b_A * A_S[t] + g_I * E_A * b_A * A_I[t])
     B_F_in <- log(g_P * E_P * b_F * F1[t])
-    B_P_in <- log(L_B * (B_P0[t] + B_F0[t]))
+    B_P_in <- log(N_P * (B_P0[t] + B_F0[t]))
     C_in <- C_0[t] + h * (I_A0[t] + I_F0[t] + I_P0[t])
     
     # choose model function and starting conditions
@@ -204,12 +204,12 @@ disc_AFP_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, simt
   E_P <- e_P/(1 + gamma_P * L[simtime])
   
   # new adult growth establishment
-  L_B <- l_B/(1 + gamma_P * L[simtime])
+  N_P <- n_P/(1 + gamma_P * L[simtime])
   
   # initial conditions
   B_A_in <- log(g_S * E_A * b_A * A_S[simtime] + g_I * E_A * b_A * A_I[simtime])
   B_F_in <- log(g_P * E_P * b_F * F1[simtime])
-  B_P_in <- log(L_B * (B_P0[simtime] + B_F0[simtime]))
+  B_P_in <- log(N_P * (B_P0[simtime] + B_F0[simtime]))
   C_in <- C_0[simtime] + h * (I_A0[simtime] + I_F0[simtime] + I_P0[simtime])
   
   # choose model function and starting conditions

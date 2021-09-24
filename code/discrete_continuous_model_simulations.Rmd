@@ -18,6 +18,37 @@ library(cowplot)
 ```
 
 ```{r parameters, include=FALSE}
+#### adjustments ####
+
+# adjustment for competition coefficients (including litter sensitivity)
+alpha_mult <- 1
+alpha_add <- 0
+
+# adjustment for survival constants
+# perennial adult survival
+# germination fraction
+# seed survival
+# biomass-to-seed conversion
+surv_adjust <- 0.5
+
+
+#### initial biomass ####
+
+mvBioD2Dat <- read_csv("../data/mv_biomass_seeds_2019_density_exp.csv")
+evBioD2Dat <- read_csv("../data/ev_biomass_seeds_oct_2019_density_exp.csv")
+
+init_bio_parms <- tibble(Parameter = c("b_A", "b_F", "b_P"),
+                         Description = c("annual initial biomass",
+                                         "first-year perennial initial biomass",
+                                         "adult perennial initial biomass"),
+                         Estimate = c(min(mvBioD2Dat$biomass_weight.g, na.rm = T)/10,
+                                      min(filter(evBioD2Dat, ID %in% c("1", "2", "3"))$weight, na.rm = T)/10,
+                                      min(filter(evBioD2Dat, ID == "A")$weight, na.rm = T)/10),
+                         Lower = rep(NA_real_, 3),
+                         Upper = rep(NA_real_, 3),
+                         Units = rep("g", 3),
+                         Source = rep("experiment", 3))
+
 #### growth ####
 
 # load model
@@ -25,11 +56,11 @@ load("../output/focal_growth_biomass_model_2019_density_exp.rda")
 
 # does fungicide significantly affect growth rates?
 # note that these only apply when Mv is the background plant, although its density is 0
-r_A_hyp = "fungicide = 0"
-r_F_hyp = "fungicide + focs:fungicide = 0"
-r_P_hyp = "fungicide + foca:fungicide = 0"
-
-hypothesis(growthD2Mod2, c(r_A_hyp, r_F_hyp, r_P_hyp))
+# r_A_hyp = "fungicide = 0"
+# r_F_hyp = "fungicide + focs:fungicide = 0"
+# r_P_hyp = "fungicide + foca:fungicide = 0"
+# 
+# hypothesis(growthD2Mod2, c(r_A_hyp, r_F_hyp, r_P_hyp))
 # yes, fungicide significantly lowers perennial adult growth rate
 # use control values
 
@@ -42,36 +73,36 @@ hypothesis(growthD2Mod2, c(r_A_hyp, r_F_hyp, r_P_hyp))
 # stricker <- read_csv("../intermediate-data/stricker_2016_extracted_figure.csv")
 # max biomass is a fungicide treated plot
 
-# adjustment for competition coefficients (including litter sensitivity)
-alpha_mult <- 1
-alpha_add <- 1e-3
-surv_adjust <- 1
+# initial biomass values
+b_A0 <- init_bio_parms %>% filter(Parameter == "b_A") %>% pull(Estimate)
+b_F0 <- init_bio_parms %>% filter(Parameter == "b_F") %>% pull(Estimate)
+b_P0 <- init_bio_parms %>% filter(Parameter == "b_P") %>% pull(Estimate)
 
 # growth rates and competition coefficients
 growth_mod_parms <- as_draws_df(growthD2Mod2)  %>%
   rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
   rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(r_A = Intercept,
-            r_F = Intercept + focs,
-            r_P = Intercept + foca,
-            alpha_AA_fung = (plot_biomass + plot_biomass_fungicide),
-            alpha_FA_fung = (plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide),
-            alpha_PA_fung = (plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide),
-            alpha_AF_fung = (plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide),
-            alpha_FF_fung = (plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide),
-            alpha_PF_fung = (plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide),
-            alpha_AP_fung = (plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide),
-            alpha_FP_fung = (plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide),
-            alpha_PP_fung = (plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide),
+  transmute(r_A = Intercept - log(b_A0),
+            r_F = (Intercept + focs) - log(b_F0),
+            r_P = (Intercept + foca) - log(b_P0),
+            alpha_AA_fung = plot_biomass + plot_biomass_fungicide,
+            alpha_FA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide,
+            alpha_PA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide,
+            alpha_AF_fung = plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide,
+            alpha_FF_fung = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide,
+            alpha_PF_fung = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide,
+            alpha_AP_fung = plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide,
+            alpha_FP_fung = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide,
+            alpha_PP_fung = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide,
             alpha_AA = plot_biomass,
-            alpha_FA = (plot_biomass + plot_biomass_focs),
-            alpha_PA = (plot_biomass + plot_biomass_foca),
-            alpha_AF = (plot_biomass + plot_biomass_bgs),
-            alpha_FF = (plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs),
-            alpha_PF = (plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs),
-            alpha_AP = (plot_biomass + plot_biomass_bga),
-            alpha_FP = (plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga),
-            alpha_PP = (plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga)) %>%
+            alpha_FA = plot_biomass + plot_biomass_focs,
+            alpha_PA = plot_biomass + plot_biomass_foca,
+            alpha_AF = plot_biomass + plot_biomass_bgs,
+            alpha_FF = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs,
+            alpha_PF = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs,
+            alpha_AP = plot_biomass + plot_biomass_bga,
+            alpha_FP = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga,
+            alpha_PP = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga) %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
@@ -120,7 +151,8 @@ growth_mod_parms <- as_draws_df(growthD2Mod2)  %>%
 
 # adjust alpha values
 growth_mod_parms2 <- growth_mod_parms %>%
-  mutate(Estimate = case_when(substr(Parameter, 1, 5) == "alpha" ~ (Estimate + alpha_add) * alpha_mult, # alpha adjustments
+  mutate(Estimate = case_when(substr(Parameter, 1, 5) == "alpha" & substr(Parameter, 8,8) == "A" ~ 0.001, # alpha adjustments
+                              substr(Parameter, 1, 5) == "alpha" & substr(Parameter, 8, 8) == "P" ~ 0.0065,
                                  TRUE ~ Estimate))
 
 
@@ -209,7 +241,7 @@ mv_germ_parms <- as_draws_df(mvGermD1Mod)  %>%
   transmute(Parameter = parameter,
             Description = c("infected annual germination fraction",
                             "susceptible annual germination fraction"),
-            Estimate = round(estimate, 3),
+            Estimate = round(estimate, 3)*surv_adjust,
             Lower = round(.lower, 3),
             Upper = round(.upper, 3),
             Units = "NA",
@@ -226,7 +258,7 @@ ev_germ_parms <- as_draws_df(evGermMod)  %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
             Description = c("perennial germination fraction"),
-            Estimate = estimate,
+            Estimate = estimate*surv_adjust,
             Lower = .lower,
             Upper = .upper,
             Units = "NA",
@@ -248,7 +280,7 @@ mv_seed_parms <- as_draws_df(mvSeedsBioD2Mod2)  %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
             Description = c("annual seed conversion"),
-            Estimate = estimate,
+            Estimate = estimate*surv_adjust,
             Lower = .lower,
             Upper = .upper,
             Units = "seeds g^-1^",
@@ -263,7 +295,7 @@ evS_seed_parms <- as_draws_df(evSSeedsBioD2Mod2)  %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
             Description = c("first-year perennial seed conversion"),
-            Estimate = estimate,
+            Estimate = estimate*surv_adjust,
             Lower = .lower,
             Upper = .upper,
             Units = "seeds g^-1^",
@@ -278,7 +310,7 @@ evA_seed_parms <- as_draws_df(evASeedsBioD2Mod2)  %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
             Description = c("adult perennial seed conversion"),
-            Estimate = estimate,
+            Estimate = estimate*surv_adjust,
             Lower = .lower,
             Upper = .upper,
             Units = "seeds g^-1^",
@@ -332,26 +364,50 @@ evA_surv_parms2 <- evA_surv_parms %>%
   mutate(Estimate = surv_adjust * Estimate)
 
 
-#### adult biomass survival ####
+#### biomass mortality ####
 
 ev_fung_gh <- read_csv("../data/ev_biomass_dec_2019_fungicide_exp.csv")
 
-evA_bio_surv_parms <- ev_fung_gh %>%
+# only have measurement for Ev
+# apply to Mv as well
+bio_mort_parms <- ev_fung_gh %>%
+  select(-notes) %>%
+  pivot_wider(names_from = biomass_type,
+              values_from = weight.g) %>%
+  mutate(prop_dead = dead / (dead + live)) %>%
+  summarise(Prop_dead = mean(prop_dead, na.rm = T)) %>%
+  expand_grid(tibble(Parameter = c("m_A", "m_F", "m_P"),
+                     Description = c("annual biomass mortality",
+                                     "perennial first-year biomass mortality",
+                                     "perennial adult biomass mortality"))) %>%
+  mutate(Estimate = Prop_dead/292, # experiment lasted 292 days
+         Lower = NA,
+         Upper = NA,
+         Units = "NA",
+         Source = "experiment") %>%
+  select(-Prop_dead)
+
+
+#### adult new biomass ####
+
+evA_new_bio_parms <- ev_fung_gh %>%
   select(-notes) %>%
   pivot_wider(names_from = biomass_type,
               values_from = weight.g) %>%
   mutate(prop_live = live / (dead + live)) %>%
   summarise(Prop_live = mean(prop_live, na.rm = T)) %>%
-  mutate(Parameter = "l_B",
+  mutate(Parameter = "n_P",
          Description = "adult perennial surviving biomass",
          Estimate = Prop_live  * evA_surv_parms$Estimate,
          Lower = NA,
          Upper = NA,
          Units = "NA",
          Source = "experiment")
+# the proportion of live biomass at the end of the growing season (FL greenhouse)
+# multiplied by the proportion of adults that survive
 
 # adjust survival
-evA_bio_surv_parms2 <- evA_bio_surv_parms %>%
+evA_new_bio_parms2 <- evA_new_bio_parms %>%
   mutate(Estimate = Prop_live * evA_surv_parms2$Estimate)
 
 
@@ -374,24 +430,6 @@ evA_bio_surv_parms2 <- evA_bio_surv_parms %>%
 #             Upper = .upper,
 #             Units = "NA",
 #             Source = "experiment")
-
-
-#### initial biomass ####
-
-mvBioD2Dat <- read_csv("../data/mv_biomass_seeds_2019_density_exp.csv")
-evBioD2Dat <- read_csv("../data/ev_biomass_seeds_oct_2019_density_exp.csv")
-
-init_bio_parms <- tibble(Parameter = c("b_A", "b_F", "b_P"),
-                         Description = c("annual initial biomass",
-                                         "first-year perennial initial biomass",
-                                         "adult perennial initial biomass"),
-                         Estimate = c(min(mvBioD2Dat$biomass_weight.g, na.rm = T)/10,
-                                      min(filter(evBioD2Dat, ID %in% c("1", "2", "3"))$weight, na.rm = T)/10,
-                                      min(filter(evBioD2Dat, ID == "A")$weight, na.rm = T)/10),
-                         Lower = rep(NA_real_, 3),
-                         Upper = rep(NA_real_, 3),
-                         Units = rep("g", 3),
-                         Source = rep("experiment", 3))
 
 
 #### litter sensitivity ####
@@ -440,8 +478,7 @@ lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC",
                                   "v_A", "v_F", "v_P", 
                                   "h", "b",
                                   "s_A", "s_P", 
-                                  "d",
-                                  "m_A", "m_F", "m_P"),
+                                  "d"),
                     Description = c("litter transmission to annuals",
                                     "litter transmission to first-year perennials",
                                     "litter transmission to adult perennials",
@@ -455,15 +492,12 @@ lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC",
                                     "inoculum loss from litter",
                                     "annual surviving seed fraction",
                                     "perennial surviving seed fraction",
-                                    "annual litter decomposition fraction",
-                                    "annual biomass mortality",
-                                    "perennial first-year biomass mortality",
-                                    "perennial adult biomass mortality"),
-                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-4, 3), 5500, 0.5, 0.15, 0.05, 0.59, rep(0.003, 3)),
-                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "DeMeester and Richter 2010", rep("NA", 3))) %>%
+                                    "annual litter decomposition fraction"),
+                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-3, 3), 5500, 0.5, 0.15*surv_adjust, 0.05*surv_adjust, 0.59),
+                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "DeMeester and Richter 2010")) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
-         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), "NA", rep("day^-1^", 3)))
+         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), "NA"))
 
 
 #### combine ####
@@ -477,10 +511,11 @@ parms <- growth_mod_parms2 %>%
   full_join(evA_seed_parms) %>%
   full_join(est_mod_parms) %>%
   full_join(evA_surv_parms2) %>%
-  full_join(evA_bio_surv_parms2 %>%
+  full_join(evA_new_bio_parms2 %>%
               select(-Prop_live)) %>%
   # full_join(ngs_surv_parms) %>%
   full_join(init_bio_parms) %>%
+  full_join(bio_mort_parms) %>%
   full_join(mv_lit_parms) %>%
   full_join(ev_lit_parms) %>%
   full_join(lit_parms)
@@ -988,7 +1023,7 @@ modP %>%
 # bump in infection comes from more initial biomass in this model compared to perennial first-year
 ```
 
-### Perennial first-year  invades annual
+### Perennial first-year invades annual
 ```{r F-invades, echo = F}
 modA_fin <- modA %>%
   filter(time == max(time))
@@ -1243,17 +1278,14 @@ modT %>%
 
 long_sim <- function(params){
   
-# parameters with disease competition coefficients
-params_d <- params %>%
-  filter(!Parameter %in% c("alpha_AA", "alpha_AF", "alpha_AP", "alpha_FA", "alpha_FF", "alpha_FP", "alpha_PA", "alpha_PF", "alpha_PP")) %>%
-  mutate(Parameter = str_replace(Parameter, "_dis", ""))
+  ## need to change model inputs for AFP model
 
 # perennial only
-modL1 <- disc_perennial_mod(F0 = 100, P0 = 0, L0 = 0, 
+modL1 <- disc_AFP_mod(F0 = 100, P0 = 0, L0 = 0, 
                             C0 = as.numeric(params[params$Parameter == "h", "Estimate"]), 
                             IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, 
                             simtime = 100, gs_days = gs_time, 
-                            disc_parms = params_d, con_parms = params_d)
+                            disc_parms = params, con_parms = params)
 
 # input values for next simulation
 modL2_in <- modL1 %>%
@@ -1269,7 +1301,7 @@ modL2_in <- modL1 %>%
          BF0 = "Perennial first-year biomass")
 
 # perennial only
-modL2_per <- disc_perennial_mod(F0 = modL2_in$F0,
+modL2_per <- disc_AFP_mod(F0 = modL2_in$F0,
                       P0 = modL2_in$P0,
                       L0 = modL2_in$L0,
                       C0 = modL2_in$C0,
@@ -1277,18 +1309,18 @@ modL2_per <- disc_perennial_mod(F0 = modL2_in$F0,
                       IP0 = 0,
                       BP0 = modL2_in$BP0,
                       BF0 = modL2_in$BF0,
-                      simtime = 100, gs_days = gs_time, disc_parms = params_d, con_parms = params_d)
+                      simtime = 100, gs_days = gs_time, disc_parms = params, con_parms = params)
 
   # disease-free params (for annual)
 params_df <- params %>%
-  filter(!Parameter %in% c("alpha_FF", "alpha_FP", "alpha_PF", "alpha_PP", "alpha_AA_dis", "alpha_AF_dis", "alpha_AP_dis", "alpha_FA_dis", "alpha_PA_dis")) %>%
+  filter(!Parameter %in% c("alpha_AA", "alpha_AF", "alpha_AP", "alpha_FA", "alpha_PA", "alpha_FF_fung", "alpha_FP_fung", "alpha_PP_fung", "alpha_PF_fung")) %>%
   mutate(Estimate = case_when(Parameter %in% c("beta_AC", "beta_AA", "beta_AF", "beta_AP", "beta_FA", "beta_PA", "p1") ~ 0,
                               Parameter == "p0" ~ -100,
                               TRUE ~ Estimate),
-         Parameter = str_replace(Parameter, "_dis", ""))
+         Parameter = str_replace(Parameter, "_fung", ""))
 
 # annual invades without disease
-modL2_inv <- disc_both_mod(AS0 = 100,
+modL2_inv <- disc_AFP_mod(AS0 = 100,
                       AI0 = 0,
                       F0 = modL2_in$F0,
                       P0 = modL2_in$P0,
@@ -1329,7 +1361,7 @@ modL3_in_inv <- modL2_inv %>%
          BF0 = "Perennial first-year biomass")
 
 # perennial only
-modL3_per <- disc_perennial_mod(F0 = modL3_in_per$F0,
+modL3_per <- disc_AFP_mod(F0 = modL3_in_per$F0,
                       P0 = modL3_in_per$P0,
                       L0 = modL3_in_per$L0,
                       C = modL3_in_per$C0,
@@ -1337,10 +1369,10 @@ modL3_per <- disc_perennial_mod(F0 = modL3_in_per$F0,
                       IP0 = 0,
                       BP0 = modL3_in_per$BP0,
                       BF0 = modL3_in_per$BF0,
-                      simtime = 100, gs_days = gs_time, disc_parms = params_d, con_parms = params_d)
+                      simtime = 100, gs_days = gs_time, disc_parms = params, con_parms = params)
 
 # invasion only
-modL3_inv <- disc_both_mod(AS0 = modL3_in_inv$AS0,
+modL3_inv <- disc_AFP_mod(AS0 = modL3_in_inv$AS0,
                       AI0 = 0,
                       F0 = modL3_in_inv$F0,
                       P0 = modL3_in_inv$P0,
@@ -1354,7 +1386,7 @@ modL3_inv <- disc_both_mod(AS0 = modL3_in_inv$AS0,
                       simtime = 100, gs_days = gs_time, disc_parms = params_df, con_parms = params_df)
 
 # disease appears
-modL3_dis <- disc_both_mod(AS0 = modL3_in_inv$AS0,
+modL3_dis <- disc_AFP_mod(AS0 = modL3_in_inv$AS0,
                       AI0 = 0,
                       F0 = modL3_in_inv$F0,
                       P0 = modL3_in_inv$P0,
@@ -1365,7 +1397,7 @@ modL3_dis <- disc_both_mod(AS0 = modL3_in_inv$AS0,
                       IP0 = 0,
                       BP0 = modL3_in_inv$BP0,
                       BF0 = modL3_in_inv$BF0,
-                      simtime = 100, gs_days = gs_time, disc_parms = params_d, con_parms = params_d)
+                      simtime = 100, gs_days = gs_time, disc_parms = params, con_parms = params)
 
 # combine
 modL <- modL1 %>%
