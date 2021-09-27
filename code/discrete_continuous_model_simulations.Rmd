@@ -15,6 +15,7 @@ library(tidybayes)
 library(kableExtra)
 library(deSolve)
 library(cowplot)
+library(sensobol)
 ```
 
 ```{r parameters, include=FALSE}
@@ -865,53 +866,94 @@ outT %>%
   labs(x='Time (days)', y='Biomass (g)')
 ```
 
-### Troubleshooting continuous
-```{r TS-continuous, echo = F}
 
-# input values
-times <- seq(0, gs_time)
+### Try sensitivity analysis
+```{r sens-continuous, echo = F}
 
-xstart <- c(LogB_A = log(0.767 * 0.949/(1 + 0.0012 * 1.39e3) * 0.031 * 3e4 +
-                           0.306 * 0.949/(1 + 0.0012 * 1.39e3) * 0.031 * 1.64e4),
-            LogB_F = log(0.24 * 0.553/(1 + 5e-4 * 1.39e3) * 0.004 * 1.05e-30),
-            I_A = 0, I_F = 0, D = 0,
-            C = 1.86e4 + as.numeric(parms[parms$Parameter == "h", "Estimate"]) * 5.49e2)
+# settings
+N <- 2^5 # sample size
+k <- 3 # number of parameters
+params <- c("r_A", "r_F", "r_P") # paramater names
+R <- 10^2 # bootstrap replicas for CI
+type <- "norm" # CI method
+conf <- 0.95 # CI
 
-# apply function
-outTS <- ode(
-  func = cont_AF_mod,
-  y = xstart,
-  times = times,
-  parms = parms) %>%
-  as.data.frame() %>%
-  as_tibble() %>%
-    mutate(B_A = exp(LogB_A),
-           B_F = exp(LogB_F),
-         S_A = B_A - I_A,
-         S_F = B_F - I_F) %>%
-    select(-c(LogB_F,  LogB_A)) %>%
-    rename("I_C" = "C", "I_D" = "D") %>%
-  pivot_longer(cols = -time,
-               names_to = c("state", "plant"),
-               names_pattern = "(.)_(.)",
-               values_to = "pop")
+# sensitivity function
+cont_AFP_sens <- function(r_A, r_F, r_P){
+  
+  # add new parameter values
+  parms_in <- parms %>%
+    mutate(Estimate = case_when(Parameter == "r_A" ~ r_A,
+                                Parameter == "r_F" ~ r_F,
+                                Parameter == "r_P" ~ r_P,
+                                TRUE ~ Estimate))
+  # times
+  times <- seq(0, gs_time)
+  
+  # initial values
+  xstart <- c(LogB_A = log(as.numeric(parms[parms$Parameter == "b_A", "Estimate"]) * 10), 
+              LogB_F = log(as.numeric(parms[parms$Parameter == "b_F", "Estimate"]) * 10),
+              LogB_P = log(as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10),
+              I_A = 0, I_F = 0, I_P = 0, D = 0,
+              C = as.numeric(parms[parms$Parameter == "h", "Estimate"]))
+  
+  # apply function
+  mod_out <- ode(func = cont_AFP_mod,
+                 y = xstart,
+                 times = times,
+                 parms = parms_in) %>%
+    as.data.frame() %>%
+    as_tibble() %>%
+    mutate(B_P = exp(LogB_P)) %>%
+    filter(time == max(time)) %>%
+    pull(B_P)
+  
+  # output
+  return(mod_out)
+}
 
-# create figure
-outTS %>%
-  filter(plant != "C") %>%
-  ggplot(aes(x = time, y = pop, color = plant, linetype = state)) +
-  geom_line() +
-  theme_classic() +
-  theme(legend.key.width = unit(1.5, 'cm')) +
-  labs(x='Time (days)', y='Biomass (g)')
+# wrapper to run function
+cont_AFP_run <- function(df){
+  return(mapply(cont_AFP_sens, df[,1], df[,2], df[,3]))
+}
 
-outTS %>%
-  filter(plant != "C") %>%
-  ggplot(aes(x = time, y = log(pop), color = plant, linetype = state)) +
-  geom_line() +
-  theme_classic() +
-  theme(legend.key.width = unit(1.5, 'cm')) +
-  labs(x='Time (days)', y='Biomass (g)')
+# create sample matrix
+mat_cont <- sobol_matrices(N = N, params = params)
+
+# transform distributions
+mat_cont[, "r_A"] <- qunif(mat_cont[, "r_A"], 0.038, 0.1)
+mat_cont[, "r_F"] <- qunif(mat_cont[, "r_F"], 0.037, 0.1)
+mat_cont[, "r_P"] <- qunif(mat_cont[, "r_P"], 0.032, 0.1)
+
+# run model
+y_cont <- cont_AFP_run(mat_cont)
+
+# standardize y
+y_cont_std <- (y_cont - mean(y_cont)) / sd(y_cont)
+
+# distribution of model output
+plot_uncertainty(Y = y_cont_std, N = N) + labs(y = "Counts", x = "y")
+
+# model output by each input
+plot_scatter(data = mat_cont, N = N, Y = y_cont_std, params = params)
+
+# model input interactions (use subset of runs)
+plot_multiscatter(data = mat_cont, N = N, Y = y_cont_std, params = params)
+
+# calculate Sobol's indices (sensitivity analysis)
+ind <- sobol_indices(Y = y_cont_std, N = N, params = params, boot = T, R = R, type = type, conf = conf)
+
+# round results to 3 decimal points
+cols <- colnames(ind$results)[1:5]
+ind$results[, (cols):= round(.SD, 3), .SDcols = cols]
+ind
+
+# calculate Sobol's indices for a dummy parameter
+ind.dummy <- sobol_dummy(Y = y_cont_std, N = N, params = params, boot = T, R = R)
+
+# figure of results
+plot(ind, dummy = ind.dummy)
+
 ```
 
 ## Discrete time model
@@ -1238,6 +1280,98 @@ modA_inv %>%
   filter(time == max(time))
 
 ```
+
+
+### Try sensitivity analysis
+```{r sens-discrete, echo = F}
+
+# settings
+N <- 2^5 # sample size
+k <- 3 # number of parameters
+params <- c("r_A", "r_F", "r_P") # paramater names
+R <- 10^2 # bootstrap replicas for CI
+type <- "norm" # CI method
+conf <- 0.95 # CI
+
+# sensitivity function
+disc_AFP_sens <- function(r_A, r_F, r_P){
+  
+  # add new parameter values
+  parms_in <- parms %>%
+    mutate(Estimate = case_when(Parameter == "r_A" ~ r_A,
+                                Parameter == "r_F" ~ r_F,
+                                Parameter == "r_P" ~ r_P,
+                                TRUE ~ Estimate))
+  
+  # apply function
+  mod_out <- disc_AFP_mod(AS0 = 0, 
+                          AI0 = 0, 
+                          F0 = 0, 
+                          P0 = 10, 
+                          L0 = 0, 
+                          C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), 
+                          IA0 = 0, 
+                          IF0 = 0, 
+                          IP0 = 0, 
+                          BP0 = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, 
+                          BF0 = 0, 
+                          simtime = 5, 
+                          gs_days = gs_time, 
+                          disc_parms = parms_in, 
+                          con_parms = parms_in) %>%
+    filter(time == max(time) & species == "Perennial adult") %>%
+    pull(N)
+  
+  # output
+  return(mod_out)
+}
+
+# wrapper to run function
+disc_AFP_run <- function(df){
+  return(mapply(disc_AFP_sens, df[,1], df[,2], df[,3]))
+}
+
+# create sample matrix
+mat_disc <- sobol_matrices(N = N, params = params)
+
+# transform distributions
+mat_disc[, "r_A"] <- qunif(mat_disc[, "r_A"], 0.038, 0.1)
+mat_disc[, "r_F"] <- qunif(mat_disc[, "r_F"], 0.037, 0.1)
+mat_disc[, "r_P"] <- qunif(mat_disc[, "r_P"], 0.032, 0.1)
+
+# run model
+y_disc <- disc_AFP_run(mat_disc)
+
+# standardize y
+y_disc_std <- (y_disc - mean(y_disc)) / sd(y_disc)
+
+# distribution of model output
+plot_uncertainty(Y = y_disc_std, N = N) + labs(y = "Counts", x = "y")
+
+# model output by each input
+plot_scatter(data = mat, N = N, Y = y_disc_std, params = params)
+
+# model input interactions (use subset of runs)
+plot_multiscatter(data = mat, N = N, Y = y_disc_std, params = params)
+
+# calculate Sobol's indices (sensitivity analysis)
+ind <- sobol_indices(Y = y_disc_std, N = N, params = params, boot = T, R = R, type = type, conf = conf)
+
+# round results to 3 decimal points
+cols <- colnames(ind$results)[1:5]
+ind$results[, (cols):= round(.SD, 3), .SDcols = cols]
+ind
+
+# calculate Sobol's indices for a dummy parameter
+ind.dummy <- sobol_dummy(Y = y_disc_std, N = N, params = params, boot = T, R = R)
+
+# figure of results
+plot(ind, dummy = ind.dummy)
+
+```
+
+
+
 
 ### All species
 ```{r all-discrete, echo = F}
