@@ -2,7 +2,7 @@
 
 # file: plot_severity_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 8/18/21
+# date last edited: 9/29/21
 # goal: effects of within and outside of plot severity
 
 
@@ -30,6 +30,7 @@ envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv")
 envD2Dat <- read_csv("intermediate-data/temp_humidity_monthly_2019_density_exp.csv") 
 # temp_humidity_data_processing_2019_density_exp
 bioD2Dat <- read_csv("intermediate-data/plot_biomass_2019_density_exp.csv")
+plotsD <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
 
 # model functions
 source("code/brms_model_fitting_functions.R")
@@ -555,7 +556,8 @@ write_csv(betaDatSave, "output/plot_transmission_coefficients_2018_2019_density_
 
 # combine with preddat
 predDat2 <- predDat %>%
-  left_join(betaDat)
+  left_join(betaDat) %>%
+  mutate(intra = if_else(foc == bg, "yes", "no"))
 
 # raw data
 figDat <- sevD1Dat %>%
@@ -564,12 +566,17 @@ figDat <- sevD1Dat %>%
   full_join(sevD2Dat %>%
               select(month, site, plot, treatment, focal, background, bg_severity, edge_severity, foc_healthy_change) %>%
               mutate(year = "2019")) %>%
+  left_join(plotsD %>%
+              select(plot, density_level) %>%
+              unique()) %>%
   mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_relevel("control (water)"),
          focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
          background = fct_recode(background, "Ev first-year" = "Ev seedling"),
          bg_severity = bg_severity * 100,
-         edge_severity = edge_severity * 100)
+         edge_severity = edge_severity * 100,
+         density_level = fct_relevel(density_level, "low", "medium"),
+         intra = if_else(focal == background, "yes", "no"))
 
 # betas for figure
 # sig beta values
@@ -597,7 +604,8 @@ betaDat2 <- betaDat %>%
 # add sig to pred data
 predD2EdgeDat2 <- predD2EdgeDat %>%
   left_join(edgeD2hyps2 %>%
-              select(foc, treatment, sig))
+              select(foc, treatment, sig)) %>%
+  mutate(intra = if_else(foc == "m", "yes", "no"))
 
 # edge coefficients for figure
 edgeD2hyps3 <- edgeD2hyps2 %>%
@@ -631,11 +639,11 @@ fig_theme <- theme_bw() +
         axis.text.x = element_text(size = 8, color = "black"),
         axis.title.y = element_text(size = 10),
         axis.title.x = element_text(size = 10),
-        legend.text = element_text(size = 8),
+        legend.text = element_text(size = 7),
         legend.title = element_text(size = 8),
         legend.background = element_blank(),
         legend.position = "none",
-        legend.margin = margin(-0.1, 0, 0, 0, unit = "cm"),
+        legend.margin = margin(-0.3, 0, -0.1, 0, unit = "cm"),
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
         strip.placement = "outside")
@@ -651,12 +659,30 @@ col_pal = c("black", "#238A8DFF")
 
 textSize = 3
 
+# legend
+legFig <- ggplot(predDat2, aes(x = bg_severity, y = foc_healthy_change)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
+  geom_line(aes(color = treatment)) +
+  geom_point(data = figDat, aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
+  facet_grid(rows = vars(focal),
+             cols = vars(background)) +
+  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  scale_fill_manual(values = col_pal, name = "Disease treatment") +
+  scale_shape(name = "Density treatment") +
+  fig_theme +
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(override.aes = list(size = 1.5, alpha = 1)))
+
+leg <- get_legend(legFig)
+
 # 2018 figure
 pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = foc_healthy_change)) +
+  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment), alpha = 0.5, size = 0.5) +
-  # geom_text(data = filter(yearText, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0, vjust = 1) +
+  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
   # geom_text(data = filter(betaDat2, year == "2018"), 
   #           aes(label = paste("beta", " == ", parm, sep = ""), 
   #               color = treatment), parse = T, hjust = 1, vjust = 0, show.legend = F, size = textSize) +
@@ -664,25 +690,25 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = f
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
-  scale_color_manual(values = col_pal, name = "Treatment") +
-  scale_fill_manual(values = col_pal, name = "Treatment") +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
   xlab("Initial disease severity (%)") +
   ylab("Change in infected tissue") +
-  fig_theme +
-  theme(legend.position = "bottom",
-        legend.direction = "horizontal")
+  fig_theme
 
-tiff("output/plot_transmission_pairwise_figure_2018_density_exp.tiff", width = 9, height = 9, units = "cm", res = 300)
-pairD1Fig
+tiff("output/plot_transmission_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300)
+plot_grid(pairD1Fig, leg,
+          nrow = 2, 
+          rel_heights = c(1, 0.15))
 dev.off()
 
 # 2019 figure
 pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = foc_healthy_change)) +
+  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment), alpha = 0.5, size = 0.5) +
-  # geom_text(data = filter(yearText, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0, vjust = 1) +
+  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
   geom_text(data = filter(betaDat2, year == "2019"), 
             aes(label = paste("beta", " == ", parm, sep = ""), 
                 color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
@@ -690,21 +716,20 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = f
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
-  scale_color_manual(values = col_pal, name = "Treatment") +
-  scale_fill_manual(values = col_pal, name = "Treatment") +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
   xlab("Initial disease severity (%)") +
   ylab("Change in infected tissue") +
-  fig_theme +
-  theme(legend.position = "bottom",
-        legend.direction = "horizontal")
+  fig_theme
 
 edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_change)) +
+  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
   geom_point(data = filter(figDat, year == "2019") %>% 
                mutate(background = "Mv"), 
-             aes(color = treatment), alpha = 0.5, size = 0.5) +
+             aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
   geom_text(data = edgeD2hyps3, 
             aes(label = paste("beta", " == ", parm, sep = ""), 
                 color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
@@ -713,8 +738,8 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_chang
              scales = "free",
              switch = "both") +
   # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
-  scale_color_manual(values = col_pal, name = "Treatment") +
-  scale_fill_manual(values = col_pal, name = "Treatment") +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
   xlab("Initial edge\nMv disease\nseverity (%)") +
   ylab("Change in infected tissue") +
   fig_theme +
@@ -723,11 +748,8 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_chang
         strip.text.y = element_blank(),
         axis.title.x = element_text(size = 10, margin = margin(t = 0, r = 0, b = -0.3, l = 0)))
 
-# legend
-leg <- get_legend(pairD2Fig)
-
 # combine plots
-combFig <- plot_grid(pairD2Fig + theme(legend.position = "none"), 
+combFig <- plot_grid(pairD2Fig, 
                      edgeD2Fig,
                      nrow = 1,
                      labels = LETTERS[1:2],
@@ -735,10 +757,10 @@ combFig <- plot_grid(pairD2Fig + theme(legend.position = "none"),
                      hjust = c(0, 0.3))
 
 # combine
-tiff("output/plot_transmission_pairwise_figure_2019_density_exp.tiff", width = 11, height = 9, units = "cm", res = 300)
+tiff("output/plot_transmission_pairwise_figure_2019_density_exp.tiff", width = 11, height = 10, units = "cm", res = 300)
 plot_grid(combFig, leg,
           nrow = 2,
-          rel_heights = c(0.8, 0.06))
+          rel_heights = c(1, 0.15))
 dev.off()
 
 
@@ -928,12 +950,12 @@ write_csv(ctrlD2hypsOut, "output/edge_experiment_mv_2019_density_exp.csv")
 
 # figure
 pdf("output/edge_experiment_mv_figure_2019_density_exp.pdf", width = 2.5, height = 8)
-ggplot(ctrlD2Dat, aes(x = treatment, y = severity2, color = plant_type)) +
+ggplot(ctrlD2Dat, aes(x = treatment, y = severity2*100, color = plant_type)) +
   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(0.2)) +
   stat_summary(geom = "point", fun = "mean", size = 2.5, position = position_dodge(0.2)) +
   facet_wrap(~ month, scales = "free_y", ncol = 1) +
   labs(x = "Plot treatment", y = "Disease severity (%)") +
   scale_color_manual(values = c("black", "#20A387FF"), name = "Plant type") +
   fig_theme +
-  theme(legend.position = c(0.46, 0.94))
+  theme(legend.position = c(0.7, 0.94))
 dev.off()

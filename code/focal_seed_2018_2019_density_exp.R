@@ -2,7 +2,7 @@
 
 # file: focal_seed_density_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 6/7/21
+# date last edited: 9/29/21
 # goal: analyses of seeds as a function of density and severity
 
 # Ricker model for density analysis:
@@ -65,13 +65,13 @@ source("code/brms_model_fitting_functions.R")
 
 # severity data
 sevD1Dat2 <- sevD1Dat %>%
-  select(-lesions) %>%
+  select(month, site, plot, treatment, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
 
 sevD2Dat2 <- sevD2Dat %>%
-  select(-lesions) %>%
+  select(month, site, plot, treatment, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
@@ -352,13 +352,13 @@ ggplot(seedD1Dat3 %>% filter(seeds > 0), aes(x = density, y = log_seeds, color =
 # non non-zero seeds for Ev seedlings with low Ev seedling density
 
 # fit models
-seedD1Mod <- brm(data = seedD1Dat3, family = hurdle_lognormal,
-                 bf(seeds ~ density * foc * bg * fungicide + (1|site),
-                    hu ~ density * foc * bg * fungicide + (1|site)),
-                 prior <- c(prior(normal(3.5, 1), class = "Intercept"),
-                            prior(normal(0, 10), class = "Intercept", dpar = "hu"),
-                            prior(normal(0, 10), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+# seedD1Mod <- brm(data = seedD1Dat3, family = hurdle_lognormal,
+#                  bf(seeds ~ density * foc * bg * fungicide + (1|site),
+#                     hu ~ density * foc * bg * fungicide + (1|site)),
+#                  prior <- c(prior(normal(3.5, 1), class = "Intercept"),
+#                             prior(normal(0, 10), class = "Intercept", dpar = "hu"),
+#                             prior(normal(0, 10), class = "b")), # use default for sigma
+#                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
 # cannot fit this model - a lot of divergent transitions and transitions that exceed max treedepth
 # I think because there's too much missing data when it's split
 

@@ -2,7 +2,7 @@
 
 # file: focal_growth_2018_2019_density_exp
 # author: Amy Kendig
-# date last edited: 8/18/21
+# date last edited: 9/29/21
 # goal: analyses of plant growth as a function of density and severity
 
 
@@ -43,13 +43,13 @@ source("code/brms_model_fitting_functions.R")
 
 # severity data
 sevD1Dat2 <- sevD1Dat %>%
-  select(-lesions) %>%
+  select(month, site, plot, treatment, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
 
 sevD2Dat2 <- sevD2Dat %>%
-  select(-lesions) %>%
+  select(month, site, plot, treatment, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
@@ -111,7 +111,7 @@ growthD2Dat <- mvBioD2Dat %>%
               rename(plot_biomass = biomass.g_m2))
 
 
-#### density models ####
+#### models ####
 
 # initial visualization
 ggplot(growthD1Dat, aes(density, plant_growth, color = treatment)) +
@@ -143,13 +143,13 @@ growthD1Mod <- brm(data = growthD1Dat2, family = gaussian,
                    plant_growth ~ density * foc * bg * fungicide + (1|site),
                    prior <- c(prior(normal(0.75, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-# 120 divergent transitions and 9 transitions exceed max treedepth
-growthD1Mod <- update(growthD1Mod, control = list(adapt_delta = 0.999999, max_treedepth = 15))
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                   control = list(adapt_delta = 0.9999, max_treedepth = 15)) 
+# 36 divergent transitions, 864 transitions exceeded max_treedepth
 mod_check_fun(growthD1Mod)
 
 growthD2Mod <- update(growthD1Mod, 
-                       control = list(adapt_delta = 0.9999999, max_treedepth = 15), 
+                      control = list(adapt_delta = 0.99999, max_treedepth = 15), 
                        newdata = growthD2Dat2)
 mod_check_fun(growthD2Mod)
 
@@ -159,13 +159,21 @@ growthD2Mod2 <- brm(data = growthD2Dat2, family = gaussian,
                    prior <- c(prior(normal(3, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
                    iter = 6000, warmup = 1000, chains = 3, cores = 3, 
-                   control = list(adapt_delta = 0.999, max_treedepth = 15)) 
+                   control = list(adapt_delta = 0.99999, max_treedepth = 15)) 
 mod_check_fun(growthD2Mod2)
+
+# subset data to remove high EvA biomass
+growthD2Dat2b <- growthD2Dat2 %>%
+  filter(!(bg == "a" & plot_biomass > 150))
+
+growthD2Mod2b <- update(growthD2Mod2, newdata = growthD2Dat2b)
+summary(growthD2Mod2b)
 
 # save models
 save(growthD1Mod, file = "output/focal_growth_density_model_2018_density_exp.rda")
 save(growthD2Mod, file = "output/focal_growth_density_model_2019_density_exp.rda")
 save(growthD2Mod2, file = "output/focal_growth_biomass_model_2019_density_exp.rda")
+save(growthD2Mod2b, file = "output/focal_growth_biomass_model_no_high_EvA_2019_density_exp.rda")
 
 
 #### intraspecific vs. interspecific ####
@@ -357,6 +365,17 @@ growthD2alphas <- hypothesis(growthD2Mod2,
                                mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
                                evS_evA_ctrl_alpha, evS_evA_fung_alpha))
 
+growthD2balphas <- hypothesis(growthD2Mod2b, 
+                             c(mv_mv_ctrl_alpha, mv_mv_fung_alpha, 
+                               evS_mv_ctrl_alpha, evS_mv_fung_alpha, 
+                               evA_mv_ctrl_alpha, evA_mv_fung_alpha,
+                               evS_evS_ctrl_alpha, evS_evS_fung_alpha,
+                               mv_evS_ctrl_alpha, mv_evS_fung_alpha, 
+                               evA_evS_ctrl_alpha, evA_evS_fung_alpha, 
+                               evA_evA_ctrl_alpha, evA_evA_fung_alpha,
+                               mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
+                               evS_evA_ctrl_alpha, evS_evA_fung_alpha))
+
 # combine alphas
 alphaDat <- growthD1alphas[[1]] %>%
   mutate(year = "2018",
@@ -367,6 +386,13 @@ alphaDat <- growthD1alphas[[1]] %>%
                         "s_a_ctrl", "s_a_fung")) %>%
   full_join(growthD2alphas[[1]] %>%
               mutate(year = "2019",
+                     foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
+                                    "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
+                                    "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
+                                    "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
+                                    "s_a_ctrl", "s_a_fung"))) %>%
+  full_join(growthD2balphas[[1]] %>%
+              mutate(year = "2019b",
                      foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
                                     "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
                                     "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
@@ -396,7 +422,8 @@ write_csv(alphaDatSave, "output/focal_growth_competition_coefficients_2018_2019_
 
 # combine with preddat
 predDat2 <- predDat %>%
-  left_join(alphaDat)
+  left_join(alphaDat) %>%
+  mutate(intra = if_else(foc == bg, "yes", "no"))
 
 # raw data
 figDat <- growthD1Dat2 %>%
@@ -405,10 +432,15 @@ figDat <- growthD1Dat2 %>%
   full_join(growthD2Dat2 %>%
               select(site, plot, treatment, sp, age, ID, focal, background, plot_biomass, plant_growth) %>%
               mutate(year = "2019")) %>%
+  left_join(plotsD %>%
+              select(plot, density_level) %>%
+              unique()) %>%
   mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_relevel("control (water)"),
          focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling"))
+         background = fct_recode(background, "Ev first-year" = "Ev seedling"),
+         density_level = fct_relevel(density_level, "low", "medium"),
+         intra = if_else(focal == background, "yes", "no"))
 
 # alphas for figure
 # sig beta values
@@ -430,9 +462,7 @@ alphaDat2 <- alphaDat %>%
               mutate(plant_growth = min(c(growth, lower))) %>%
               ungroup() %>%
               select(-c(growth, lower))) %>%
-  mutate(comp = as.character(sprintf("%.3f",round(Estimate, 3))),
-         plant_growth = case_when(foc_bg_trt %in% c("s_s_ctrl", "s_m_ctrl") ~ plant_growth + 0.5,
-                                  TRUE ~ plant_growth))
+  mutate(comp = as.character(sprintf("%.3f",round(Estimate, 3))))
 
 
 # figure settings
@@ -444,11 +474,11 @@ fig_theme <- theme_bw() +
         axis.text.x = element_text(size = 8, color = "black"),
         axis.title.y = element_text(size = 10),
         axis.title.x = element_text(size = 10),
-        legend.text = element_text(size = 8),
+        legend.text = element_text(size = 7),
         legend.title = element_text(size = 8),
         legend.background = element_blank(),
         legend.position = "none",
-        legend.margin = margin(-0.1, 0, 0, 0, unit = "cm"),
+        legend.margin = margin(-0.3, 0, -0.1, 0, unit = "cm"),
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
         strip.placement = "outside")
@@ -464,35 +494,55 @@ col_pal = c("black", "#238A8DFF")
 
 textSize = 3
 
+# legend
+legFig <- ggplot(predDat2, aes(x = density, y = plant_growth)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
+  geom_line(aes(color = treatment)) +
+  geom_point(data = figDat, aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
+  facet_grid(rows = vars(focal),
+             cols = vars(background)) +
+  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  scale_fill_manual(values = col_pal, name = "Disease treatment") +
+  scale_shape(name = "Density treatment") +
+  fig_theme +
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(override.aes = list(size = 1.5, alpha = 1)))
+
+leg <- get_legend(legFig)
+
+
 # 2018
 pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = density, y = plant_growth)) +
+  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment), alpha = 0.5, size = 0.5) +
-  # geom_text(data = filter(yearText, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0) +
+  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
-  scale_color_manual(values = col_pal, name = "Treatment") +
-  scale_fill_manual(values = col_pal, name = "Treatment") +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
   xlab(expression(paste("Competitor density (", m^-2, ")", sep = ""))) +
   ylab("Plant growth") +
-  fig_theme +
-  theme(legend.position = "bottom",
-        legend.direction = "horizontal")
+  fig_theme
 
-tiff("output/focal_growth_pairwise_figure_2018_density_exp.tiff", width = 9, height = 9, units = "cm", res = 300)
-pairD1Fig
+# print
+tiff("output/focal_growth_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300)
+plot_grid(pairD1Fig, leg,
+          nrow = 2, 
+          rel_heights = c(1, 0.15))
 dev.off()
 
 # 2019
 pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = plot_biomass, y = plant_growth)) +
+  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment), alpha = 0.5, size = 0.5) +
-  # geom_text(data = filter(yearText, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0) +
+  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
   geom_text(data = filter(alphaDat2, year == "2019"), 
             aes(label = paste("alpha", "==", comp, sep = ""), 
                 color = treatment), parse = T, hjust = 1, vjust = 0.2, show.legend = F, size = textSize) +
@@ -500,53 +550,61 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = plot_biomass, y = 
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
-  scale_color_manual(values = col_pal, name = "Treatment") +
-  scale_fill_manual(values = col_pal, name = "Treatment") +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
   xlab(expression(paste("Competitor biomass (g ", m^-2, ")", sep = ""))) +
-  ylab("Focal biomass (g)") +
-  fig_theme +
-  theme(legend.position = "right")
+  ylab("Focal biomass (ln[g])") +
+  fig_theme
 
-compD2Fig <- ggplot(growthD2hyps, aes(x = Competitor, y = estimate, color = treatment)) +
-  geom_hline(yintercept = 0, size = 0.5, linetype = "dashed") +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0, position = position_dodge(0.4)) +
-  geom_point(size = 2, position = position_dodge(0.4)) +
-  scale_color_manual(values = col_pal, name = "Treatment") +
-  ylab(expression(paste("Inter - intra competition ( ", 10^-3, ")", sep = ""))) +
-  fig_theme +
-  theme(axis.title.y = element_text(size = 10, hjust = 0))
+# compD2Fig <- ggplot(growthD2hyps, aes(x = Competitor, y = estimate, color = treatment)) +
+#   geom_hline(yintercept = 0, size = 0.5, linetype = "dashed") +
+#   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0, position = position_dodge(0.4)) +
+#   geom_point(size = 2, position = position_dodge(0.4)) +
+#   scale_color_manual(values = col_pal, name = "Treatment") +
+#   ylab(expression(paste("Inter - intra competition ( ", 10^-3, ")", sep = ""))) +
+#   fig_theme +
+#   theme(axis.title.y = element_text(size = 10, hjust = 0))
 
 # legend
-leg <- get_legend(pairD2Fig)
-
-# right column
-rightFig <- plot_grid(compD2Fig, leg,
-                      ncol = 1,
-                      labels = c("B", NA),
-                      rel_heights = c(1, 0.4))
+# leg <- get_legend(pairD2Fig)
+# 
+# # right column
+# rightFig <- plot_grid(compD2Fig, leg,
+#                       ncol = 1,
+#                       labels = c("B", NA),
+#                       rel_heights = c(1, 0.4))
 
 # combine
-tiff("output/focal_growth_pairwise_figure_2018_2019_density_exp.tiff", width = 12, height = 9, units = "cm", res = 300)
-plot_grid(pairD2Fig + theme(legend.position = "none"), rightFig,
-          nrow = 1, ncol = 2,
-          labels = c("A", NA),
-          rel_widths = c(1, 0.4))
+tiff("output/focal_growth_pairwise_figure_2019_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300)
+# plot_grid(pairD2Fig + theme(legend.position = "none"), rightFig,
+#           nrow = 1, ncol = 2,
+#           labels = c("A", NA),
+#           rel_widths = c(1, 0.4))
+plot_grid(pairD2Fig, leg,
+          nrow = 2, 
+          rel_heights = c(1, 0.15))
 dev.off()
 
 
 #### supplementary figure ####
 
-yearText2 <- yearText %>%
-  mutate(density = c(-0.1, -0.1),
-         plant_growth = c(0.45, 2.3))
+yearText <- tibble(year = c("2018", "2019"),
+                   density = c(-0.1, -0.1),
+                   plant_growth = c(0.45, 2.3),
+                   background = "Ev adult",
+                   focal = "Ev adult",
+                   treatment = "fungicide")
 
 # 2018
-rawD1Fig <- ggplot(growthD1Dat, aes(x = density, y = plant_growth, color = treatment)) +
+rawD1Fig <- growthD1Dat %>%
+  mutate(focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
+         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
+  ggplot(aes(x = density, y = plant_growth, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0, alpha = 0.5) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean") +
-  geom_text(data = filter(yearText2, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0) +
+  geom_text(data = filter(yearText, year == "2018"), aes(label = year), color = "black", size = textSize, hjust = 0) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
              scales = "free",
@@ -559,11 +617,14 @@ rawD1Fig <- ggplot(growthD1Dat, aes(x = density, y = plant_growth, color = treat
         legend.direction = "horizontal")
 
 # 2019
-rawD2Fig <- ggplot(growthD2Dat, aes(x = density, y = plant_growth, color = treatment)) +
+rawD2Fig <- growthD2Dat %>%
+  mutate(focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
+         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
+  ggplot(aes(x = density, y = plant_growth, color = treatment)) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0, alpha = 0.5) +
   stat_summary(geom = "line", fun = "mean") +
   stat_summary(geom = "point", fun = "mean") +
-  geom_text(data = filter(yearText2, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0) +
+  geom_text(data = filter(yearText, year == "2019"), aes(label = year), color = "black", size = textSize, hjust = 0) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
              scales = "free",
@@ -596,6 +657,7 @@ dev.off()
 
 
 #### severity initial visualizations ####
+# not including biomass ~ severity because there are potential feedbacks (biomass increases severity)
 
 # remove repeat plot 1's
 growthD1Dat3 <- growthD1Dat %>%

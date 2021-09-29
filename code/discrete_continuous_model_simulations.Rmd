@@ -30,7 +30,7 @@ alpha_add <- 0
 # germination fraction
 # seed survival
 # biomass-to-seed conversion
-surv_adjust <- 0.5
+surv_adjust <- 1
 
 
 #### initial biomass ####

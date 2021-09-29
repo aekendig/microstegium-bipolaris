@@ -31,16 +31,16 @@ beta_PF,adult perennial-first-year perennial transmission,0,NA,NA,day^-1^ g^-1^,
 beta_PP,adult perennial-adult perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
 p0,seed infection parameter,-2.914,-3.199,-2.647,"NA",experiment
 p1,seed infection parameter,2.524,1.184,3.863,"NA",experiment
-g_I,infected annual germination fraction,0.158,0.182,0.458,"NA",experiment
-g_S,susceptible annual germination fraction,0.3835,0.733,0.8,"NA",experiment
-g_P,perennial germination fraction,0.12024205757237293,0.034657968424431966,0.4395512950320474,"NA",experiment
-c_A,annual seed conversion,38.45606699651163,69.19096928570664,84.42525364871562,seeds g^-1^,experiment
-c_F,first-year perennial seed conversion,4.2380153945279355,6.997022970125732,9.999516239481084,seeds g^-1^,experiment
-c_P,adult perennial seed conversion,9.542249027589817,16.209390679370646,21.98089920102739,seeds g^-1^,experiment
+g_I,infected annual germination fraction,0.316,0.182,0.458,"NA",experiment
+g_S,susceptible annual germination fraction,0.767,0.733,0.8,"NA",experiment
+g_P,perennial germination fraction,0.24048411514474585,0.034657968424431966,0.4395512950320474,"NA",experiment
+c_A,annual seed conversion,76.91213399302326,69.19096928570664,84.42525364871562,seeds g^-1^,experiment
+c_F,first-year perennial seed conversion,8.476030789055871,6.997022970125732,9.999516239481084,seeds g^-1^,experiment
+c_P,adult perennial seed conversion,19.084498055179633,16.209390679370646,21.98089920102739,seeds g^-1^,experiment
 e_A,annual establishment fraction,0.9490323342553639,0.9144625556014616,0.9806709158889197,"NA",experiment
 e_P,perennial establishment fraction,0.5531020953855147,0.4065253408230047,0.6958544000552291,"NA",experiment
-l_P,adult perennial survival fraction,0.43824024621506097,0.6196207826181906,0.9826180206947736,"NA",experiment
-n_P,adult perennial surviving biomass,0.19021384125612448,NA,NA,"NA",experiment
+l_P,adult perennial survival fraction,0.8764804924301219,0.6196207826181906,0.9826180206947736,"NA",experiment
+n_P,adult perennial surviving biomass,0.38042768251224895,NA,NA,"NA",experiment
 b_A,annual initial biomass,0.031,NA,NA,g,experiment
 b_F,first-year perennial initial biomass,0.004,NA,NA,g,experiment
 b_P,adult perennial initial biomass,0.031,NA,NA,g,experiment
@@ -60,6 +60,6 @@ v_F,perennial first-year infected tissue loss,0.001,NA,NA,day^-1^,"NA"
 v_P,perennial adult infected tissue loss,0.001,NA,NA,day^-1^,"NA"
 h,inoculum addition to litter,5500,NA,NA,g^-1^,Benitez et al. 2020
 b,inoculum loss from litter,0.5,NA,NA,day^-1^,"NA"
-s_A,annual surviving seed fraction,0.075,NA,NA,"NA",Redwood et al. 2018
-s_P,perennial surviving seed fraction,0.025,NA,NA,"NA",Garrison and Stier 2010
+s_A,annual surviving seed fraction,0.15,NA,NA,"NA",Redwood et al. 2018
+s_P,perennial surviving seed fraction,0.05,NA,NA,"NA",Garrison and Stier 2010
 d,annual litter decomposition fraction,0.59,NA,NA,"NA",DeMeester and Richter 2010
