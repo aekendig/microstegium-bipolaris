@@ -21,10 +21,6 @@ library(sensobol)
 ```{r parameters, include=FALSE}
 #### adjustments ####
 
-# adjustment for competition coefficients (including litter sensitivity)
-alpha_mult <- 1
-alpha_add <- 0
-
 # adjustment for survival constants
 # perennial adult survival
 # germination fraction
@@ -70,10 +66,6 @@ load("../output/focal_growth_biomass_model_2019_density_exp.rda")
 # yes, some competition coefficients for perennial adults are only significant with fungicide
 # let's use control values with disease
 
-# Stricker data (for alpha_AA)
-# stricker <- read_csv("../intermediate-data/stricker_2016_extracted_figure.csv")
-# max biomass is a fungicide treated plot
-
 # initial biomass values
 b_A0 <- init_bio_parms %>% filter(Parameter == "b_A") %>% pull(Estimate)
 b_F0 <- init_bio_parms %>% filter(Parameter == "b_F") %>% pull(Estimate)
@@ -86,75 +78,89 @@ growth_mod_parms <- as_draws_df(growthD2Mod2)  %>%
   transmute(r_A = Intercept - log(b_A0),
             r_F = (Intercept + focs) - log(b_F0),
             r_P = (Intercept + foca) - log(b_P0),
-            alpha_AA_fung = plot_biomass + plot_biomass_fungicide,
-            alpha_FA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide,
-            alpha_PA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide,
-            alpha_AF_fung = plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide,
-            alpha_FF_fung = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide,
-            alpha_PF_fung = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide,
-            alpha_AP_fung = plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide,
-            alpha_FP_fung = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide,
-            alpha_PP_fung = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide,
-            alpha_AA = plot_biomass,
-            alpha_FA = plot_biomass + plot_biomass_focs,
-            alpha_PA = plot_biomass + plot_biomass_foca,
-            alpha_AF = plot_biomass + plot_biomass_bgs,
-            alpha_FF = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs,
-            alpha_PF = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs,
-            alpha_AP = plot_biomass + plot_biomass_bga,
-            alpha_FP = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga,
-            alpha_PP = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga) %>%
+            coef_AA_fung = plot_biomass + plot_biomass_fungicide,
+            coef_FA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide,
+            coef_PA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide,
+            coef_AF_fung = plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide,
+            coef_FF_fung = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide,
+            coef_PF_fung = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide,
+            coef_AP_fung = plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide,
+            coef_FP_fung = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide,
+            coef_PP_fung = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide,
+            coef_AA = plot_biomass,
+            coef_FA = plot_biomass + plot_biomass_focs,
+            coef_PA = plot_biomass + plot_biomass_foca,
+            coef_AF = plot_biomass + plot_biomass_bgs,
+            coef_FF = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs,
+            coef_PF = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs,
+            coef_AP = plot_biomass + plot_biomass_bga,
+            coef_FP = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga,
+            coef_PP = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga) %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
   mutate(estimate = case_when(substr(parameter, 1, 1) == "r" ~ estimate,
-                              TRUE ~ estimate * -1)) %>% # competition coefficients
+                              TRUE ~ estimate)) %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
-            Description = c("annual-annual competition",
-                            "annual-annual competition (disease-free)",
-                            "annual-first-year perennial competition",
-                            "annual-first-year perennial competition (disease-free)",
-                            "annual-adult perennial competition",
-                            "annual-adult perennial competition (disease-free)",
-                            "first-year perennial-annual competition",
-                            "first-year perennial-annual competition (disease-free)",
-                            "first-year perennial-first-year perennial competition",
-                            "first-year perennial-first-year perennial competition (disease-free)",
-                            "first-year perennial-adult perennial competition",
-                            "first-year perennial-adult perennial competition (disease-free)",
-                            "adult perennial-annual competition",
-                            "adult perennial-annual competition (disease-free)",
-                            "adult perennial-first-year perennial competition",
-                            "adult perennial-first-year perennial competition (disease-free)",
-                            "adult perennial-adult perennial competition",
-                            "adult perennial-adult perennial competition (disease-free)",
+            Description = c("annual-annual interaction",
+                            "annual-annual interaction (disease-free)",
+                            "annual-first-year perennial interaction",
+                            "annual-first-year perennial interaction (disease-free)",
+                            "annual-adult perennial interaction",
+                            "annual-adult perennial interaction (disease-free)",
+                            "first-year perennial-annual interaction",
+                            "first-year perennial-annual interaction (disease-free)",
+                            "first-year perennial-first-year perennial interaction",
+                            "first-year perennial-first-year perennial interaction (disease-free)",
+                            "first-year perennial-adult perennial interaction",
+                            "first-year perennial-adult perennial interaction (disease-free)",
+                            "adult perennial-annual interaction",
+                            "adult perennial-annual interaction (disease-free)",
+                            "adult perennial-first-year perennial interaction",
+                            "adult perennial-first-year perennial interaction (disease-free)",
+                            "adult perennial-adult perennial interaction",
+                            "adult perennial-adult perennial interaction (disease-free)",
                             "annual growth rate",
                             "perennial first-year growth rate",
                             "perennial adult growth rate"),
             Estimate = case_when(parameter %in% c("r_A", "r_F", "r_P") ~ estimate/160, # r may not be sig, but we need an estimate
-                                 .lower < 0 & .upper > 0 ~ 0,
-                                 estimate < 0 ~ 0, # remove facilitation
                                  TRUE ~ estimate),
             Lower = case_when(parameter %in% c("r_A", "r_F", "r_P") ~ .lower/160,
-                              #parameter == "alpha_AA" ~ NA_real_, # not estimated with replicates
-                              .lower < 0 & .upper > 0 ~ NA_real_,
-                              estimate < 0 ~ NA_real_,
                               TRUE ~ .lower),
             Upper = case_when(parameter %in% c("r_A", "r_F", "r_P") ~ .upper/160,
-                              #parameter == "alpha_AA" ~ NA_real_,
-                              .lower < 0 & .upper > 0 ~ NA_real_,
-                              estimate < 0 ~ NA_real_,
                               TRUE ~ .upper),
             Units = c(rep("g^-1^", 18), rep("day^-1^", 3)),
             Source = "experiment")
 
-# adjust alpha values
-growth_mod_parms2 <- growth_mod_parms %>%
-  mutate(Estimate = case_when(substr(Parameter, 1, 5) == "alpha" & substr(Parameter, 8,8) == "A" ~ 0.001, # alpha adjustments
-                              substr(Parameter, 1, 5) == "alpha" & substr(Parameter, 8, 8) == "P" ~ 0.0065,
-                                 TRUE ~ Estimate))
+# summarize by plant group effects
+alpha_parms <- growth_mod_parms %>%
+  filter(substr(Parameter, 1, 4) == "coef") %>%
+  mutate(Competitor = substr(Parameter, 7, 7),
+         Treatment = if_else(str_detect(Parameter, "fung") == T, "fungicide", "control"),
+         Estimate = if_else(Estimate > 0, 0, -10 * Estimate)) %>% # remove facilitation, make alphas positive, multiply by 10
+  group_by(Competitor, Treatment) %>%
+  summarise(Estimate = mean(Estimate)) %>%
+  ungroup() %>%
+  expand_grid(tibble(Focal = c("A", "F", "P"))) %>%
+  transmute(Parameter = paste0("alpha_", Focal, Competitor),
+            Parameter = if_else(Treatment == "fungicide", paste0(Parameter, "_fung"), Parameter),
+            Description = c(rep("competitive effects of annual", 3),
+                            rep("competitive effects of annual (disease free)", 3),
+                            rep("competitive effects of first-year perennial", 3),
+                            rep("competitive effects of first-year perennial (disease free)", 3),
+                            rep("competitive effects of adult perennial", 3),
+                            rep("competitive effects of adult perennial (disease free)", 3)),
+            Estimate = Estimate,
+            Lower = NA,
+            Upper = NA,
+            Units = "g^-1^",
+            Source = "experiment")
+  
+  # mutate(Estimate = case_when(substr(Parameter, 1, 5) == "alpha" & substr(Parameter, 8,8) == "A" ~ 0.001, # alpha adjustments
+  #                             substr(Parameter, 1, 5) == "alpha" & substr(Parameter, 8, 8) == "P" ~ 0.0065,
+  #                                TRUE ~ Estimate))
 
 
 #### transmission ####
@@ -447,7 +453,7 @@ mv_lit_parms <- as_draws_df(mv_bh_mod)  %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
             Description = "annual sensitivity to litter",
-            Estimate = alpha_mult * estimate,
+            Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
             Units = "g^-1^",
@@ -465,7 +471,7 @@ ev_lit_parms <- as_draws_df(ev_bh_mod)  %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter,
             Description = "perennial sensitivity to litter",
-            Estimate = alpha_mult * estimate,
+            Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
             Units = "g^-1^",
@@ -502,7 +508,8 @@ lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC",
 
 
 #### combine ####
-parms <- growth_mod_parms2 %>%
+parms <- growth_mod_parms %>%
+  full_join(alpha_parms) %>%
   full_join(trans_mod_parms) %>%
   full_join(seed_inf_parms) %>%
   full_join(mv_germ_parms) %>%
@@ -1081,7 +1088,7 @@ modF_inv <- disc_AFP_mod(AS0 = filter(modA_fin, species == "Susceptible annual")
                       IP0 = 0, 
                       BP0 = 0, 
                       BF0 = 0, 
-                      simtime = 100, gs_days = gs_time, disc_parms = parms, con_parms = parms)
+                      simtime = 25, gs_days = gs_time, disc_parms = parms, con_parms = parms)
 
 # create figure
 modF_inv %>%
@@ -1137,7 +1144,7 @@ modF_inv %>%
 
 ```
 
-### Perennial adult  invades annual
+### Perennial adult invades annual
 ```{r P-invades, echo = F}
 modA_fin <- modA %>%
   filter(time == max(time))
@@ -1153,7 +1160,7 @@ modP_inv <- disc_AFP_mod(AS0 = filter(modA_fin, species == "Susceptible annual")
                       IP0 = 0, 
                       BP0 = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 100, 
                       BF0 = 0, 
-                      simtime = 100, gs_days = gs_time, disc_parms = parms, con_parms = parms)
+                      simtime = 25, gs_days = gs_time, disc_parms = parms, con_parms = parms)
 
 # create figure
 modP_inv %>%
@@ -1209,7 +1216,245 @@ modP_inv %>%
 
 ```
 
-### Annual invades perennial
+
+### Annual invades perennial without disease
+```{r A-invades-no-disease, echo = F}
+modF_fin <- modF %>%
+  filter(time == max(time))
+
+parms_df <- parms %>%
+  filter(!Parameter %in% c("alpha_AA", "alpha_AF", "alpha_AP", "alpha_FA", "alpha_PA", "alpha_FF_fung", "alpha_FP_fung", "alpha_PP_fung", "alpha_PF_fung")) %>%
+  mutate(Estimate = case_when(Parameter %in% c("beta_AC", "beta_AA", "beta_AF", "beta_AP", "beta_FA", "beta_PA", "p1") ~ 0,
+                              Parameter == "p0" ~ -100,
+                              TRUE ~ Estimate),
+         Parameter = str_replace(Parameter, "_fung", ""))
+
+modA_df_inv <- disc_AFP_mod(AS0 = 100, 
+                      AI0 = 0, 
+                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
+                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
+                      L0 = filter(modF_fin, species == "Litter")$N, 
+                      C0 = filter(modF_fin, species == "Conidia")$N, 
+                      IA0 = 0, 
+                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
+                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
+                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
+                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
+                      simtime = 25, gs_days = gs_time, disc_parms = parms_df, con_parms = parms_df)
+
+# create figure
+modA_df_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Number of plants')
+
+modA_df_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log number of plants')
+
+modA_df_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_df_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_df_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_df_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_df_inv %>%
+  filter(time == max(time))
+
+```
+
+
+### Annual invades perennial with disease transmission only
+```{r A-invades-beta, echo = F}
+modF_fin <- modF %>%
+  filter(time == max(time))
+
+parms_beta <- parms %>%
+  filter(!Parameter %in% c("alpha_AA", "alpha_AF", "alpha_AP", "alpha_FA", "alpha_PA", "alpha_FF_fung", "alpha_FP_fung", "alpha_PP_fung", "alpha_PF_fung")) %>%
+  mutate(Estimate = case_when(Parameter %in% c("p1") ~ 0,
+                              Parameter == "p0" ~ -100,
+                              TRUE ~ Estimate),
+         Parameter = str_replace(Parameter, "_fung", ""))
+
+modA_beta_inv <- disc_AFP_mod(AS0 = 100, 
+                      AI0 = 0, 
+                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
+                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
+                      L0 = filter(modF_fin, species == "Litter")$N, 
+                      C0 = filter(modF_fin, species == "Conidia")$N, 
+                      IA0 = 0, 
+                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
+                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
+                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
+                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
+                      simtime = 25, gs_days = gs_time, disc_parms = parms_beta, con_parms = parms_beta)
+
+# create figure
+modA_beta_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Number of plants')
+
+modA_beta_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log number of plants')
+
+modA_beta_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_beta_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_beta_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_beta_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_beta_inv %>%
+  filter(time == max(time))
+
+```
+
+
+### Annual invades perennial with disease transmission and seeds
+```{r A-invades-bs, echo = F}
+modF_fin <- modF %>%
+  filter(time == max(time))
+
+parms_bs <- parms %>%
+  filter(!Parameter %in% c("alpha_AA", "alpha_AF", "alpha_AP", "alpha_FA", "alpha_PA", "alpha_FF_fung", "alpha_FP_fung", "alpha_PP_fung", "alpha_PF_fung")) %>%
+  mutate(Parameter = str_replace(Parameter, "_fung", ""))
+
+modA_bs_inv <- disc_AFP_mod(AS0 = 100, 
+                      AI0 = 0, 
+                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
+                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
+                      L0 = filter(modF_fin, species == "Litter")$N, 
+                      C0 = filter(modF_fin, species == "Conidia")$N, 
+                      IA0 = 0, 
+                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
+                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
+                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
+                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
+                      simtime = 25, gs_days = gs_time, disc_parms = parms_bs, con_parms = parms_bs)
+
+# create figure
+modA_bs_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Number of plants')
+
+modA_bs_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log number of plants')
+
+modA_bs_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_bs_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_bs_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_bs_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_bs_inv %>%
+  filter(time == max(time))
+
+```
+
+
+### Annual invades perennial all disease
 ```{r A-invades, echo = F}
 modF_fin <- modF %>%
   filter(time == max(time))
@@ -1225,7 +1470,7 @@ modA_inv <- disc_AFP_mod(AS0 = 100,
                       IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
                       BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
                       BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
-                      simtime = 100, gs_days = gs_time, disc_parms = parms, con_parms = parms)
+                      simtime = 25, gs_days = gs_time, disc_parms = parms, con_parms = parms)
 
 # create figure
 modA_inv %>%
@@ -1278,6 +1523,35 @@ modA_inv %>%
 
 modA_inv %>%
   filter(time == max(time))
+
+```
+
+
+### Invasion figure 
+```{r invasion-fig, echo = F}
+
+# extract data
+inv_dat <- modF %>%
+  filter(time >= (max(time) - 5)) %>%
+  mutate(stage = "Ev established",
+         time = time - (max(time) - 6)) %>%
+  full_join(modA_inv %>%
+              filter(time <= 14) %>%
+              mutate(stage = "Mv invasion",
+                     time = time + 11)) %>%
+  filter(species %in% c("Annual biomass", "Perennial adult biomass", "Perennial first-year biomass")) %>%
+  mutate(Species = word(species, 1) %>%
+           fct_recode("Mv" = "Annual", "Ev" = "Perennial") %>%
+           fct_relevel("Ev")) %>%
+  group_by(time, stage, Species) %>%
+  summarise(N = sum(N)) %>%
+  ungroup()
+
+# figure
+ggplot(inv_dat, aes(x = time, y = N)) +
+  geom_line(aes(color = Species))
+
+#### start here: format figure ####
 
 ```
 
