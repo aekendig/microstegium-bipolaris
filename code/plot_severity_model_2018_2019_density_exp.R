@@ -368,6 +368,127 @@ write_csv(sevD1base, "output/plot_transmission_baseline_2018_density_exp.csv")
 write_csv(sevD2base, "output/plot_transmission_baseline_2019_density_exp.csv")
 
 
+#### transmission coefficients (betas) ####
+
+# are betas different than 0? (_beta)
+# does fungicide treatment affect betas? (_trt_eff, fung_beta - ctrl_beta)
+
+# Mv background
+mv_mv_ctrl_beta = "bg_severity = 0"
+mv_mv_fung_beta = "bg_severity + bg_severity:fungicide = 0"
+mv_mv_trt_eff = "bg_severity:fungicide = 0"
+evS_mv_ctrl_beta = "bg_severity + bg_severity:focs = 0"
+evS_mv_fung_beta = "bg_severity + bg_severity:fungicide + bg_severity:focs + bg_severity:focs:fungicide = 0"
+evS_mv_trt_eff = "bg_severity:fungicide + bg_severity:focs:fungicide = 0"
+evA_mv_ctrl_beta = "bg_severity + bg_severity:foca = 0"
+evA_mv_fung_beta = "bg_severity + bg_severity:fungicide + bg_severity:foca + bg_severity:foca:fungicide = 0"
+evA_mv_trt_eff = "bg_severity:fungicide + bg_severity:foca:fungicide = 0"
+
+# EvS background
+evS_evS_ctrl_beta = "bg_severity + bg_severity:focs + bg_severity:bgs + bg_severity:focs:bgs = 0"
+evS_evS_fung_beta = "bg_severity + bg_severity:focs + bg_severity:bgs + bg_severity:focs:bgs + bg_severity:fungicide + bg_severity:focs:fungicide + bg_severity:bgs:fungicide + bg_severity:focs:bgs:fungicide = 0"
+evS_evS_trt_eff = "bg_severity:fungicide + bg_severity:focs:fungicide + bg_severity:bgs:fungicide + bg_severity:focs:bgs:fungicide = 0"
+mv_evS_ctrl_beta = "bg_severity +  bg_severity:bgs = 0"
+mv_evS_fung_beta = "bg_severity +  bg_severity:bgs + bg_severity:fungicide + bg_severity:bgs:fungicide = 0"
+mv_evS_trt_eff = "bg_severity:fungicide + bg_severity:bgs:fungicide = 0"
+evA_evS_ctrl_beta = "bg_severity +  bg_severity:bgs + bg_severity:foca + bg_severity:foca:bgs = 0"
+evA_evS_fung_beta = "bg_severity +  bg_severity:bgs + bg_severity:foca + bg_severity:foca:bgs + bg_severity:fungicide +  bg_severity:bgs:fungicide + bg_severity:foca:fungicide + bg_severity:foca:bgs:fungicide = 0"
+evA_evS_trt_eff = "bg_severity:fungicide +  bg_severity:bgs:fungicide + bg_severity:foca:fungicide + bg_severity:foca:bgs:fungicide = 0"
+
+# EvA background
+evA_evA_ctrl_beta = "bg_severity + bg_severity:foca + bg_severity:bga + bg_severity:foca:bga = 0"
+evA_evA_fung_beta = "bg_severity + bg_severity:foca + bg_severity:bga + bg_severity:foca:bga + bg_severity:fungicide + bg_severity:foca:fungicide + bg_severity:bga:fungicide + bg_severity:foca:bga:fungicide = 0"
+evA_evA_trt_eff = "bg_severity:fungicide + bg_severity:foca:fungicide + bg_severity:bga:fungicide + bg_severity:foca:bga:fungicide = 0"
+mv_evA_ctrl_beta = "bg_severity +  bg_severity:bga = 0"
+mv_evA_fung_beta = "bg_severity +  bg_severity:bga + bg_severity:fungicide + bg_severity:bga:fungicide = 0"
+mv_evA_trt_eff = "bg_severity:fungicide + bg_severity:bga:fungicide = 0"
+evS_evA_ctrl_beta = "bg_severity + bg_severity:bga + bg_severity:focs + bg_severity:focs:bga = 0"
+evS_evA_fung_beta = "bg_severity + bg_severity:bga + bg_severity:focs + bg_severity:focs:bga + bg_severity:fungicide + bg_severity:bga:fungicide + bg_severity:focs:fungicide + bg_severity:focs:bga:fungicide = 0"
+evS_evA_trt_eff = "bg_severity:fungicide + bg_severity:bga:fungicide + bg_severity:focs:fungicide + bg_severity:focs:bga:fungicide = 0"
+
+sevD1betas <- hypothesis(sevD1Mod, 
+                         c(mv_mv_ctrl_beta, mv_mv_fung_beta, 
+                           evS_mv_ctrl_beta, evS_mv_fung_beta, 
+                           evA_mv_ctrl_beta, evA_mv_fung_beta,
+                           evS_evS_ctrl_beta, evS_evS_fung_beta,
+                           mv_evS_ctrl_beta, mv_evS_fung_beta, 
+                           evA_evS_ctrl_beta, evA_evS_fung_beta, 
+                           evA_evA_ctrl_beta, evA_evA_fung_beta,
+                           mv_evA_ctrl_beta, mv_evA_fung_beta, 
+                           evS_evA_ctrl_beta, evS_evA_fung_beta))
+
+sevD1TrtEff <- hypothesis(sevD1Mod, 
+                         c(mv_mv_trt_eff, 
+                           evS_mv_trt_eff, 
+                           evA_mv_trt_eff,
+                           evS_evS_trt_eff,
+                           mv_evS_trt_eff, 
+                           evA_evS_trt_eff, 
+                           evA_evA_trt_eff,
+                           mv_evA_trt_eff, 
+                           evS_evA_trt_eff)) # none sig
+
+sevD2betas <- hypothesis(sevD2Mod, 
+                         c(mv_mv_ctrl_beta, mv_mv_fung_beta, 
+                           evS_mv_ctrl_beta, evS_mv_fung_beta, 
+                           evA_mv_ctrl_beta, evA_mv_fung_beta,
+                           evS_evS_ctrl_beta, evS_evS_fung_beta,
+                           mv_evS_ctrl_beta, mv_evS_fung_beta, 
+                           evA_evS_ctrl_beta, evA_evS_fung_beta, 
+                           evA_evA_ctrl_beta, evA_evA_fung_beta,
+                           mv_evA_ctrl_beta, mv_evA_fung_beta, 
+                           evS_evA_ctrl_beta, evS_evA_fung_beta))
+
+sevD2TrtEff <- hypothesis(sevD2Mod, 
+                          c(mv_mv_trt_eff, 
+                            evS_mv_trt_eff, 
+                            evA_mv_trt_eff,
+                            evS_evS_trt_eff, # fung sig increase
+                            mv_evS_trt_eff, 
+                            evA_evS_trt_eff, 
+                            evA_evA_trt_eff,
+                            mv_evA_trt_eff, 
+                            evS_evA_trt_eff))
+
+# combine betas
+betaDat <- sevD1betas[[1]] %>%
+  mutate(year = "2018",
+         foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
+                        "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
+                        "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
+                        "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
+                        "s_a_ctrl", "s_a_fung")) %>%
+  full_join(sevD2betas[[1]] %>%
+              mutate(year = "2019",
+                     foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
+                                    "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
+                                    "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
+                                    "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
+                                    "s_a_ctrl", "s_a_fung"))) %>%
+  select(-Hypothesis) %>%
+  rowwise() %>%
+  mutate(foc = str_split(foc_bg_trt, "_")[[1]][1],
+         bg = str_split(foc_bg_trt, "_")[[1]][2],
+         trt = str_split(foc_bg_trt, "_")[[1]][3]) %>%
+  ungroup() %>%
+  mutate(treatment = fct_recode(trt, "control (water)" = "ctrl",
+                                "fungicide" = "fung"),
+         sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
+                         TRUE ~ "includes 0"))
+
+# edit to save
+betaDatSave <- betaDat %>%
+  left_join(predDat %>%
+              select(foc, focal, bg, background) %>%
+              unique()) %>% 
+  mutate(treatment = fct_recode(treatment, "control" = "control (water)")) %>%
+  select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper)
+
+# save
+write_csv(betaDatSave, "output/plot_transmission_coefficients_2018_2019_density_exp.csv")
+
+
+
 #### edge effects ####
 
 mv_ctrl_edge <- "edge_severity = 0"
@@ -470,89 +591,6 @@ predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
          upper = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"],
          edge_severity = edge_severity * 100,
          treatment = fct_rev(treatment))
-
-# Mv background
-mv_mv_ctrl_beta = "bg_severity = 0"
-mv_mv_fung_beta = "bg_severity + bg_severity:fungicide = 0"
-evS_mv_ctrl_beta = "bg_severity + bg_severity:focs = 0"
-evS_mv_fung_beta = "bg_severity + bg_severity:fungicide + bg_severity:focs + bg_severity:focs:fungicide = 0"
-evA_mv_ctrl_beta = "bg_severity + bg_severity:foca = 0"
-evA_mv_fung_beta = "bg_severity + bg_severity:fungicide + bg_severity:foca + bg_severity:foca:fungicide = 0"
-
-# EvS background
-evS_evS_ctrl_beta = "bg_severity + bg_severity:focs + bg_severity:bgs + bg_severity:focs:bgs = 0"
-evS_evS_fung_beta = "bg_severity + bg_severity:focs + bg_severity:bgs + bg_severity:focs:bgs + bg_severity:fungicide + bg_severity:focs:fungicide + bg_severity:bgs:fungicide + bg_severity:focs:bgs:fungicide = 0"
-mv_evS_ctrl_beta = "bg_severity +  bg_severity:bgs = 0"
-mv_evS_fung_beta = "bg_severity +  bg_severity:bgs + bg_severity:fungicide + bg_severity:bgs:fungicide = 0"
-evA_evS_ctrl_beta = "bg_severity +  bg_severity:bgs + bg_severity:foca + bg_severity:foca:bgs = 0"
-evA_evS_fung_beta = "bg_severity +  bg_severity:bgs + bg_severity:foca + bg_severity:foca:bgs + bg_severity:fungicide +  bg_severity:bgs:fungicide + bg_severity:foca:fungicide + bg_severity:foca:bgs:fungicide = 0"
-
-# EvA background
-evA_evA_ctrl_beta = "bg_severity + bg_severity:foca + bg_severity:bga + bg_severity:foca:bga = 0"
-evA_evA_fung_beta = "bg_severity + bg_severity:foca + bg_severity:bga + bg_severity:foca:bga + bg_severity:fungicide + bg_severity:foca:fungicide + bg_severity:bga:fungicide + bg_severity:foca:bga:fungicide = 0"
-mv_evA_ctrl_beta = "bg_severity +  bg_severity:bga = 0"
-mv_evA_fung_beta = "bg_severity +  bg_severity:bga + bg_severity:fungicide + bg_severity:bga:fungicide = 0"
-evS_evA_ctrl_beta = "bg_severity + bg_severity:bga + bg_severity:focs + bg_severity:focs:bga = 0"
-evS_evA_fung_beta = "bg_severity + bg_severity:bga + bg_severity:focs + bg_severity:focs:bga + bg_severity:fungicide + bg_severity:bga:fungicide + bg_severity:focs:fungicide + bg_severity:focs:bga:fungicide = 0"
-
-sevD1betas <- hypothesis(sevD1Mod, 
-                             c(mv_mv_ctrl_beta, mv_mv_fung_beta, 
-                               evS_mv_ctrl_beta, evS_mv_fung_beta, 
-                               evA_mv_ctrl_beta, evA_mv_fung_beta,
-                               evS_evS_ctrl_beta, evS_evS_fung_beta,
-                               mv_evS_ctrl_beta, mv_evS_fung_beta, 
-                               evA_evS_ctrl_beta, evA_evS_fung_beta, 
-                               evA_evA_ctrl_beta, evA_evA_fung_beta,
-                               mv_evA_ctrl_beta, mv_evA_fung_beta, 
-                               evS_evA_ctrl_beta, evS_evA_fung_beta))
-
-sevD2betas <- hypothesis(sevD2Mod, 
-                             c(mv_mv_ctrl_beta, mv_mv_fung_beta, 
-                               evS_mv_ctrl_beta, evS_mv_fung_beta, 
-                               evA_mv_ctrl_beta, evA_mv_fung_beta,
-                               evS_evS_ctrl_beta, evS_evS_fung_beta,
-                               mv_evS_ctrl_beta, mv_evS_fung_beta, 
-                               evA_evS_ctrl_beta, evA_evS_fung_beta, 
-                               evA_evA_ctrl_beta, evA_evA_fung_beta,
-                               mv_evA_ctrl_beta, mv_evA_fung_beta, 
-                               evS_evA_ctrl_beta, evS_evA_fung_beta))
-
-# combine betas
-betaDat <- sevD1betas[[1]] %>%
-  mutate(year = "2018",
-         foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
-                        "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
-                        "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
-                        "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
-                        "s_a_ctrl", "s_a_fung")) %>%
-  full_join(sevD2betas[[1]] %>%
-              mutate(year = "2019",
-                     foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
-                                    "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
-                                    "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
-                                    "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
-                                    "s_a_ctrl", "s_a_fung"))) %>%
-  select(-Hypothesis) %>%
-  rowwise() %>%
-  mutate(foc = str_split(foc_bg_trt, "_")[[1]][1],
-         bg = str_split(foc_bg_trt, "_")[[1]][2],
-         trt = str_split(foc_bg_trt, "_")[[1]][3]) %>%
-  ungroup() %>%
-  mutate(treatment = fct_recode(trt, "control (water)" = "ctrl",
-                                "fungicide" = "fung"),
-         sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
-                         TRUE ~ "includes 0"))
-
-# edit to save
-betaDatSave <- betaDat %>%
-  left_join(predDat %>%
-              select(foc, focal, bg, background) %>%
-              unique()) %>% 
-  mutate(treatment = fct_recode(treatment, "control" = "control (water)")) %>%
-  select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper)
-
-# save
-write_csv(betaDatSave, "output/plot_transmission_coefficients_2018_2019_density_exp.csv")
 
 # combine with preddat
 predDat2 <- predDat %>%

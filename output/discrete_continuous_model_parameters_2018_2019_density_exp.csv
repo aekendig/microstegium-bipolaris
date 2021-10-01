@@ -1,52 +1,25 @@
 Parameter,Description,Estimate,Lower,Upper,Units,Source
-coef_AA,annual-annual interaction,-7.885555455394716e-4,-0.002611386084654332,9.879158185343115e-4,g^-1^,experiment
-coef_AA_fung,annual-annual interaction (disease-free),-4.0003249669666533e-4,-0.0017276949370357852,9.472256610254714e-4,g^-1^,experiment
-coef_AF,annual-first-year perennial interaction,0.017217413208222603,0.0054957603824693745,0.029741466946902998,g^-1^,experiment
-coef_AF_fung,annual-first-year perennial interaction (disease-free),0.0057054459732211234,-0.004890344417675647,0.017519456774978563,g^-1^,experiment
-coef_AP,annual-adult perennial interaction,-0.0016386389320037942,-0.011979530048921534,0.008940151524795397,g^-1^,experiment
-coef_AP_fung,annual-adult perennial interaction (disease-free),-0.006380267584142629,-0.012011498871628674,-4.4528806645435006e-4,g^-1^,experiment
-coef_FA,first-year perennial-annual interaction,-0.0014909349289349823,-0.003440318793556131,5.108118147757557e-4,g^-1^,experiment
-coef_FA_fung,first-year perennial-annual interaction (disease-free),-9.598735951985535e-4,-0.0023630196189116247,4.767533893473161e-4,g^-1^,experiment
-coef_FF,first-year perennial-first-year perennial interaction,0.01631054517044162,0.0038148674867549033,0.029090885977604744,g^-1^,experiment
-coef_FF_fung,first-year perennial-first-year perennial interaction (disease-free),0.009927522522115166,-7.951018190049241e-4,0.02027981893985438,g^-1^,experiment
-coef_FP,first-year perennial-adult perennial interaction,0.003279490410013583,-0.007468639204309303,0.014587332133247236,g^-1^,experiment
-coef_FP_fung,first-year perennial-adult perennial interaction (disease-free),-0.005198029638986588,-0.011271890448177623,5.226105579487297e-4,g^-1^,experiment
-coef_PA,adult perennial-annual interaction,-0.0010449138652151193,-0.004030656570476655,0.0019011131965372906,g^-1^,experiment
-coef_PA_fung,adult perennial-annual interaction (disease-free),5.698987842473927e-4,-0.001772113725237704,0.002846194887266237,g^-1^,experiment
-coef_PF,adult perennial-first-year perennial interaction,0.005247589462107069,-0.015780358768768224,0.026222841623644876,g^-1^,experiment
-coef_PF_fung,adult perennial-first-year perennial interaction (disease-free),0.01470965822104083,-0.003532560234799597,0.032417288762587204,g^-1^,experiment
-coef_PP,adult perennial-adult perennial interaction,0.004285034678429553,-0.014445356929341376,0.022133545698229593,g^-1^,experiment
-coef_PP_fung,adult perennial-adult perennial interaction (disease-free),0.007186315843061917,-0.0028141733493915536,0.016912918434059964,g^-1^,experiment
-r_A,annual growth rate,0.03784878949002017,0.033820816548147295,0.041861951254291596,day^-1^,experiment
-r_F,perennial first-year growth rate,0.0381322315445668,0.03388005493990995,0.04245464116887761,day^-1^,experiment
-r_P,perennial adult growth rate,0.032712001952363824,0.027262358249279472,0.03820159286319367,day^-1^,experiment
-alpha_AA,competitive effects of annual,0.011081347798965245,NA,NA,g^-1^,experiment
-alpha_FA,competitive effects of annual,0.011081347798965245,NA,NA,g^-1^,experiment
-alpha_PA,competitive effects of annual,0.011081347798965245,NA,NA,g^-1^,experiment
-alpha_AA_fung,competitive effects of annual (disease free),0.0045330203063173955,NA,NA,g^-1^,experiment
-alpha_FA_fung,competitive effects of annual (disease free),0.0045330203063173955,NA,NA,g^-1^,experiment
-alpha_PA_fung,competitive effects of annual (disease free),0.0045330203063173955,NA,NA,g^-1^,experiment
-alpha_AF,competitive effects of first-year perennial,0,NA,NA,g^-1^,experiment
-alpha_FF,competitive effects of first-year perennial,0,NA,NA,g^-1^,experiment
-alpha_PF,competitive effects of first-year perennial,0,NA,NA,g^-1^,experiment
-alpha_AF_fung,competitive effects of first-year perennial (disease free),0,NA,NA,g^-1^,experiment
-alpha_FF_fung,competitive effects of first-year perennial (disease free),0,NA,NA,g^-1^,experiment
-alpha_PF_fung,competitive effects of first-year perennial (disease free),0,NA,NA,g^-1^,experiment
-alpha_AP,competitive effects of adult perennial,0.005462129773345981,NA,NA,g^-1^,experiment
-alpha_FP,competitive effects of adult perennial,0.005462129773345981,NA,NA,g^-1^,experiment
-alpha_PP,competitive effects of adult perennial,0.005462129773345981,NA,NA,g^-1^,experiment
-alpha_AP_fung,competitive effects of adult perennial (disease free),0.03859432407709739,NA,NA,g^-1^,experiment
-alpha_FP_fung,competitive effects of adult perennial (disease free),0.03859432407709739,NA,NA,g^-1^,experiment
-alpha_PP_fung,competitive effects of adult perennial (disease free),0.03859432407709739,NA,NA,g^-1^,experiment
-beta_AA,annual-annual transmission,0.03821817221375853,0.011980078852740902,0.06704606456224907,day^-1^ g^-1^,experiment
-beta_AF,annual-first-year perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
-beta_AP,annual-adult perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
-beta_FA,first-year perennial-annual transmission,0.06813475856152575,3.741243108267881e-4,0.13527588708840377,day^-1^ g^-1^,experiment
-beta_FF,first-year perennial-first-year perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
-beta_FP,first-year perennial-adult perennial transmission,0.03431439567737486,0.00509978555267915,0.06331095491436185,day^-1^ g^-1^,experiment
-beta_PA,adult perennial-annual transmission,0.0709431825219581,0.034294279737049474,0.10785633858426362,day^-1^ g^-1^,experiment
-beta_PF,adult perennial-first-year perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
-beta_PP,adult perennial-adult perennial transmission,0,NA,NA,day^-1^ g^-1^,experiment
+r_A,annual growth rate,0.037698884859549746,0.03378935169894951,0.0417707195090549,day^-1^,experiment
+r_F,perennial first-year growth rate,0.03831061194870368,0.033993217366412885,0.04246544742910308,day^-1^,experiment
+r_P,perennial adult growth rate,0.030313647256030234,0.02338917397064358,0.0373451980076567,day^-1^,experiment
+alpha_AA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
+alpha_FA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
+alpha_PA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
+alpha_AF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
+alpha_FF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
+alpha_PF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
+alpha_AP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
+alpha_FP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
+alpha_PP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
+beta_AA,annual-annual transmission,0.04836055962787851,-2.489830722317047e-4,0.098730186746748,day^-1^ g^-1^,experiment
+beta_AF,first-year perennial-annual transmission,0.0234124792007014,-0.023009540379698643,0.06932761400595401,day^-1^ g^-1^,experiment
+beta_AP,adult perennial-annual transmission,0.008807268511475234,-0.015987749065778326,0.03437245042741131,day^-1^ g^-1^,experiment
+beta_FA,annual-first-year perennial transmission,0.06813475856152575,3.7412431082678443e-4,0.13527588708840377,day^-1^ g^-1^,experiment
+beta_FF,first-year perennial-first-year perennial transmission,0.041828448220097916,-0.012576437085629878,0.09415119703027056,day^-1^ g^-1^,experiment
+beta_FP,adult perennial-first-year perennial transmission,0.03431439567737486,0.00509978555267915,0.06331095491436185,day^-1^ g^-1^,experiment
+beta_PA,annual-adult perennial transmission,0.0709431825219581,0.034294279737049474,0.10785633858426362,day^-1^ g^-1^,experiment
+beta_PF,first-year perennial-adult perennial transmission,0.016239650540168557,-0.04141458573340504,0.0744785952338242,day^-1^ g^-1^,experiment
+beta_PP,adult perennial-adult perennial transmission,0.0032776787758466075,-0.03225510597089171,0.04233231882625417,day^-1^ g^-1^,experiment
 p0,seed infection parameter,-2.914,-3.199,-2.647,"NA",experiment
 p1,seed infection parameter,2.524,1.184,3.863,"NA",experiment
 g_I,infected annual germination fraction,0.316,0.182,0.458,"NA",experiment
