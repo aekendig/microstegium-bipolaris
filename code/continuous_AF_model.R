@@ -24,8 +24,8 @@ cont_AF_mod <- function(t, x, params) {
   beta_FA <- as.numeric(params[params$Parameter == "beta_FA", "Estimate"])
   beta_FF <- as.numeric(params[params$Parameter == "beta_FF", "Estimate"])
   
-  k_A <- as.numeric(params[params$Parameter == "k_A", "Estimate"])
-  k_F <- as.numeric(params[params$Parameter == "k_F", "Estimate"])
+  # k_A <- as.numeric(params[params$Parameter == "k_A", "Estimate"])
+  # k_F <- as.numeric(params[params$Parameter == "k_F", "Estimate"])
   
   v_A <- as.numeric(params[params$Parameter == "v_A", "Estimate"])
   v_F <- as.numeric(params[params$Parameter == "v_F", "Estimate"])
@@ -45,8 +45,10 @@ cont_AF_mod <- function(t, x, params) {
   # model with asymptotic transmission
   dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F) - m_A - v_A * I_A / B_A
   dLogBFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F) - m_F - v_F * I_F / B_F
-  dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F)/(k_A + B_A) - (m_A + v_A) * I_A
-  dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F)/(k_F + B_F) - (m_F + v_F) * I_F
+  # dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F)/(k_A + B_A) - (m_A + v_A) * I_A
+  # dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F)/(k_F + B_F) - (m_F + v_F) * I_F
+  dIAdt <- beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F - (m_A + v_A) * I_A
+  dIFdt <- beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F - (m_F + v_F) * I_F
   dDdt <- m_A * B_A + v_A * I_A + m_F * B_F + v_F * I_F
   dCdt <- h * ((m_A + v_A) * I_A + (m_F + v_F) * I_F) - b * C
   

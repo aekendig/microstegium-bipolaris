@@ -220,9 +220,13 @@ trans_mod_parms <- as_draws_df(sevD2Mod)  %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   ungroup() %>%
-  mutate(Parameter = substr(parameter, 1, 7)) %>%
+  mutate(estimate = case_when(.lower < 0 & .upper < 0 ~ estimate,
+                                 .lower > 0 & .upper > 0 ~ estimate,
+                                 TRUE ~ 0), # convert non-sig estimates to zero
+         Parameter = substr(parameter, 1, 7)) %>%
   group_by(Parameter) %>%
-  mutate(maxEst = max(estimate)) %>%
+  mutate(maxEst = max(estimate),
+         maxEst = if_else(maxEst == 0 & str_detect(parameter, "fung") == T, 1, maxEst)) %>%
   ungroup() %>%
   filter(estimate == maxEst) %>%
   transmute(Parameter = Parameter,
@@ -525,31 +529,28 @@ ev_lit_parms <- as_draws_df(ev_bh_mod)  %>%
 
 #### literature/estimated parameters ####
 
-lit_parms <- tibble(Parameter = c("beta_AC", "beta_FC", "beta_PC", 
-                                  "k_A", "k_F", "k_P",
+lit_parms <- tibble(Parameter = c("h", 
+                                  "d", 
+                                  "s_P", "s_A",
+                                  "beta_AC", "beta_FC", "beta_PC", 
                                   "v_A", "v_F", "v_P", 
-                                  "h", "b",
-                                  "s_A", "s_P", 
-                                  "d"),
-                    Description = c("litter transmission to annuals",
+                                  "b"),
+                    Description = c("inoculum addition to litter",
+                                    "litter decomposition fraction",
+                                    "perennial surviving seed fraction",
+                                    "annual surviving seed fraction",
+                                    "litter transmission to annuals",
                                     "litter transmission to first-year perennials",
                                     "litter transmission to adult perennials",
-                                    "transmission saturation constant for annuals",
-                                    "transmission saturation constant for first-year perennials",
-                                    "transmission saturation constant for adult perennials",
                                     "annual infected tissue loss",
                                     "perennial first-year infected tissue loss",
                                     "perennial adult infected tissue loss",
-                                    "inoculum addition to litter",
-                                    "inoculum loss from litter",
-                                    "annual surviving seed fraction",
-                                    "perennial surviving seed fraction",
-                                    "annual litter decomposition fraction"),
-                     Estimate = c(rep(0.001, 3), rep(10, 3), rep(1e-3, 3), 5500, 0.5, 0.15*surv_adjust, 0.05*surv_adjust, 0.59),
-                     Source = c(rep("NA", 9), "Benitez et al. 2020", "NA", "Redwood et al. 2018", "Garrison and Stier 2010", "DeMeester and Richter 2010")) %>%
+                                    "inoculum loss from litter"),
+                     Estimate = c(5500, 0.59, 0.05*surv_adjust, 0.15*surv_adjust, rep(0.001, 3), rep(1e-3, 3), 0.5),
+                     Source = c("Benitez et al. 2021", "DeMeester and Richter 2010", "Garrison and Stier 2010", "Redwood et al. 2018", rep("NA", 7))) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
-         Units = c(rep ("day^-1^ g^-1^", 3), rep ("g", 3), rep("day^-1^", 3), "g^-1^", "day^-1^", rep("NA", 2), "NA"))
+         Units = c("g^-1^", rep("NA", 3), rep ("day^-1^ g^-1^", 3), rep("day^-1^", 3), "day^-1^"))
 
 
 #### combine ####
@@ -573,7 +574,17 @@ parms <- r_parms %>%
   full_join(ev_lit_parms) %>%
   full_join(lit_parms)
 
-write_csv(parms, "../output/discrete_continuous_model_parameters_2018_2019_density_exp.csv")
+
+#### export ####
+parms_export <- parms %>%
+  mutate(Parameter = case_when(Parameter == "alpha_AA" ~ "alpha_iA",
+                               Parameter == "alpha_AF" ~ "alpha_iF",
+                               Parameter == "alpha_AP" ~ "alpha_iP",
+                               TRUE ~ Parameter)) %>%
+  filter(str_detect(Parameter, "alpha_P") == F & str_detect(Parameter, "alpha_F") == F &
+           !(str_detect(Parameter, "beta") == T & Estimate == 0))
+
+write_csv(parms_export, "../output/discrete_continuous_model_parameters_2018_2019_density_exp.csv")
 
 # growing season days
 gs_time <- 160
@@ -1262,6 +1273,384 @@ modP_inv %>%
 ```
 
 
+### Annual invades perennial
+```{r A-invades, echo = F}
+modF_fin <- modF %>%
+  filter(time == max(time))
+
+modA_inv <- disc_AFP_mod(AS0 = 10, 
+                      AI0 = 0, 
+                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
+                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
+                      L0 = filter(modF_fin, species == "Litter")$N, 
+                      C0 = filter(modF_fin, species == "Conidia")$N, 
+                      IA0 = 0, 
+                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
+                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
+                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
+                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
+                      simtime = 25, gs_days = gs_time, disc_parms = parms, con_parms = parms)
+
+# create figure
+modA_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Number of plants')
+
+modA_inv %>%
+  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log number of plants')
+
+modA_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_inv %>%
+  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = N, color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Biomass (g)')
+
+modA_inv %>%
+  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
+           !is.na(N)) %>%
+  ggplot(aes(x = time, y = log(N), color = species)) +
+  geom_line() +
+  theme_classic() +
+  labs(x='Time (years)', y='Log biomass (g)')
+
+modA_inv %>%
+  filter(time == max(time))
+
+```
+
+
+### Try sensitivity analysis
+```{r sens-discrete, echo = F}
+
+# settings
+N <- 2^5 # sample size
+k <- 3 # number of parameters
+params <- c("r_A", "r_F", "r_P") # paramater names
+R <- 10^2 # bootstrap replicas for CI
+type <- "norm" # CI method
+conf <- 0.95 # CI
+
+# sensitivity function
+disc_AFP_sens <- function(r_A, r_F, r_P){
+  
+  # add new parameter values
+  parms_in <- parms %>%
+    mutate(Estimate = case_when(Parameter == "r_A" ~ r_A,
+                                Parameter == "r_F" ~ r_F,
+                                Parameter == "r_P" ~ r_P,
+                                TRUE ~ Estimate))
+  
+  # apply function
+  mod_out <- disc_AFP_mod(AS0 = 0, 
+                          AI0 = 0, 
+                          F0 = 0, 
+                          P0 = 10, 
+                          L0 = 0, 
+                          C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), 
+                          IA0 = 0, 
+                          IF0 = 0, 
+                          IP0 = 0, 
+                          BP0 = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, 
+                          BF0 = 0, 
+                          simtime = 5, 
+                          gs_days = gs_time, 
+                          disc_parms = parms_in, 
+                          con_parms = parms_in) %>%
+    filter(time == max(time) & species == "Perennial adult") %>%
+    pull(N)
+  
+  # output
+  return(mod_out)
+}
+
+# wrapper to run function
+disc_AFP_run <- function(df){
+  return(mapply(disc_AFP_sens, df[,1], df[,2], df[,3]))
+}
+
+# create sample matrix
+mat_disc <- sobol_matrices(N = N, params = params)
+
+# transform distributions
+mat_disc[, "r_A"] <- qunif(mat_disc[, "r_A"], 0.038, 0.1)
+mat_disc[, "r_F"] <- qunif(mat_disc[, "r_F"], 0.037, 0.1)
+mat_disc[, "r_P"] <- qunif(mat_disc[, "r_P"], 0.032, 0.1)
+
+# run model
+y_disc <- disc_AFP_run(mat_disc)
+
+# standardize y
+y_disc_std <- (y_disc - mean(y_disc)) / sd(y_disc)
+
+# distribution of model output
+plot_uncertainty(Y = y_disc_std, N = N) + labs(y = "Counts", x = "y")
+
+# model output by each input
+plot_scatter(data = mat, N = N, Y = y_disc_std, params = params)
+
+# model input interactions (use subset of runs)
+plot_multiscatter(data = mat, N = N, Y = y_disc_std, params = params)
+
+# calculate Sobol's indices (sensitivity analysis)
+ind <- sobol_indices(Y = y_disc_std, N = N, params = params, boot = T, R = R, type = type, conf = conf)
+
+# round results to 3 decimal points
+cols <- colnames(ind$results)[1:5]
+ind$results[, (cols):= round(.SD, 3), .SDcols = cols]
+ind
+
+# calculate Sobol's indices for a dummy parameter
+ind.dummy <- sobol_dummy(Y = y_disc_std, N = N, params = params, boot = T, R = R)
+
+# figure of results
+plot(ind, dummy = ind.dummy)
+
+```
+
+
+## Manuscript figure
+
+### Annual invades perennial functions
+```{r AF-inv-fun, echo = F}
+af_inv_fun_both <- function(f_parms, a_parms){
+  
+  # perennial alone
+  modF_fun <- disc_AFP_mod(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = 100, gs_days = gs_time, disc_parms = f_parms, con_parms = f_parms)
+  
+  # extract final values
+  modF_fun_fin <- modF_fun %>%
+  filter(time == max(time))
+  
+  # annual invades
+  modA_inv_fun <- disc_AFP_mod(AS0 = 10, 
+                      AI0 = 0, 
+                      F0 = filter(modF_fun_fin, species == "Perennial first-year")$N, 
+                      P0 = filter(modF_fun_fin, species == "Perennial adult")$N, 
+                      L0 = filter(modF_fun_fin, species == "Litter")$N, 
+                      C0 = filter(modF_fun_fin, species == "Conidia")$N, 
+                      IA0 = 0, 
+                      IF0 = filter(modF_fun_fin, species == "Perennial first-year infected biomass")$N, 
+                      IP0 = filter(modF_fun_fin, species == "Perennial adult infected biomass")$N, 
+                      BP0 = filter(modF_fun_fin, species == "Perennial adult biomass")$N, 
+                      BF0 = filter(modF_fun_fin, species == "Perennial first-year biomass")$N, 
+                      simtime = 25, gs_days = gs_time, disc_parms = a_parms, con_parms = a_parms)
+  
+  return(list(modF_fun, modA_inv_fun))
+}
+
+af_inv_fun_a <- function(a_parms){
+  
+  # annual invades
+  modA_inv_fun <- disc_AFP_mod(AS0 = 10, 
+                      AI0 = 0, 
+                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
+                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
+                      L0 = filter(modF_fin, species == "Litter")$N, 
+                      C0 = filter(modF_fin, species == "Conidia")$N, 
+                      IA0 = 0, 
+                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
+                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
+                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
+                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
+                      simtime = 25, gs_days = gs_time, disc_parms = a_parms, con_parms = a_parms)
+  
+  return(modA_inv_fun)
+}
+```
+
+
+### Annual invades perennial simulations
+```{r AF-inv-sim, echo = F}
+# need to run F-only-discrete 
+
+# parameter values
+parm_mult <- c(0, 1, 5, 10)
+parm_var <- list("p1", "v_A", c("v_A", "v_F", "v_P"))
+
+# output lists
+modF_sim <- list()
+modA_inv_sim <- list()
+
+# simulations
+# cycle through parameters
+for(i in 1:length(parm_var)){
+
+  # cycle through changes in parameter values
+  for(j in 1:length(parm_mult)){
+    
+    # update parameters
+    parms_sim <- parms %>%
+      mutate(Estimate = case_when(Parameter %in% parm_var[[i]] ~ Estimate * parm_mult[j],
+                                  TRUE ~ Estimate))
+    
+    # simulate dynamics
+    sim_out <- af_inv_fun_both(parms_sim, parms_sim)
+    
+    # name of list element
+    name <- paste0(i, j)
+    
+    # save 
+    modF_sim[[name]] <- sim_out[[1]] %>%
+      mutate(parm = paste(parm_var[[i]], collapse = ", "),
+             parm_val = parm_mult[j])
+    
+    modA_inv_sim[[name]] <- sim_out[[2]] %>%
+      mutate(parm = paste(parm_var[[i]], collapse = ", "),
+             parm_val = parm_mult[j])
+    
+  }
+  
+}
+
+# collapse lists
+modF_dat <- bind_rows(modF_sim) %>%
+  mutate(parm_val_char = paste0("x", parm_val) %>%
+           fct_relevel("x0", "x1", "x5"),
+         parm_char = case_when(parm == "p1" ~ "Mv germination virulence",
+                               parm == "v_A" ~ "Mv biomass virulence",
+                               parm == "v_A, v_F, v_P" ~ "Ev + Mv biomass virulence") %>%
+           fct_relevel("Mv germination virulence", "Mv biomass virulence"))
+
+modA_inv_dat <- bind_rows(modA_inv_sim) %>%
+  mutate(parm_val_char = paste0("x", parm_val) %>%
+           fct_relevel("x0", "x1", "x5"),
+         parm_char = case_when(parm == "p1" ~ "Mv germination virulence",
+                               parm == "v_A" ~ "Mv biomass virulence",
+                               parm == "v_A, v_F, v_P" ~ "Ev + Mv biomass virulence") %>%
+           fct_relevel("Mv germination virulence", "Mv biomass virulence"))
+
+# save data
+write_csv(modF_dat, "../output/annual_invasion_simulations_established_perennial.csv")
+write_csv(modA_inv_dat, "../output/annual_invasion_simulations_invading_annual.csv")
+
+```
+
+
+### Process simulation output
+```{r AF-inv-out, echo = F}
+
+# extract data
+inv_bio_dat <- modF_dat %>%
+  filter(time >= (max(time) - 4) &
+           species %in% c("Perennial adult biomass", "Perennial first-year biomass")) %>%
+  mutate(stage = "Ev established",
+         time = (time - max(time)) - 1) %>% # end time at -1
+  full_join(modA_inv_dat %>%
+              filter(time <= 16 &
+                       species %in% c("Annual biomass", "Perennial adult biomass", "Perennial first-year biomass")) %>%
+              mutate(stage = "Mv invasion",
+                     time = time - 1)) %>% # start time at 0
+  mutate(Species = word(species, 1) %>%
+           fct_recode("Mv" = "Annual", "Ev" = "Perennial") %>%
+           fct_relevel("Ev")) %>%
+  group_by(time, stage, Species, parm_char, parm_val_char) %>%
+  summarise(N = sum(N)) %>%
+  ungroup()
+
+# divide parameters
+inv_bio_dat_A <- inv_bio_dat %>%
+  filter(parm_char == "Mv germination virulence")
+
+inv_bio_dat_B <- inv_bio_dat %>%
+  filter(parm_char == "Mv biomass virulence")
+
+inv_bio_dat_C <- inv_bio_dat %>%
+  filter(parm_char == "Ev + Mv biomass virulence")
+
+```
+
+
+### Annual invades perennial figure
+```{r AF-inv-fig, echo = T}
+# figure settings
+fig_theme <- theme_bw() +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.title.y = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.background = element_blank(),
+        legend.key = element_rect(fill = NA),
+        legend.key.height = unit(1, units = "mm"),
+        legend.margin = margin(-0.1, -0.1, -0.1, -0.1, unit = "cm"),
+        plot.title = element_text(size = 14, face = "bold"),
+        strip.text = element_text(size = 10),
+        strip.background = element_blank())
+
+col_pal = c("#33638DFF", "#3CBB75FF")
+line_pal = c("dotted", "solid", "dashed", "dotdash")
+
+# figure
+inv_bio_fig_A <- ggplot(inv_bio_dat_A, aes(x = time, y = N)) +
+  geom_line(aes(color = Species, linetype = parm_val_char)) +
+  facet_wrap(~ parm_char) +
+  scale_color_manual(values = col_pal, guide = "none") +
+  scale_linetype_manual(values = line_pal, name = "Parameter\nchange") +
+  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
+  fig_theme +
+  theme(legend.position = c(0.2, 0.75))
+
+inv_bio_fig_B <- ggplot(inv_bio_dat_B, aes(x = time, y = N)) +
+  geom_line(aes(color = Species, linetype = parm_val_char)) +
+  facet_wrap(~ parm_char) +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal, guide = "none") +
+  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
+  fig_theme +
+  theme(legend.position = c(0.18, 0.85))
+
+inv_bio_fig_C <- ggplot(inv_bio_dat_C, aes(x = time, y = N)) +
+  geom_line(aes(color = Species, linetype = parm_val_char)) +
+  facet_wrap(~ parm_char) +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal) +
+  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
+  fig_theme +
+  theme(legend.position = "none")
+
+tiff("../output/annual_invasion_simmulations.tiff", width = 18, height = 6, units = "cm", res = 300, compression = "lzw")
+plot_grid(inv_bio_fig_A, inv_bio_fig_B, inv_bio_fig_C,
+          labels = LETTERS[1:3],
+          nrow = 1)
+dev.off()
+
+```
+
+
+
+## Older code
+
 ### Annual invades perennial without disease
 ```{r A-invades-no-disease, echo = F}
 modF_fin <- modF %>%
@@ -1499,79 +1888,6 @@ modA_bs_inv %>%
 ```
 
 
-### Annual invades perennial all disease
-```{r A-invades, echo = F}
-modF_fin <- modF %>%
-  filter(time == max(time))
-
-modA_inv <- disc_AFP_mod(AS0 = 10, 
-                      AI0 = 0, 
-                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
-                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
-                      L0 = filter(modF_fin, species == "Litter")$N, 
-                      C0 = filter(modF_fin, species == "Conidia")$N, 
-                      IA0 = 0, 
-                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
-                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
-                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
-                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
-                      simtime = 25, gs_days = gs_time, disc_parms = parms, con_parms = parms)
-
-# create figure
-modA_inv %>%
-  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Number of plants')
-
-modA_inv %>%
-  filter(species %in% c("Annual", "Susceptible annual", "Infected annual", "Perennial first-year", "Perennial adult") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = log(N), color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Log number of plants')
-
-modA_inv %>%
-  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Biomass (g)')
-
-modA_inv %>%
-  filter(species %in% c("Litter", "Annual biomass", "Perennial first-year biomass", "Perennial adult biomass") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = log(N), color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Log biomass (g)')
-
-modA_inv %>%
-  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = N, color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Biomass (g)')
-
-modA_inv %>%
-  filter(species %in% c("Annual susceptible biomass", "Perennial first-year susceptible biomass", "Perennial adult susceptible biomass", "Annual infected biomass", "Perennial first-year infected biomass", "Perennial adult infected biomass") &
-           !is.na(N)) %>%
-  ggplot(aes(x = time, y = log(N), color = species)) +
-  geom_line() +
-  theme_classic() +
-  labs(x='Time (years)', y='Log biomass (g)')
-
-modA_inv %>%
-  filter(time == max(time))
-
-```
-
-
 ### Invasion figure 
 ```{r invasion-fig, echo = F}
 
@@ -1657,126 +1973,6 @@ ggplot(inv_sev_dat, aes(x = time, y = severity)) +
 ```
 
 
-### Annual invades perennial function
-```{r AF-inv-fun, ech = F}
-af_inv_fun <- function(f_parms, a_parms){
-  
-  # perennial alone
-  modF <- disc_AFP_mod(AS0 = 0, AI0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = 100, gs_days = gs_time, disc_parms = f_parms, con_parms = f_parms)
-  
-  # extract final values
-  modF_fin <- modF %>%
-  filter(time == max(time))
-  
-  # annual invades
-  modA_inv <- disc_AFP_mod(AS0 = 10, 
-                      AI0 = 0, 
-                      F0 = filter(modF_fin, species == "Perennial first-year")$N, 
-                      P0 = filter(modF_fin, species == "Perennial adult")$N, 
-                      L0 = filter(modF_fin, species == "Litter")$N, 
-                      C0 = filter(modF_fin, species == "Conidia")$N, 
-                      IA0 = 0, 
-                      IF0 = filter(modF_fin, species == "Perennial first-year infected biomass")$N, 
-                      IP0 = filter(modF_fin, species == "Perennial adult infected biomass")$N, 
-                      BP0 = filter(modF_fin, species == "Perennial adult biomass")$N, 
-                      BF0 = filter(modF_fin, species == "Perennial first-year biomass")$N, 
-                      simtime = 25, gs_days = gs_time, disc_parms = a_parms, con_parms = a_parms)
-  
-  return(list(modF, modA_inv))
-}
-```
-
-#### start here ####
-# apply above function across a range of values: p1, v's
-# revise function if holding modF constant so that it doesn't need to be re-run (could use modF from above)
-
-### Try sensitivity analysis
-```{r sens-discrete, echo = F}
-
-# settings
-N <- 2^5 # sample size
-k <- 3 # number of parameters
-params <- c("r_A", "r_F", "r_P") # paramater names
-R <- 10^2 # bootstrap replicas for CI
-type <- "norm" # CI method
-conf <- 0.95 # CI
-
-# sensitivity function
-disc_AFP_sens <- function(r_A, r_F, r_P){
-  
-  # add new parameter values
-  parms_in <- parms %>%
-    mutate(Estimate = case_when(Parameter == "r_A" ~ r_A,
-                                Parameter == "r_F" ~ r_F,
-                                Parameter == "r_P" ~ r_P,
-                                TRUE ~ Estimate))
-  
-  # apply function
-  mod_out <- disc_AFP_mod(AS0 = 0, 
-                          AI0 = 0, 
-                          F0 = 0, 
-                          P0 = 10, 
-                          L0 = 0, 
-                          C0 = as.numeric(parms[parms$Parameter == "h", "Estimate"]), 
-                          IA0 = 0, 
-                          IF0 = 0, 
-                          IP0 = 0, 
-                          BP0 = as.numeric(parms[parms$Parameter == "b_P", "Estimate"]) * 10, 
-                          BF0 = 0, 
-                          simtime = 5, 
-                          gs_days = gs_time, 
-                          disc_parms = parms_in, 
-                          con_parms = parms_in) %>%
-    filter(time == max(time) & species == "Perennial adult") %>%
-    pull(N)
-  
-  # output
-  return(mod_out)
-}
-
-# wrapper to run function
-disc_AFP_run <- function(df){
-  return(mapply(disc_AFP_sens, df[,1], df[,2], df[,3]))
-}
-
-# create sample matrix
-mat_disc <- sobol_matrices(N = N, params = params)
-
-# transform distributions
-mat_disc[, "r_A"] <- qunif(mat_disc[, "r_A"], 0.038, 0.1)
-mat_disc[, "r_F"] <- qunif(mat_disc[, "r_F"], 0.037, 0.1)
-mat_disc[, "r_P"] <- qunif(mat_disc[, "r_P"], 0.032, 0.1)
-
-# run model
-y_disc <- disc_AFP_run(mat_disc)
-
-# standardize y
-y_disc_std <- (y_disc - mean(y_disc)) / sd(y_disc)
-
-# distribution of model output
-plot_uncertainty(Y = y_disc_std, N = N) + labs(y = "Counts", x = "y")
-
-# model output by each input
-plot_scatter(data = mat, N = N, Y = y_disc_std, params = params)
-
-# model input interactions (use subset of runs)
-plot_multiscatter(data = mat, N = N, Y = y_disc_std, params = params)
-
-# calculate Sobol's indices (sensitivity analysis)
-ind <- sobol_indices(Y = y_disc_std, N = N, params = params, boot = T, R = R, type = type, conf = conf)
-
-# round results to 3 decimal points
-cols <- colnames(ind$results)[1:5]
-ind$results[, (cols):= round(.SD, 3), .SDcols = cols]
-ind
-
-# calculate Sobol's indices for a dummy parameter
-ind.dummy <- sobol_dummy(Y = y_disc_std, N = N, params = params, boot = T, R = R)
-
-# figure of results
-plot(ind, dummy = ind.dummy)
-
-```
 
 
 

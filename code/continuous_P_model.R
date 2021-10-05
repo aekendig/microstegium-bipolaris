@@ -11,7 +11,7 @@ cont_P_mod <- function(t, x, params) {
   alpha_PP <- as.numeric(params[params$Parameter == "alpha_PP", "Estimate"])
   beta_PC <- as.numeric(params[params$Parameter == "beta_PC", "Estimate"])
   beta_PP <- as.numeric(params[params$Parameter == "beta_PP", "Estimate"])
-  k_P <- as.numeric(params[params$Parameter == "k_P", "Estimate"])
+  # k_P <- as.numeric(params[params$Parameter == "k_P", "Estimate"])
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
   m_P <- as.numeric(params[params$Parameter == "m_P", "Estimate"])
   h <- as.numeric(params[params$Parameter == "h", "Estimate"])
@@ -23,7 +23,8 @@ cont_P_mod <- function(t, x, params) {
   
   # model with asymptotic transmission
   dLogBPdt <- r_P * (1 - alpha_PP * B_P) - m_P - v_P * I_P / B_P
-  dIPdt <- (beta_PC * S_P * C + beta_PP * S_P * I_P)/(k_P + B_P) - (m_P + v_P) * I_P
+  #dIPdt <- (beta_PC * S_P * C + beta_PP * S_P * I_P)/(k_P + B_P) - (m_P + v_P) * I_P
+  dIPdt <- beta_PC * S_P * C + beta_PP * S_P * I_P - (m_P + v_P) * I_P
   dDdt <-  m_P * B_P + v_P * I_P
   dCdt <- h * (m_P + v_P) * I_P - b * C
   

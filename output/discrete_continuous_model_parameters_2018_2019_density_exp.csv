@@ -2,24 +2,13 @@ Parameter,Description,Estimate,Lower,Upper,Units,Source
 r_A,annual growth rate,0.037698884859549746,0.03378935169894951,0.0417707195090549,day^-1^,experiment
 r_F,perennial first-year growth rate,0.03831061194870368,0.033993217366412885,0.04246544742910308,day^-1^,experiment
 r_P,perennial adult growth rate,0.030313647256030234,0.02338917397064358,0.0373451980076567,day^-1^,experiment
-alpha_AA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
-alpha_FA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
-alpha_PA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
-alpha_AF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
-alpha_FF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
-alpha_PF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
-alpha_AP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
-alpha_FP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
-alpha_PP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
-beta_AA,annual-annual transmission,0.04836055962787851,-2.489830722317047e-4,0.098730186746748,day^-1^ g^-1^,experiment
-beta_AF,first-year perennial-annual transmission,0.0234124792007014,-0.023009540379698643,0.06932761400595401,day^-1^ g^-1^,experiment
-beta_AP,adult perennial-annual transmission,0.008807268511475234,-0.015987749065778326,0.03437245042741131,day^-1^ g^-1^,experiment
+alpha_iA,competitive effects of annual,0.004520596925640972,0,0.013267630772483203,g^-1^,experiment
+alpha_iF,competitive effects of first-year perennial,0.0024388948354054983,0,0.016997607718300823,g^-1^,experiment
+alpha_iP,competitive effects of adult perennial,0.014833031748367313,0,0.04978519116238747,g^-1^,experiment
+beta_AA,annual-annual transmission,0.03821817221375853,0.011980078852740902,0.06704606456224907,day^-1^ g^-1^,experiment
 beta_FA,annual-first-year perennial transmission,0.06813475856152575,3.7412431082678443e-4,0.13527588708840377,day^-1^ g^-1^,experiment
-beta_FF,first-year perennial-first-year perennial transmission,0.041828448220097916,-0.012576437085629878,0.09415119703027056,day^-1^ g^-1^,experiment
 beta_FP,adult perennial-first-year perennial transmission,0.03431439567737486,0.00509978555267915,0.06331095491436185,day^-1^ g^-1^,experiment
 beta_PA,annual-adult perennial transmission,0.0709431825219581,0.034294279737049474,0.10785633858426362,day^-1^ g^-1^,experiment
-beta_PF,first-year perennial-adult perennial transmission,0.016239650540168557,-0.04141458573340504,0.0744785952338242,day^-1^ g^-1^,experiment
-beta_PP,adult perennial-adult perennial transmission,0.0032776787758466075,-0.03225510597089171,0.04233231882625417,day^-1^ g^-1^,experiment
 p0,seed infection parameter,-2.914,-3.199,-2.647,"NA",experiment
 p1,seed infection parameter,2.524,1.184,3.863,"NA",experiment
 g_I,infected annual germination fraction,0.316,0.182,0.458,"NA",experiment
@@ -40,17 +29,14 @@ m_F,perennial first-year biomass mortality,0.0019382188280760476,NA,NA,"NA",expe
 m_P,perennial adult biomass mortality,0.0019382188280760476,NA,NA,"NA",experiment
 gamma_A,annual sensitivity to litter,0.001184393821520858,4.191629405253904e-4,0.0020098330356090677,g^-1^,Benitez et al. 2021
 gamma_P,perennial sensitivity to litter,5.029738597082376e-4,9.334561098983917e-6,9.899256961051154e-4,g^-1^,Benitez et al. 2021
+h,inoculum addition to litter,5500,NA,NA,g^-1^,Benitez et al. 2021
+d,litter decomposition fraction,0.59,NA,NA,"NA",DeMeester and Richter 2010
+s_P,perennial surviving seed fraction,0.05,NA,NA,"NA",Garrison and Stier 2010
+s_A,annual surviving seed fraction,0.15,NA,NA,"NA",Redwood et al. 2018
 beta_AC,litter transmission to annuals,0.001,NA,NA,day^-1^ g^-1^,"NA"
 beta_FC,litter transmission to first-year perennials,0.001,NA,NA,day^-1^ g^-1^,"NA"
 beta_PC,litter transmission to adult perennials,0.001,NA,NA,day^-1^ g^-1^,"NA"
-k_A,transmission saturation constant for annuals,10,NA,NA,g,"NA"
-k_F,transmission saturation constant for first-year perennials,10,NA,NA,g,"NA"
-k_P,transmission saturation constant for adult perennials,10,NA,NA,g,"NA"
 v_A,annual infected tissue loss,0.001,NA,NA,day^-1^,"NA"
 v_F,perennial first-year infected tissue loss,0.001,NA,NA,day^-1^,"NA"
 v_P,perennial adult infected tissue loss,0.001,NA,NA,day^-1^,"NA"
-h,inoculum addition to litter,5500,NA,NA,g^-1^,Benitez et al. 2020
 b,inoculum loss from litter,0.5,NA,NA,day^-1^,"NA"
-s_A,annual surviving seed fraction,0.15,NA,NA,"NA",Redwood et al. 2018
-s_P,perennial surviving seed fraction,0.05,NA,NA,"NA",Garrison and Stier 2010
-d,annual litter decomposition fraction,0.59,NA,NA,"NA",DeMeester and Richter 2010
