@@ -34,13 +34,13 @@ source("code/brms_model_fitting_functions.R")
 
 # severity data
 sevD1Dat2 <- sevD1Dat %>%
-  select(-lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
 
 sevD2Dat2 <- sevD2Dat %>%
-  select(-lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
@@ -145,17 +145,20 @@ survSevD1Mod <- brm(data = survD1Dat2, family = bernoulli,
                     iter = 6000, warmup = 1000, chains = 3, cores = 3) 
 mod_check_fun(survSevD1Mod)
 
-survSevD2Mod <- update(survSevD1Mod, newdata = survD2Dat2,
-                       control = list(adapt_delta = 0.99)) 
+survSevD2Mod <- brm(data = survD2Dat2, family = bernoulli,
+                    survival ~ jul_severity * foc + (1|plotf),
+                    prior <- c(prior(normal(0, 10), class = "Intercept"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                    control = list(adapt_delta = 0.99)) 
 mod_check_fun(survSevD2Mod)
 
 winSurvSevD1Mod <- brm(data = winSurvD1Dat, family = bernoulli,
                        survival ~ sep_severity * foc + (1|plotf),
                        prior <- c(prior(normal(0, 10), class = "Intercept"),
                                   prior(normal(0, 10), class = "b")), # use default for sigma
-                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-winSurvSevD1Mod <- update(winSurvSevD1Mod,
-                          control = list(adapt_delta = 0.99))
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                       control = list(adapt_delta = 0.99)) 
 mod_check_fun(winSurvSevD1Mod)
 
 # save models
@@ -196,11 +199,12 @@ survCoef <- survD1Coef %>%
   full_join(survD2Coef) %>%
   full_join(winSurvD1Coef) %>%
   mutate(year = c(rep(2018, 3), rep(2019, 3), rep(2018, 2)),
-         focal = c("Mv", "Ev seedling", "Ev adult",
-                   "Mv", "Ev seedling", "Ev adult",
-                   "Ev seedling", "Ev adult"),
+         focal = c("Mv", "Ev first-year", "Ev adult",
+                   "Mv", "Ev first-year", "Ev adult",
+                   "Ev first-year", "Ev adult"),
          season = c(rep("growing season", 6), rep("winter", 2))) %>%
-  select(year, focal, season, Estimate:CI.Upper)
+  select(year, focal, season, Estimate:CI.Upper) %>%
+  arrange(season, year, focal)
 
 write_csv(survCoef, "output/survival_severity_coefficients_2018_2019_density_exp.csv")
 
@@ -221,51 +225,54 @@ annSurvCoef <- "logit2prob(Intercept) = 0"
 hypothesis(survSevD1Mod, sumSurvCoef) # 1
 hypothesis(survSevD2Mod, sumSurvCoef) # .94, but severity increased survival
 hypothesis(winSurvSevD1Mod, winSurvCoef) # .98, but severity increased survival
-hypothesis(adultSurvD1Mod, annSurvCoef) # .88
+hypothesis(adultSurvD1Mod, annSurvCoef) # .87
 
+
+#### maybe remove below? not used in manuscript ####
 
 #### 2018 Mv model ####
 
-# initial visualization
-ggplot(mvSurvD1Dat, aes(treatment, survival, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun = "mean", size = 2)
-
-# model
-mvSurvD1Mod <- brm(data = mvSurvD1Dat, family = bernoulli,
-                   survival ~ fungicide + (1|site/plotf),
-                   prior <- c(prior(normal(0, 10), class = "Intercept"),
-                              prior(normal(0, 10), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3,
-                   control = list(adapt_delta = 0.99))
-mod_check_fun(mvSurvD1Mod)
-
-# posterior means
-post_pred_fun2(mvSurvD1Mod)
-
-# save
-save(mvSurvD1Mod, file = "output/mv_growing_season_survival_model_2018_density_exp.rda")
+# # initial visualization
+# ggplot(mvSurvD1Dat, aes(treatment, survival, color = treatment)) +
+#   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+#   stat_summary(geom = "point", fun = "mean", size = 2)
+# 
+# # model
+# mvSurvD1Mod <- brm(data = mvSurvD1Dat, family = bernoulli,
+#                    survival ~ fungicide + (1|site/plotf),
+#                    prior <- c(prior(normal(0, 10), class = "Intercept"),
+#                               prior(normal(0, 10), class = "b")), # use default for sigma
+#                    iter = 6000, warmup = 1000, chains = 3,
+#                    control = list(adapt_delta = 0.99))
+# mod_check_fun(mvSurvD1Mod)
+# 
+# # posterior means
+# post_pred_fun2(mvSurvD1Mod)
+# 
+# # save
+# save(mvSurvD1Mod, file = "output/mv_growing_season_survival_model_2018_density_exp.rda")
 
 
 #### 2018 Ev seedling model ####
 
-# initial visualization
-ggplot(evSSurvD1Dat, aes(treatment, survival, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun = "mean", size = 2)
-
-# model
-evSSurvD1Mod <- update(mvSurvD1Mod, newdata = evSSurvD1Dat)
-mod_check_fun(evSSurvD1Mod)
-
-# posterior means
-post_pred_fun(evSSurvD1Mod)
-
-# save
-save(evSSurvD1Mod, file = "output/evS_growing_season_survival_model_2018_density_exp.rda")
+# # initial visualization
+# ggplot(evSSurvD1Dat, aes(treatment, survival, color = treatment)) +
+#   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+#   stat_summary(geom = "point", fun = "mean", size = 2)
+# 
+# # model
+# evSSurvD1Mod <- update(mvSurvD1Mod, newdata = evSSurvD1Dat)
+# mod_check_fun(evSSurvD1Mod)
+# 
+# # posterior means
+# post_pred_fun(evSSurvD1Mod)
+# 
+# # save
+# save(evSSurvD1Mod, file = "output/evS_growing_season_survival_model_2018_density_exp.rda")
 
 
 #### 2018 Ev adult model ####
+
 
 # initial visualization
 ggplot(evASurvD1Dat, aes(treatment, survival, color = treatment)) +

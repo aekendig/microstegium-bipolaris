@@ -148,9 +148,12 @@ growthD1Mod <- brm(data = growthD1Dat2, family = gaussian,
 # 36 divergent transitions, 864 transitions exceeded max_treedepth
 mod_check_fun(growthD1Mod)
 
-growthD2Mod <- update(growthD1Mod, 
-                      control = list(adapt_delta = 0.99999, max_treedepth = 15), 
-                       newdata = growthD2Dat2)
+growthD2Mod <- brm(data = growthD2Dat2, family = gaussian,
+                   plant_growth ~ density * foc * bg * fungicide + (1|site),
+                   prior <- c(prior(normal(0.75, 1), class = "Intercept"),
+                              prior(normal(0, 1), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                   control = list(adapt_delta = 0.99999, max_treedepth = 15)) 
 mod_check_fun(growthD2Mod)
 
 # biomass model
@@ -403,15 +406,42 @@ alphaDat <- growthD1alphas[[1]] %>%
 
 # edit to save
 alphaDatSave <- alphaDat %>%
-  left_join(predDat %>%
+  left_join(growthD2Dat2 %>%
               select(foc, focal, bg, background) %>%
               unique()) %>% 
-  mutate(treatment = fct_recode(treatment, "control" = "control (water)")) %>%
-  select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper)
+  mutate(treatment = fct_recode(treatment, "control" = "control (water)"),
+         focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
+         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
+  select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+  arrange(year, background, focal, treatment)
+
+# combine treatment effects
+trtEffDatSave <- growthD1TrtEff[[1]] %>%
+  mutate(Year = 2018,
+         Response = "tillers",
+         Gradient = "density") %>%
+  full_join(growthD2TrtEff[[1]] %>%
+              mutate(Year = 2019,
+                     Response = "biomass",
+                     Gradient = "biomass")) %>%
+  mutate(foc_bg = rep(c("m_m", "s_m", "a_m", "s_s", "m_s", "a_s", "a_a", "m_a", "s_a"), 2)) %>%
+  rowwise() %>%
+  mutate(foc = str_split(foc_bg, "_")[[1]][1],
+         bg = str_split(foc_bg, "_")[[1]][2]) %>%
+  ungroup() %>%
+  left_join(growthD2Dat2 %>%
+              select(foc, focal, bg, background) %>%
+              unique()) %>% 
+  mutate(focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
+         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
+  select(-c(Hypothesis, Evid.Ratio, Post.Prob, Star, foc_bg, foc, bg)) %>%
+  relocate(Year, Response, Gradient, focal, background) %>%
+  arrange(Year, background, focal)
 
 # save
-write_csv(alphaDatSave, "output/focal_growth_competition_coefficients_2018_2019_density_exp.csv")
-
+write_csv(filter(alphaDatSave, year == 2018), "output/focal_growth_competition_coefficients_2018_density_exp.csv")
+write_csv(filter(alphaDatSave, year == 2019), "output/focal_growth_competition_coefficients_2019_density_exp.csv")
+write_csv(trtEffDatSave, "output/focal_growth_competition_treatment_effect_2018_2019_density_exp.csv")
 
 
 #### figure ####
@@ -470,7 +500,9 @@ predDat <- predD1Dat %>%
 # combine with preddat
 predDat2 <- predDat %>%
   left_join(alphaDat) %>%
-  mutate(intra = if_else(foc == bg, "yes", "no"))
+  mutate(intra = case_when(foc == bg ~ "yes",
+                           foc %in% c("a", "s") & bg %in% c("a", "s") ~ "yes",
+                           TRUE ~ "no"))
 
 # raw data
 figDat <- growthD1Dat2 %>%
@@ -487,7 +519,9 @@ figDat <- growthD1Dat2 %>%
          focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
          background = fct_recode(background, "Ev first-year" = "Ev seedling"),
          density_level = fct_relevel(density_level, "low", "medium"),
-         intra = if_else(focal == background, "yes", "no"))
+         intra = case_when(focal ==  background ~ "yes",
+                           focal %in% c("Ev adult", "Ev first-year") &  background %in% c("Ev adult", "Ev first-year") ~ "yes",
+                           TRUE ~ "no"))
 
 # alphas for figure
 # sig beta values
@@ -531,6 +565,8 @@ fig_theme <- theme_bw() +
         strip.placement = "outside")
 
 col_pal = c("black", "#238A8DFF")
+textSize = 3
+box_shade = "gray92"
 
 # yearText <- tibble(year = c("2018", "2019"),
 #                    density = c(3.1, 3.1),
@@ -539,7 +575,7 @@ col_pal = c("black", "#238A8DFF")
 #                    focal = "Ev adult",
 #                    treatment = "fungicide")
 
-textSize = 3
+
 
 # legend
 legFig <- ggplot(predDat2, aes(x = density, y = plant_growth)) +
@@ -565,31 +601,31 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = density, y = plant
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
+  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
              scales = "free",
              switch = "both") +
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
+  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
   xlab(expression(paste("Competitor density (", m^-2, ")", sep = ""))) +
   ylab("Plant growth") +
   fig_theme
 
 # print
-tiff("output/focal_growth_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300)
+tiff("output/focal_growth_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300, compression = "lzw")
 plot_grid(pairD1Fig, leg,
           nrow = 2, 
           rel_heights = c(1, 0.15))
 dev.off()
 
 # 2019
-pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = plot_biomass, y = plant_growth)) +
+pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = log(plot_biomass), y = plant_growth)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
+  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
   geom_text(data = filter(alphaDat2, year == "2019"), 
             aes(label = paste("alpha", "==", comp, sep = ""), 
                 color = treatment), parse = T, hjust = 1, vjust = 0.2, show.legend = F, size = textSize) +
@@ -599,8 +635,9 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = plot_biomass, y = 
              switch = "both") +
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab(expression(paste("Competitor biomass (g ", m^-2, ")", sep = ""))) +
+  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  scale_x_continuous(breaks = c(2, 3, 4, 5, 6)) +
+  xlab(expression(paste("Competitor biomass (ln[g/", m^2, "])", sep = ""))) +
   ylab("Focal biomass (ln[g])") +
   fig_theme
 
@@ -623,7 +660,7 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = plot_biomass, y = 
 #                       rel_heights = c(1, 0.4))
 
 # combine
-tiff("output/focal_growth_pairwise_figure_2019_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300)
+tiff("output/focal_growth_pairwise_figure_2019_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300, compression = "lzw")
 # plot_grid(pairD2Fig + theme(legend.position = "none"), rightFig,
 #           nrow = 1, ncol = 2,
 #           labels = c("A", NA),
@@ -696,7 +733,7 @@ combFig2 <- plot_grid(rawD1Fig + theme(legend.position = "none"), rawD2Fig,
                      label_x = c(0, -0.01))
 
 # combine
-pdf("output/focal_raw_pairwise_figure_2018_2019_density_exp.pdf", width = 7, height = 3.5)
+tiff("output/focal_raw_pairwise_figure_2018_2019_density_exp.tiff", width = 6.5, height = 3.5, units = "in", res = 300, compression = "lzw")
 plot_grid(combFig2, leg2,
           nrow = 2,
           rel_heights = c(0.8, 0.06))

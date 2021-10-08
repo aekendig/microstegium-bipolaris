@@ -4,9 +4,6 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-# to do:
-# higher density dependence of Ev and Mv
-# sensitivity analysis of model
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library(tidyverse)
@@ -289,6 +286,12 @@ mv_germ_parms <- as_draws_df(mvGermD1Mod)  %>%
             Units = "NA",
             Source = "experiment")
 
+mv_germ_parms2 <- mv_germ_parms %>%
+  add_row(Parameter = "g_I_S",
+          Description = "annual germination loss due to infection",
+          Estimate = 1 - (filter(mv_germ_parms, Parameter == "g_I")$Estimate / filter(mv_germ_parms, Parameter == "g_S")$Estimate),
+          Lower = NA, Upper = NA, Units = "NA", Source = "experiment")
+
 load("../output/ev_germination_severity_model_2018_2019_density_exp.rda")
 
 ev_germ_parms <- as_draws_df(evGermMod)  %>%
@@ -403,7 +406,7 @@ evA_surv_parms <- as_draws_df(adultSurvD1Mod)  %>%
                names_to = "parameter",
                values_to = "estimate") %>%
   group_by(parameter) %>%
-  mean_hdi(estimate) %>%
+  mean_hdci(estimate) %>% # two separate hdi's - continuous is very similar
   transmute(Parameter = parameter,
             Description = "adult perennial survival fraction",
             Estimate = estimate,
@@ -558,7 +561,7 @@ parms <- r_parms %>%
   full_join(alpha_parms) %>%
   full_join(trans_mod_parms) %>%
   full_join(seed_inf_parms) %>%
-  full_join(mv_germ_parms) %>%
+  full_join(mv_germ_parms2) %>%
   full_join(ev_germ_parms) %>%
   full_join(mv_seed_parms) %>%
   full_join(evS_seed_parms) %>%
@@ -582,7 +585,7 @@ parms_export <- parms %>%
                                Parameter == "alpha_AP" ~ "alpha_iP",
                                TRUE ~ Parameter)) %>%
   filter(str_detect(Parameter, "alpha_P") == F & str_detect(Parameter, "alpha_F") == F &
-           !(str_detect(Parameter, "beta") == T & Estimate == 0))
+           !(str_detect(Parameter, "beta") == T & Estimate == 0) & Parameter != "g_I_S")
 
 write_csv(parms_export, "../output/discrete_continuous_model_parameters_2018_2019_density_exp.csv")
 
@@ -1491,8 +1494,8 @@ af_inv_fun_a <- function(a_parms){
 # need to run F-only-discrete 
 
 # parameter values
-parm_mult <- c(0, 1, 5, 10)
-parm_var <- list("p1", "v_A", c("v_A", "v_F", "v_P"))
+parm_mult <- list(c(0, 1, 1.7), c(0, 1, 5, 10), c(0, 1, 5, 10))
+parm_var <- list("g_I_S", "v_A", c("v_A", "v_F", "v_P"))
 
 # output lists
 modF_sim <- list()
@@ -1503,11 +1506,11 @@ modA_inv_sim <- list()
 for(i in 1:length(parm_var)){
 
   # cycle through changes in parameter values
-  for(j in 1:length(parm_mult)){
+  for(j in 1:length(parm_mult[[i]])){
     
     # update parameters
     parms_sim <- parms %>%
-      mutate(Estimate = case_when(Parameter %in% parm_var[[i]] ~ Estimate * parm_mult[j],
+      mutate(Estimate = case_when(Parameter %in% parm_var[[i]] ~ Estimate * parm_mult[[i]][j],
                                   TRUE ~ Estimate))
     
     # simulate dynamics
@@ -1519,11 +1522,11 @@ for(i in 1:length(parm_var)){
     # save 
     modF_sim[[name]] <- sim_out[[1]] %>%
       mutate(parm = paste(parm_var[[i]], collapse = ", "),
-             parm_val = parm_mult[j])
+             parm_val = parm_mult[[i]][j])
     
     modA_inv_sim[[name]] <- sim_out[[2]] %>%
       mutate(parm = paste(parm_var[[i]], collapse = ", "),
-             parm_val = parm_mult[j])
+             parm_val = parm_mult[[i]][j])
     
   }
   
@@ -1531,17 +1534,17 @@ for(i in 1:length(parm_var)){
 
 # collapse lists
 modF_dat <- bind_rows(modF_sim) %>%
-  mutate(parm_val_char = paste0("x", parm_val) %>%
-           fct_relevel("x0", "x1", "x5"),
-         parm_char = case_when(parm == "p1" ~ "Mv germination virulence",
+  mutate(parm_val_char = paste0(parm_val, "x") %>%
+           fct_relevel("0x", "1x", "1.7x", "5x"),
+         parm_char = case_when(parm == "g_I_S" ~ "Mv germination virulence",
                                parm == "v_A" ~ "Mv biomass virulence",
                                parm == "v_A, v_F, v_P" ~ "Ev + Mv biomass virulence") %>%
            fct_relevel("Mv germination virulence", "Mv biomass virulence"))
 
 modA_inv_dat <- bind_rows(modA_inv_sim) %>%
-  mutate(parm_val_char = paste0("x", parm_val) %>%
-           fct_relevel("x0", "x1", "x5"),
-         parm_char = case_when(parm == "p1" ~ "Mv germination virulence",
+  mutate(parm_val_char = paste0(parm_val, "x") %>%
+           fct_relevel("0x", "1x", "1.7x", "5x"),
+         parm_char = case_when(parm == "g_I_S" ~ "Mv germination virulence",
                                parm == "v_A" ~ "Mv biomass virulence",
                                parm == "v_A, v_F, v_P" ~ "Ev + Mv biomass virulence") %>%
            fct_relevel("Mv germination virulence", "Mv biomass virulence"))
@@ -1603,34 +1606,25 @@ fig_theme <- theme_bw() +
         legend.background = element_blank(),
         legend.key = element_rect(fill = NA),
         legend.key.height = unit(1, units = "mm"),
+        legend.key.width = unit(8, units = "mm"),
         legend.margin = margin(-0.1, -0.1, -0.1, -0.1, unit = "cm"),
         plot.title = element_text(size = 14, face = "bold"),
         strip.text = element_text(size = 10),
         strip.background = element_blank())
 
 col_pal = c("#33638DFF", "#3CBB75FF")
-line_pal = c("dotted", "solid", "dashed", "dotdash")
+line_pal = c("dotted", "solid", "twodash", "dashed", "dotdash")
+
+# legend
+leg_fig <- ggplot(filter(inv_bio_dat, Species == "Ev"), aes(x = time, y = N)) +
+  geom_line(aes(color = parm_char, linetype = parm_val_char)) +
+  scale_color_viridis_d(guide = "none") +
+  scale_linetype_manual(values = line_pal, name = "Parameter\nchange") +
+  fig_theme +
+  theme(legend.position = c(0.4, 0.67))
 
 # figure
 inv_bio_fig_A <- ggplot(inv_bio_dat_A, aes(x = time, y = N)) +
-  geom_line(aes(color = Species, linetype = parm_val_char)) +
-  facet_wrap(~ parm_char) +
-  scale_color_manual(values = col_pal, guide = "none") +
-  scale_linetype_manual(values = line_pal, name = "Parameter\nchange") +
-  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
-  fig_theme +
-  theme(legend.position = c(0.2, 0.75))
-
-inv_bio_fig_B <- ggplot(inv_bio_dat_B, aes(x = time, y = N)) +
-  geom_line(aes(color = Species, linetype = parm_val_char)) +
-  facet_wrap(~ parm_char) +
-  scale_color_manual(values = col_pal) +
-  scale_linetype_manual(values = line_pal, guide = "none") +
-  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
-  fig_theme +
-  theme(legend.position = c(0.18, 0.85))
-
-inv_bio_fig_C <- ggplot(inv_bio_dat_C, aes(x = time, y = N)) +
   geom_line(aes(color = Species, linetype = parm_val_char)) +
   facet_wrap(~ parm_char) +
   scale_color_manual(values = col_pal) +
@@ -1639,8 +1633,31 @@ inv_bio_fig_C <- ggplot(inv_bio_dat_C, aes(x = time, y = N)) +
   fig_theme +
   theme(legend.position = "none")
 
+inv_bio_fig_B <- ggplot(inv_bio_dat_B, aes(x = time, y = N)) +
+  geom_line(aes(color = Species, linetype = parm_val_char)) +
+  facet_wrap(~ parm_char) +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal[-3], guide = "none") +
+  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
+  fig_theme +
+  theme(legend.position = c(0.18, 0.85))
+
+inv_bio_fig_C <- ggplot(inv_bio_dat_C, aes(x = time, y = N)) +
+  geom_line(aes(color = Species, linetype = parm_val_char)) +
+  facet_wrap(~ parm_char) +
+  scale_color_manual(values = col_pal) +
+  scale_linetype_manual(values = line_pal[-3]) +
+  labs(x = "Time (years)", y = expression(paste("Biomass (g/", m^2, ")", sep = ""))) +
+  fig_theme +
+  theme(legend.position = "none")
+
+# add linetype legend
+leg <- get_legend(leg_fig)
+inv_bio_fig_A2 <- align_plots(inv_bio_fig_A, leg, axis = "l")
+inv_bio_fig_A3 <- ggdraw(inv_bio_fig_A2[[1]]) + draw_plot(inv_bio_fig_A2[[2]])
+
 tiff("../output/annual_invasion_simmulations.tiff", width = 18, height = 6, units = "cm", res = 300, compression = "lzw")
-plot_grid(inv_bio_fig_A, inv_bio_fig_B, inv_bio_fig_C,
+plot_grid(inv_bio_fig_A3, inv_bio_fig_B, inv_bio_fig_C,
           labels = LETTERS[1:3],
           nrow = 1)
 dev.off()

@@ -130,6 +130,25 @@ mv_dat2 %>%
 # close pdf
 # dev.off()
 
+# log-transformed values
+mv_dat2 %>%
+  ggplot(aes(x = treatment, y = log_bio.g)) +
+  geom_point(color = "gray") +
+  stat_summary(geom = "point", fun = "mean", color = "black", size = 3) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", color = "black", width = 0.05) +
+  ylab(expression(paste(italic(Microstegium), " aboveground biomass (log-g)", sep = ""))) +
+  xlab("Treatment") +
+  temp_theme
+
+ev_dat2 %>%
+  ggplot(aes(x = treatment, y = log_bio.g)) +
+  geom_point(color = "gray") +
+  stat_summary(geom = "point", fun = "mean", color = "black", size = 3) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", color = "black", width = 0.05) +
+  ylab(expression(paste(italic(Elymus), " aboveground biomass (log-g)", sep = ""))) +
+  xlab("Treatment") +
+  temp_theme
+
 
 #### statistical models ####
 
@@ -149,6 +168,9 @@ mv_dat2 %>%
 
 hypothesis(mvBioGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
 
+# save
+save(mvBioGhMod, file = "output/mv_biomass_fungicide_effects_greenhouse_2019.rda")
+
 # Ev biomass
 evBioGhMod <- brm(log_bio.g ~ fungicide,
                   data = ev_dat2, family = gaussian,
@@ -164,6 +186,9 @@ ev_dat2 %>%
   ungroup()
 
 hypothesis(evBioGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
+
+# save
+save(evBioGhMod, file = "output/ev_biomass_fungicide_effects_greenhouse_2019.rda")
   
 # Mv seed heads
 mean(mv_dat2$seed_heads)
@@ -183,3 +208,6 @@ mv_dat2 %>%
   ungroup()
 
 hypothesis(mvSeedGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
+
+# save
+save(mvSeedGhMod, file = "output/mv_seed_fungicide_effects_greenhouse_2019.rda")

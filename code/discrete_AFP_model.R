@@ -40,7 +40,7 @@ disc_AFP_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, simt
   
   s_A <- as.numeric(parms[parms$Parameter == "s_A", "Estimate"])
   g_S <- as.numeric(parms[parms$Parameter == "g_S", "Estimate"])
-  g_I <- as.numeric(parms[parms$Parameter == "g_I", "Estimate"])
+  g_I_S <- as.numeric(parms[parms$Parameter == "g_I_S", "Estimate"])
   p0 <- as.numeric(parms[parms$Parameter == "p0", "Estimate"])
   p1 <- as.numeric(parms[parms$Parameter == "p1", "Estimate"])
   c_A <- as.numeric(parms[parms$Parameter == "c_A", "Estimate"])
@@ -63,6 +63,9 @@ disc_AFP_mod <- function(AS0, AI0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, simt
   h <- as.numeric(parms[parms$Parameter == "h", "Estimate"])
   
   grow_days <- seq(0, gs_days)
+  
+  # germination virulence
+  g_I <- g_S * (1 - g_I_S)
   
   # simulate population dynamics
   for(t in 1:(simtime - 1)){	

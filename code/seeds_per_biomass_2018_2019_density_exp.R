@@ -168,6 +168,8 @@ evSSeedsBioD2Dat <- seedsBioD2Dat2 %>%
 evASeedsBioD2Dat <- seedsBioD2Dat2 %>%
   filter(plant_group == "Ev_adult")
 
+## RE-RUN THESE WITHOUT UPDATE FUNCTION IF USING IN MANUSCRIPT ##
+
 # fit models
 mvSeedsBioD2Mod <- update(seedsBioD2Mod, formula. = log_seeds ~ fungicide * log_bio + (1|plotf),
                           newdata = mvSeedsBioD2Dat)
@@ -243,12 +245,17 @@ mvSeedsBioD2Mod2 <- brm(data = mvSeedsBioD2Dat2, family = gaussian,
                            iter = 6000, warmup = 1000, chains = 3)
 mod_check_fun(mvSeedsBioD2Mod2)
 
-evSSeedsBioD2Mod2 <- update(mvSeedsBioD2Mod2, newdata = evSSeedsBioD2Dat2)
+evSSeedsBioD2Mod2 <- brm(data = evSSeedsBioD2Dat2, family = gaussian,
+                         seeds ~ 0 + biomass_weight.g + fungicide:biomass_weight.g + (1|plotf),
+                         prior <- c(prior(normal(0, 100), class = "b")), # use default for sigma
+                         iter = 6000, warmup = 1000, chains = 3)
 mod_check_fun(evSSeedsBioD2Mod2)
 
-evASeedsBioD2Mod2 <- update(mvSeedsBioD2Mod2, formula. = seeds ~ 0 + biomass_weight.g + fungicide:biomass_weight.g + (1|site),
-                            control = list(adapt_delta = 0.999),
-                            newdata = evASeedsBioD2Dat2)
+evASeedsBioD2Mod2 <- brm(data = evASeedsBioD2Dat2, family = gaussian,
+                         seeds ~ 0 + biomass_weight.g + fungicide:biomass_weight.g + (1|site),
+                         prior <- c(prior(normal(0, 100), class = "b")), # use default for sigma
+                         iter = 6000, warmup = 1000, chains = 3,
+                         control = list(adapt_delta = 0.999))
 mod_check_fun(evASeedsBioD2Mod2)
 
 # simulated data

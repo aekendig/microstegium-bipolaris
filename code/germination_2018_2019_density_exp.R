@@ -16,6 +16,7 @@ library(tidyverse)
 library(brms)
 library(GGally)
 library(cowplot)
+library(car)
 
 # import data
 mvGermD1Dat1 <- read_csv("data/mv_germination_disease_set_1_2018_density_exp.csv")
@@ -29,12 +30,17 @@ sevD2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
 # model functions
 source("code/brms_model_fitting_functions.R")
 
+# convert logit to probability
+logit2prob <- function(x){
+  exp(x)/(1 + exp(x))
+}
+
 
 #### edit data ####
 
 # severity
 sevD1Dat2 <- sevD1Dat %>%
-  select(-lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity") %>%
@@ -42,7 +48,7 @@ sevD1Dat2 <- sevD1Dat %>%
            fct_rev())
 
 sevD2Dat2 <- sevD2Dat %>%
-  select(-lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity") %>%
@@ -83,7 +89,7 @@ mvGermD1Dat <- mvGermD1Dat1 %>%
          treatment = gsub(".* ","", site_plot) %>% 
            gsub("[^[:alpha:]]", "", .) %>% 
            as.factor() %>%
-           recode("F" = "fungicide", "W" = "control (water)") %>%
+           dplyr::recode("F" = "fungicide", "W" = "control (water)") %>%
            fct_rev(),
          site = ifelse(site == "P1", "D1", site),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
@@ -166,7 +172,7 @@ ggplot(mvGermD1Dat, aes(treatment, prop_dark)) +
   stat_summary(geom = "point", fun = "mean")
 
 # light/dark infection correlation
-cor.test(~ prop_dark + prop_light, data = mvGermD1Dat)
+cor.test(~ prop_dark + prop_light, data = mvGermD1Dat) # not correlated
 
 # model
 mvGermD1Mod <- brm(data = mvGermD1Dat, family = binomial,
@@ -233,14 +239,6 @@ save(mvPropDarkMod2, file = "output/mv_seed_infection_dark_fungicide_model_2018_
 save(mvPropLightMod, file = "output/mv_seed_infection_light_model_2018_density_exp.rda")
 save(mvPropLightMod2, file = "output/mv_seed_infection_light_fungicide_model_2018_density_exp.rda")
 
-# logit to prob
-logit2prob <- function(x){
-  exp(x)/(1 + exp(x))
-}
-
-# fungicide effect
-hypothesis(mvPropDarkMod2, "logit2prob(Intercept + fungicide) - logit2prob(Intercept) = 0")
-
 
 #### Ev model ####
 
@@ -266,14 +264,9 @@ evGermMod <- brm(data = evGermDat2, family = binomial,
                    germinants | trials(seeds_planted) ~ final_severity*yearf + (1|site),
                    prior <- c(prior(normal(0, 10), class = "Intercept"),
                               prior(normal(0, 10), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3)
-evGermMod <- update(evGermMod, control = list(adapt_delta = 0.999, max_treedeth = 15))
+                   iter = 6000, warmup = 1000, chains = 3, 
+                 control = list(adapt_delta = 0.999, max_treedepth = 15))
 mod_check_fun(evGermMod)
-
-# hypotheses
-ev18 = "final_severity = 0"
-ev19 = "final_severity + final_severity:yearf = 0"
-hypothesis(evGermMod, c(ev18, ev19))
 
 # save
 save(evGermMod, file = "output/ev_germination_severity_model_2018_2019_density_exp.rda")
@@ -300,6 +293,14 @@ fig_theme <- theme_bw() +
         strip.placement = "outside")
 
 # simulated data
+mvFungSim <- tibble(fungicide = c(0, 1)) %>%
+  mutate(plotf = "A",
+         treatment = c("control (water)", "fungicide"),
+         seeds = round(mean(mvGermD1Dat$seeds))) %>%
+  mutate(prop_dark = fitted(mvPropDarkMod2, newdata = ., allow_new_levels = T)[, "Estimate"]/seeds,
+         lower = fitted(mvPropDarkMod2, newdata = ., allow_new_levels = T)[, "Q2.5"]/seeds,
+         upper = fitted(mvPropDarkMod2, newdata = ., allow_new_levels = T)[, "Q97.5"]/seeds)
+
 mvPropDarkSim <- tibble(sep_severity = seq(min(mvGermD1Dat$sep_severity, na.rm = T), max(mvGermD1Dat$sep_severity, na.rm = T), length.out = 100)) %>%
   mutate(plotf = "A",
          seeds = round(mean(mvGermD1Dat$seeds))) %>%
@@ -317,14 +318,23 @@ mvGermSim <- tibble(prop_dark = seq(min(mvGermD1Dat$prop_dark), max(mvGermD1Dat$
 
 # figures
 mvFungFig <- ggplot(mvGermD1Dat, aes(treatment, prop_dark)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
-  stat_summary(geom = "point", fun = "mean", size = 2) +
+    # geom_point(alpha = 0.3, size = 0.7, position = position_jitter(width = 0.35)) +
+  # geom_violin() +
+  ggdist::stat_dots(dotsize = .4, 
+                    binwidth = 0.01,
+                    color = "#238A8DFF",
+                    fill = "#238A8DFF",
+                    alpha = 0.7,
+                    side = "both") +
+    geom_errorbar(data = mvFungSim, width = 0, size = 0.75, aes(ymin = lower, ymax = upper)) +
+    geom_point(data = mvFungSim, size = 2.5) +
+  geom_text(x = 1.5, y = 0.75, label = "*", size = 6, check_overlap = T) +
   fig_theme +
   xlab("Plot treatment") +
   ylab("Proportion seeds infected")
 
 mvDarkFig <- ggplot(mvGermD1Dat, aes(sep_severity, prop_dark)) +
-  geom_point(alpha = 0.7, size = 0.7) +
+  geom_point(alpha = 0.3, size = 0.7, color = "#238A8DFF") +
   geom_line(data = mvPropDarkSim) +
   geom_ribbon(data = mvPropDarkSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
   fig_theme +
@@ -332,7 +342,7 @@ mvDarkFig <- ggplot(mvGermD1Dat, aes(sep_severity, prop_dark)) +
   ylab("Proportion seeds infected")
 
 mvGermFig <- ggplot(mvGermD1Dat, aes(prop_dark, prop_germ)) +
-  geom_point(alpha = 0.7, size = 0.7) +
+  geom_point(alpha = 0.3, size = 0.7, color = "#238A8DFF") +
   geom_line(data = mvGermSim) +
   geom_ribbon(data = mvGermSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
   fig_theme +
@@ -340,9 +350,53 @@ mvGermFig <- ggplot(mvGermD1Dat, aes(prop_dark, prop_germ)) +
   ylab("Proportion seeds germinated") +
   theme(axis.title.y = element_text(size = 10, hjust = -0.05))
 
-tiff("output/mv_germination_infection_figure_2018_density_exp.tiff", width = 18, height = 6, units = "cm", res = 300)
+tiff("output/mv_germination_infection_figure_2018_density_exp.tiff", width = 18, height = 6, units = "cm", res = 300, compression = "lzw")
 plot_grid(mvFungFig, mvDarkFig, mvGermFig,
           nrow = 1,
           labels = LETTERS[1:3],
           vjust = 1.1)
 dev.off()
+
+
+#### values for text ####
+
+# Mv fungicide effect on infection
+hypothesis(mvPropDarkMod2, "logit2prob(Intercept + fungicide) - logit2prob(Intercept) = 0")
+
+# Mv severity effect on infection
+filter(mvPropDarkSim, sep_severity == min(sep_severity))
+filter(mvPropDarkSim, sep_severity == max(sep_severity))
+
+# Mv infection effect on germination
+filter(mvGermSim, prop_dark == min(prop_dark))
+filter(mvGermSim, prop_dark == max(prop_dark))
+
+# Ev severity hypotheses
+ev18 = "final_severity = 0"
+ev19 = "final_severity + final_severity:yearf = 0"
+hypothesis(evGermMod, c(ev18, ev19))
+
+# Mv model table
+mod_table_fun <- function(mod){
+  fixef(mod) %>%
+    as_tibble() %>%
+    mutate(Predictor = rownames(fixef(mod)),
+           N = summary(mod)$nobs,
+           SD = summary(mod)$random$plotf$Estimate) %>%
+    filter(Predictor != "Intercept")
+  }
+
+mv_mod_table <- bind_rows(mod_table_fun(mvPropDarkMod2) %>%
+                            mutate(Response = "prop. infected (dark)"),
+                          mod_table_fun(mvPropLightMod2) %>%
+                            mutate(Response = "prop. infected (light)"),
+                          mod_table_fun(mvPropDarkMod) %>%
+                            mutate(Response = "prop. infected (dark)"),
+                          mod_table_fun(mvPropLightMod) %>%
+                            mutate(Response = "prop. infected (light)"),
+                          mod_table_fun(mvGermD1Mod) %>%
+                            mutate(Response = "prop. germinated")
+) %>%
+  relocate(Response, Predictor)
+
+write_csv(mv_mod_table, "output/mv_germination_infection_table_2018_density_exp.csv")

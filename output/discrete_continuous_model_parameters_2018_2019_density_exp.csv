@@ -9,18 +9,18 @@ beta_AA,annual-annual transmission,0.03821817221375853,0.011980078852740902,0.06
 beta_FA,annual-first-year perennial transmission,0.06813475856152575,3.7412431082678443e-4,0.13527588708840377,day^-1^ g^-1^,experiment
 beta_FP,adult perennial-first-year perennial transmission,0.03431439567737486,0.00509978555267915,0.06331095491436185,day^-1^ g^-1^,experiment
 beta_PA,annual-adult perennial transmission,0.0709431825219581,0.034294279737049474,0.10785633858426362,day^-1^ g^-1^,experiment
-p0,seed infection parameter,-2.914,-3.199,-2.647,"NA",experiment
-p1,seed infection parameter,2.524,1.184,3.863,"NA",experiment
-g_I,infected annual germination fraction,0.316,0.182,0.458,"NA",experiment
-g_S,susceptible annual germination fraction,0.767,0.733,0.8,"NA",experiment
-g_P,perennial germination fraction,0.24048411514474585,0.034657968424431966,0.4395512950320474,"NA",experiment
+p0,seed infection parameter,-2.919,-3.199,-2.643,"NA",experiment
+p1,seed infection parameter,2.547,1.29,3.945,"NA",experiment
+g_I,infected annual germination fraction,0.316,0.179,0.454,"NA",experiment
+g_S,susceptible annual germination fraction,0.767,0.731,0.799,"NA",experiment
+g_P,perennial germination fraction,0.24056807564023064,0.04343887493553934,0.45287524420771436,"NA",experiment
 c_A,annual seed conversion,76.91213399302326,69.19096928570664,84.42525364871562,seeds g^-1^,experiment
-c_F,first-year perennial seed conversion,8.476030789055871,6.997022970125732,9.999516239481084,seeds g^-1^,experiment
-c_P,adult perennial seed conversion,19.084498055179633,16.209390679370646,21.98089920102739,seeds g^-1^,experiment
-e_A,annual establishment fraction,0.9490323342553639,0.9144625556014616,0.9806709158889197,"NA",experiment
-e_P,perennial establishment fraction,0.5531020953855147,0.4065253408230047,0.6958544000552291,"NA",experiment
-l_P,adult perennial survival fraction,0.8764804924301219,0.6196207826181906,0.9826180206947736,"NA",experiment
-n_P,adult perennial surviving biomass,0.38042768251224895,NA,NA,"NA",experiment
+c_F,first-year perennial seed conversion,8.467687590409884,6.900351388801406,9.975870678649343,seeds g^-1^,experiment
+c_P,adult perennial seed conversion,18.99489904932838,16.096628550735545,21.953204396785914,seeds g^-1^,experiment
+e_A,annual establishment fraction,0.949222036328335,0.9151933060811733,0.9819124674978739,"NA",experiment
+e_P,perennial establishment fraction,0.5511941506456667,0.4060802624756853,0.6946408723838391,"NA",experiment
+l_P,adult perennial survival fraction,0.8717388906796472,0.5874978334072797,0.9773558497256153,"NA",experiment
+n_P,adult perennial surviving biomass,0.3783696372038727,NA,NA,"NA",experiment
 b_A,annual initial biomass,0.031,NA,NA,g,experiment
 b_F,first-year perennial initial biomass,0.004,NA,NA,g,experiment
 b_P,adult perennial initial biomass,0.031,NA,NA,g,experiment

@@ -17,6 +17,7 @@ library(brms)
 library(tidybayes)
 library(cowplot)
 library(gridExtra)
+library(car)
 
 # import data
 d1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
@@ -34,6 +35,9 @@ plotsD <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv"
 
 # model functions
 source("code/brms_model_fitting_functions.R")
+
+# logit adjustment
+logit_adjust <- 0.001
 
 
 #### edit data ####
@@ -355,17 +359,20 @@ evA_fung_base <- "Intercept + foca + fungicide + foca:fungicide = 0"
 sevD1base <- hypothesis(sevD1Mod,
                         c(mv_ctrl_base, mv_fung_base, evS_ctrl_base, evS_fung_base, evA_ctrl_base, evA_fung_base))[[1]] %>%
   as_tibble() %>%
-  mutate(treatment = rep(c("control (water)", "fungicide"), 3),
-         focal = rep(c("Mv", "Ev first-year", "Ev adult"), each = 2))
+  mutate(treatment = rep(c("control", "fungicide"), 3),
+         focal = rep(c("Mv", "Ev first-year", "Ev adult"), each = 2),
+         background = "background") %>%
+  select(focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+  arrange(focal, treatment)
 
 sevD2base <- hypothesis(sevD2Mod,
                         c(mv_ctrl_base, mv_fung_base, evS_ctrl_base, evS_fung_base, evA_ctrl_base, evA_fung_base))[[1]] %>%
   as_tibble() %>%
-  mutate(treatment = rep(c("control (water)", "fungicide"), 3),
-         focal = rep(c("Mv", "Ev first-year", "Ev adult"), each = 2))
-
-write_csv(sevD1base, "output/plot_transmission_baseline_2018_density_exp.csv")
-write_csv(sevD2base, "output/plot_transmission_baseline_2019_density_exp.csv")
+  mutate(treatment = rep(c("control", "fungicide"), 3),
+         focal = rep(c("Mv", "Ev first-year", "Ev adult"), each = 2),
+         background = "background") %>%
+  select(focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+  arrange(focal, treatment)
 
 
 #### transmission coefficients (betas) ####
@@ -476,17 +483,52 @@ betaDat <- sevD1betas[[1]] %>%
          sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
                          TRUE ~ "includes 0"))
 
+# combine treatment effects
+trtEffDat <- sevD1TrtEff[[1]] %>%
+  mutate(year = "2018",
+         foc_bg = c("m_m", "s_m", "a_m", 
+                    "s_s", "m_s", "a_s",
+                    "a_a", "m_a","s_a")) %>%
+  full_join(sevD2TrtEff[[1]] %>%
+              mutate(year = "2019",
+                     foc_bg = c("m_m", "s_m", "a_m", 
+                                "s_s", "m_s", "a_s",
+                                "a_a", "m_a","s_a"))) %>%
+  select(-c(Hypothesis, Evid.Ratio, Post.Prob, Star)) %>%
+  rowwise() %>%
+  mutate(foc = str_split(foc_bg, "_")[[1]][1],
+         bg = str_split(foc_bg, "_")[[1]][2]) %>%
+  ungroup()
+
 # edit to save
-betaDatSave <- betaDat %>%
-  left_join(predDat %>%
+betaD1DatSave <- bind_rows(sevD1base, betaDat %>%
+                             filter(year == 2018) %>%
+  left_join(sevD2Dat %>%
               select(foc, focal, bg, background) %>%
               unique()) %>% 
   mutate(treatment = fct_recode(treatment, "control" = "control (water)")) %>%
-  select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper)
+  select(focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+  arrange(background, focal, treatment))
+
+betaD2DatSave <- bind_rows(sevD2base, betaDat %>%
+                             filter(year == 2019) %>%
+                             left_join(sevD2Dat %>%
+                                         select(foc, focal, bg, background) %>%
+                                         unique()) %>% 
+                             mutate(treatment = fct_recode(treatment, "control" = "control (water)")) %>%
+                             select(focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+                             arrange(background, focal, treatment))
+
+trtEffDatSave <- trtEffDat %>%
+  left_join(sevD2Dat %>%
+              select(foc, focal, bg, background) %>%
+              unique()) %>% 
+  select(year, focal, background, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+  arrange(year, background, focal)
 
 # save
-write_csv(betaDatSave, "output/plot_transmission_coefficients_2018_2019_density_exp.csv")
-
+write_csv(betaD1DatSave, "output/plot_transmission_coefficients_2018_density_exp.csv")
+write_csv(trtEffDatSave, "output/plot_transmission_fungicide_effects_2018_2019_density_exp.csv")
 
 
 #### edge effects ####
@@ -511,7 +553,18 @@ edgeD2hyps2 <- edgeD2hyps[[1]] %>%
          sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
                          TRUE ~ "includes 0"))
 
-write_csv(edgeD2hyps2, "output/edge_transmission_2019_density_exp.csv")
+# add to betas to save
+betaD2DatSave2 <- rbind(betaD2DatSave, edgeD2hyps2 %>%
+                          left_join(sevD2Dat %>%
+                                      select(foc, focal) %>%
+                                      unique()) %>%
+                          mutate(treatment = fct_recode(treatment, "control" = "control (water)"),
+                                 background = "Mv edge") %>%
+                          select(focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
+                          arrange(focal, treatment))
+  
+# save
+write_csv(betaD2DatSave2, "output/plot_transmission_coefficients_2019_density_exp.csv")
 
 
 #### figure ####
@@ -566,6 +619,7 @@ predDat <- predD1Dat %>%
            fct_relevel("Ev adult", "Ev first-year"),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev(),
+         bg_severity_logit = logit(bg_severity, adjust = logit_adjust),
          bg_severity = bg_severity * 100)
 
 # edge severity
@@ -589,13 +643,16 @@ predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
   mutate(foc_healthy_change = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
          lower = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
          upper = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"],
+         edge_severity_logit = logit(edge_severity, adjust = logit_adjust),
          edge_severity = edge_severity * 100,
          treatment = fct_rev(treatment))
 
 # combine with preddat
 predDat2 <- predDat %>%
   left_join(betaDat) %>%
-  mutate(intra = if_else(foc == bg, "yes", "no"))
+  mutate(intra = case_when(foc == bg ~ "yes",
+                           foc %in% c("a", "s") & bg %in% c("a", "s") ~ "yes",
+                           TRUE ~ "no"))
 
 # raw data
 figDat <- sevD1Dat %>%
@@ -611,7 +668,9 @@ figDat <- sevD1Dat %>%
            fct_relevel("control (water)"),
          focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
          background = fct_recode(background, "Ev first-year" = "Ev seedling"),
+         bg_severity_logit = logit(bg_severity, adjust = logit_adjust),
          bg_severity = bg_severity * 100,
+         edge_severity_logit = logit(edge_severity, adjust = logit_adjust),
          edge_severity = edge_severity * 100,
          density_level = fct_relevel(density_level, "low", "medium"),
          intra = if_else(focal == background, "yes", "no"))
@@ -622,7 +681,8 @@ betaDat2 <- betaDat %>%
   filter(sig == "omits 0") %>%
   left_join(predDat2 %>%
               group_by(year, bg, background) %>%
-              summarise(bg_severity = max(bg_severity))) %>%
+              summarise(bg_severity = max(bg_severity),
+                        bg_severity_logit = max(bg_severity_logit))) %>%
   left_join(predDat2 %>%
               select(foc, focal) %>% # add focal names
               unique()) %>%
@@ -651,21 +711,36 @@ edgeD2hyps3 <- edgeD2hyps2 %>%
   left_join(predD2EdgeDat %>%
               group_by(foc, focal) %>%
               summarise(edge_severity = max(edge_severity),
-                        upper = max(upper)) %>%
+                        max_edge_sev_logit = max(edge_severity_logit),
+                        min_edge_sev_logit = min(edge_severity_logit),
+                        upper = max(upper),
+                        lower = min(lower)) %>%
               ungroup()) %>%
   left_join(sevD2Dat %>%
               group_by(foc) %>%
-              summarise(dat = max(foc_healthy_change)) %>%
+              summarise(dat_max = max(foc_healthy_change),
+                        dat_min = min(foc_healthy_change)) %>%
               ungroup()) %>%
   rowwise() %>%
-  mutate(foc_healthy_change = max(c(dat, upper))) %>%
+  mutate(foc_healthy_change = case_when(foc != "m" & treatment == "control (water)" ~ min(c(dat_min, lower)),
+                                        TRUE ~ max(c(dat_max, upper)))) %>%
   ungroup() %>%
-  select(-c(dat, upper)) %>%
+  select(-c(dat_max, dat_min, upper, lower)) %>%
   mutate(parm = round(Estimate, 2),
-         foc_healthy_change = case_when(treatment == "fungicide" & foc == "a" ~ foc_healthy_change - 1,
-                                        treatment == "fungicide" & foc == "s" ~ foc_healthy_change - 0.5,
-                                        treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.3,
+         # foc_healthy_change = case_when(treatment == "fungicide" & foc == "a" ~ foc_healthy_change - 1,
+         #                                treatment == "fungicide" & foc == "s" ~ foc_healthy_change - 0.5,
+         #                                treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.3,
+         #                                TRUE ~ foc_healthy_change),
+         foc_healthy_change = case_when(treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.3,
                                         TRUE ~ foc_healthy_change),
+         edge_severity_logit = case_when(foc == "m" ~ min_edge_sev_logit,
+                                         foc == "s" & treatment == "fungicide" ~ min_edge_sev_logit,
+                                         TRUE ~ max_edge_sev_logit),
+         vjust = case_when(foc != "m" & treatment == "control (water)" ~ 0,
+                           TRUE ~ 1),
+         hjust = case_when(foc == "m" ~ 0,
+                           foc == "s" & treatment == "fungicide" ~ 0,
+                           TRUE ~ 1),
          background = "Mv")
 
 # figure settings
@@ -688,6 +763,10 @@ fig_theme <- theme_bw() +
 
 col_pal = c("black", "#238A8DFF")
 
+textSize = 3
+
+box_shade = "gray92"
+
 # yearText <- tibble(year = c("2018", "2019"),
 #                    bg_severity = c(0, 0),
 #                    foc_healthy_change = c(2, 3),
@@ -695,7 +774,7 @@ col_pal = c("black", "#238A8DFF")
 #                    focal = "Ev adult",
 #                    treatment = "fungicide")
 
-textSize = 3
+
 
 # legend
 legFig <- ggplot(predDat2, aes(x = bg_severity, y = foc_healthy_change)) +
@@ -716,11 +795,11 @@ legFig <- ggplot(predDat2, aes(x = bg_severity, y = foc_healthy_change)) +
 leg <- get_legend(legFig)
 
 # 2018 figure
-pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = foc_healthy_change)) +
+pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity_logit, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
+  geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
   # geom_text(data = filter(betaDat2, year == "2018"), 
   #           aes(label = paste("beta", " == ", parm, sep = ""), 
   #               color = treatment), parse = T, hjust = 1, vjust = 0, show.legend = F, size = textSize) +
@@ -730,25 +809,26 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = f
              switch = "both") +
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab("Initial disease severity (%)") +
+  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  xlab("Initial disease severity (log-odds)") +
   ylab("Change in infected tissue") +
   fig_theme
 
-tiff("output/plot_transmission_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300)
+tiff("output/plot_transmission_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", 
+     res = 300, compression = "lzw")
 plot_grid(pairD1Fig, leg,
           nrow = 2, 
           rel_heights = c(1, 0.15))
 dev.off()
 
 # 2019 figure
-pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = foc_healthy_change)) +
+pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity_logit, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
-  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
-  geom_text(data = filter(betaDat2, year == "2019"), 
-            aes(label = paste("beta", " == ", parm, sep = ""), 
+  geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
+  geom_text(data = filter(betaDat2, year == "2019"),
+            aes(label = paste("beta", " == ", parm, sep = ""),
                 color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
@@ -756,21 +836,23 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = f
              switch = "both") +
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab("Initial disease severity (%)") +
+  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  xlab("Initial disease severity (log-odds)") +
   ylab("Change in infected tissue") +
   fig_theme
 
-edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_change)) +
+edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity_logit, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
   geom_point(data = filter(figDat, year == "2019") %>% 
                mutate(background = "Mv"), 
-             aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.5) +
+             aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
   geom_text(data = edgeD2hyps3, 
             aes(label = paste("beta", " == ", parm, sep = ""), 
-                color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
+                color = treatment,
+                hjust = hjust, vjust = vjust), 
+            parse = T, show.legend = F, size = textSize) +
   facet_grid(rows = vars(focal),
              #cols = vars(background),
              scales = "free",
@@ -778,7 +860,7 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_chang
   # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab("Initial edge\nMv disease\nseverity (%)") +
+  xlab("Edge Mv\ndisease severity\n(log-odds)") +
   ylab("Change in infected tissue") +
   fig_theme +
   theme(axis.text.y = element_blank(),
@@ -795,7 +877,8 @@ combFig <- plot_grid(pairD2Fig,
                      hjust = c(0, 0.3))
 
 # combine
-tiff("output/plot_transmission_pairwise_figure_2019_density_exp.tiff", width = 11, height = 10, units = "cm", res = 300)
+tiff("output/plot_transmission_pairwise_figure_2019_density_exp.tiff", width = 11, height = 10, units = "cm", 
+     res = 300, compression = "lzw")
 plot_grid(combFig, leg,
           nrow = 2,
           rel_heights = c(1, 0.15))
@@ -848,10 +931,11 @@ envD1Hyps <- hypothesis(envSevD1Mod, c(mv_ctrl_soil_hyp, mv_fung_soil_hyp, mv_ct
                           evS_ctrl_soil_hyp, evS_fung_soil_hyp, evS_ctrl_canopy_hyp, evS_fung_canopy_hyp,
                           evA_ctrl_soil_hyp, evA_fung_soil_hyp, evA_ctrl_canopy_hyp, evA_fung_canopy_hyp))[[1]] %>%
   as_tibble() %>%
-  mutate(treatment = rep(c("control (water)", "fungicide"), 6),
+  mutate(treatment = rep(c("control", "fungicide"), 6),
          foc = rep(c("Mv", "Ev first-year", "Ev adult"), each = 4),
          env_var = rep(rep(c("soil moisture", "canopy cover"), each = 2), 3)) %>%
-  select(foc, env_var, treatment, Estimate:CI.Upper)
+  select(foc, env_var, treatment, Estimate:CI.Upper) %>%
+  arrange(env_var, foc, treatment)
 # no significant effects
 
 write_csv(envD1Hyps, "output/environmental_infection_change_coefficients_2018_density_exp.csv")
@@ -862,10 +946,8 @@ evA_ctrl_dew_hyp <- "dew_c + foca:dew_c = 0"
 
 envD2Hyps <- hypothesis(envSevD2Mod, c(mv_ctrl_dew_hyp, evS_ctrl_dew_hyp, evA_ctrl_dew_hyp))[[1]] %>%
   as_tibble() %>%
-  mutate(treatment = "control (water)",
-         foc = c("Mv", "Ev first-year", "Ev adult"),
-         env_var = "dew intensity") %>%
-  select(foc, env_var, treatment, Estimate:CI.Upper)
+  mutate(foc = c("Mv", "Ev first-year", "Ev adult")) %>%
+  select(foc, Estimate:CI.Upper)
 
 # Ev adult and dew intensity
 ggplot(filter(envD2Dat2, foc == "a"), aes(dew_c, foc_healthy_change)) +
@@ -886,9 +968,9 @@ save(envSevD2Mod2, file = "output/environmental_infection_change_model2_2019_den
 envD2Hyps2 <- envD2Hyps %>%
   full_join(hypothesis(envSevD2Mod2, evA_ctrl_dew_hyp)[[1]] %>%
               as_tibble() %>%
-              mutate(treatment = "control (water)",
-                     foc = "Ev adult without highest value",
-                     env_var = "dew intensity"))
+              mutate(foc = "Ev adult without highest value") %>%
+              select(-c(Hypothesis, Evid.Ratio, Post.Prob, Star))) %>%
+  arrange(foc)
 # sig effect is lost
 
 write_csv(envD2Hyps2, "output/environmental_infection_change_coefficients_2019_density_exp.csv")
