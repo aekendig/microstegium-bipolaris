@@ -381,6 +381,79 @@ save(seedD1Mod, file = "output/focal_seed_density_model_2018_density_exp.rda")
 save(seedD2Mod, file = "output/focal_seed_density_model_2019_density_exp.rda")
 
 
+#### fungicide-only models ####
+
+# average fungicide effect across background plot types
+# keep plot 1
+
+# initial visualizations
+ggplot(seedD1Dat, aes(x = foc, y = log_seeds, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
+  stat_summary(geom = "point", fun = "mean")
+
+ggplot(seedD2Dat, aes(x = foc, y = log_seeds, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
+  stat_summary(geom = "point", fun = "mean")
+
+# fit models
+seedFungD1Mod <- brm(data = seedD1Dat, family = hurdle_lognormal,
+                    bf(seeds ~ foc * fungicide + (1|plotf),
+                       hu ~ foc * fungicide + (1|plotf)),
+                    prior <- c(prior(normal(1, 1), class = "Intercept"),
+                               prior(normal(0, 10), class = "Intercept", dpar = "hu"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+mod_check_fun(seedFungD1Mod)
+
+seedFungD2Mod <- brm(data = seedD2Dat, family = hurdle_lognormal,
+                    bf(seeds ~ foc * fungicide + (1|plotf),
+                       hu ~ foc * fungicide + (1|plotf)),
+                    prior <- c(prior(normal(1, 1), class = "Intercept"),
+                               prior(normal(0, 10), class = "Intercept", dpar = "hu"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+mod_check_fun(seedFungD2Mod)
+
+# save models
+save(seedFungD1Mod, file = "output/seed_fungicide_model_2018_density_exp.rda")
+save(seedFungD2Mod, file = "output/seed_fungicide_model_2019_density_exp.rda")
+
+
+#### fungicide effects ####
+
+# fungicide - control when density = 0
+mv_cont_fung_eff = "fungicide + focm:fungicide = 0"
+evS_cont_fung_eff = "fungicide = 0"
+evA_cont_fung_eff = "fungicide + foca:fungicide = 0"
+
+mv_bin_fung_eff = "hu_fungicide + hu_focm:fungicide = 0"
+evS_bin_fung_eff = "hu_fungicide = 0"
+evA_bin_fung_eff = "hu_fungicide + hu_foca:fungicide = 0"
+
+seedFungEff <- hypothesis(seedFungD1Mod,
+                            c(mv_cont_fung_eff,
+                              evS_cont_fung_eff,
+                              evA_cont_fung_eff,
+                              mv_bin_fung_eff,
+                              evS_bin_fung_eff,
+                              evA_bin_fung_eff))[[1]] %>%
+  mutate(Year = 2018) %>%
+  full_join(hypothesis(seedFungD2Mod,
+                       c(mv_cont_fung_eff,
+                         evS_cont_fung_eff,
+                         evA_cont_fung_eff,
+                         mv_bin_fung_eff,
+                         evS_bin_fung_eff,
+                         evA_bin_fung_eff))[[1]] %>%
+              mutate(Year = 2019)) %>%
+  mutate(Focal = rep(c("Mv", "Ev first-year", "Ev adult"), 4), 
+         Distribution = rep(rep(c("continuous", "binary"), each = 3), 2)) %>%
+  select(Year, Focal, Distribution, Estimate:CI.Upper) %>%
+  arrange(Year, Focal, Distribution)
+
+write_csv(seedFungEff, "output/focal_seed_fungicide_effect_2018_2019_density_exp.csv")
+
+
 #### interaction coefficients (alphas) ####
 
 # are alphas different than 0? (_alpha)

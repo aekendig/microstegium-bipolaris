@@ -19,6 +19,7 @@ library(cowplot)
 
 # import plot information
 plotsD <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
+plotsD2 <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 # import growth data
 tillerD1Dat <- read_csv("intermediate-data/focal_processed_growth_2018_density_exp.csv")
@@ -61,6 +62,12 @@ plotDens <- plotsD %>%
                              background == "Ev adult" ~ background_density + 1)) %>%
   select(plot, treatment, background, density)
 
+plotDens2 <- plotsD2 %>%
+  mutate(density = case_when(background == "Mv seedling" ~ background_density + 3,
+                             background == "Ev seedling" ~ background_density + 3,
+                             background == "Ev adult" ~ background_density + 1)) %>%
+  select(plot, treatment, background, density)
+
 # missing data
 filter(tillerD1Dat, is.na(tillers_jul)) # 0
 filter(tillerD1Dat, is.na(tillers_jun)) # 0
@@ -71,7 +78,8 @@ filter(plotBioD2Dat, is.na(biomass.g_m2)) # all no bg plots
 
 # combine data
 growthD1Dat <- tillerD1Dat %>%
-  left_join(plotDens) %>%
+  # left_join(plotDens) %>% # only need for initial viz in next section
+  left_join(plotDens2) %>%
   mutate(plant_growth = log(tillers_jul/tillers_jun),
          age = ifelse(ID == "A", "adult", "seedling"),
          focal = paste(sp, age, sep = " ") %>%
@@ -91,7 +99,8 @@ growthD2Dat <- mvBioD2Dat %>%
   mutate(ID = as.character(plant)) %>%
   full_join(evBioD2Dat %>%
               rename(biomass_weight.g = weight)) %>%
-  left_join(plotDens) %>%
+  # left_join(plotDens) %>% # only need for initial viz in next section
+  left_join(plotDens2) %>% 
   mutate(plant_growth = log(biomass_weight.g),
          age = ifelse(ID == "A", "adult", "seedling"),
          focal = paste(sp, age, sep = " ") %>%
@@ -111,7 +120,7 @@ growthD2Dat <- mvBioD2Dat %>%
               rename(plot_biomass = biomass.g_m2))
 
 
-#### models ####
+#### competition models ####
 
 # initial visualization
 ggplot(growthD1Dat, aes(density, plant_growth, color = treatment)) +
@@ -179,6 +188,41 @@ save(growthD2Mod2, file = "output/focal_growth_biomass_model_2019_density_exp.rd
 save(growthD2Mod2b, file = "output/focal_growth_biomass_model_no_high_EvA_2019_density_exp.rda")
 
 
+#### fungicide-only models ####
+
+# average fungicide effect across background plot types
+# keep plot 1
+
+# initial visualizations
+ggplot(growthD1Dat, aes(x = foc, y = plant_growth, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
+  stat_summary(geom = "point", fun = "mean")
+
+ggplot(growthD2Dat, aes(x = foc, y = plant_growth, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
+  stat_summary(geom = "point", fun = "mean")
+
+# fit models
+growthFungD1Mod <- brm(data = growthD1Dat, family = gaussian,
+                   plant_growth ~ foc * fungicide + (1|plotf),
+                   prior <- c(prior(normal(0.75, 1), class = "Intercept"),
+                              prior(normal(0, 1), class = "b")), # use default for sigma
+                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                   control = list(adapt_delta = 0.999)) 
+mod_check_fun(growthFungD1Mod)
+
+growthFungD2Mod <- brm(data = growthD2Dat, family = gaussian,
+                       plant_growth ~ foc * fungicide + (1|plotf),
+                       prior <- c(prior(normal(2, 1), class = "Intercept"),
+                                  prior(normal(0, 1), class = "b")), # use default for sigma
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+mod_check_fun(growthFungD2Mod)
+
+# save models
+save(growthFungD1Mod, file = "output/focal_growth_fungicide_model_2018_density_exp.rda")
+save(growthFungD2Mod, file = "output/focal_growth_fungicide_model_2019_density_exp.rda")
+
+
 #### intraspecific vs. interspecific ####
 
 # common terms on both sides of = were deleted
@@ -243,6 +287,30 @@ intD2hyps <- hypothesis(growthD2Mod,
                              evA_ctrl_int, evA_fung_int))
 
 write_csv(intD2hyps[[1]], "output/evA_mv_competition_intercept_comparison_2019_density_exp.csv")
+
+
+#### fungicide effects ####
+
+# fungicide - control when density = 0
+mv_fung_eff = "fungicide = 0"
+evS_fung_eff = "fungicide + focs:fungicide = 0"
+evA_fung_eff = "fungicide + foca:fungicide = 0"
+
+growthFungEff <- hypothesis(growthFungD1Mod,
+                             c(mv_fung_eff,
+                               evS_fung_eff,
+                               evA_fung_eff))[[1]] %>%
+  mutate(Year = 2018, Response = "tillers") %>%
+  full_join(hypothesis(growthFungD2Mod,
+                       c(mv_fung_eff,
+                         evS_fung_eff,
+                         evA_fung_eff))[[1]] %>%
+              mutate(Year = 2019, Response = "biomass")) %>%
+  mutate(Focal = rep(c("Mv", "Ev first-year", "Ev adult"), 2)) %>%
+  select(Year, Response, Focal, Estimate:CI.Upper) %>%
+  arrange(Year, Focal)
+
+write_csv(growthFungEff, "output/focal_growth_fungicide_effect_2018_2019_density_exp.csv")
 
 
 #### interaction coefficients (alphas) ####

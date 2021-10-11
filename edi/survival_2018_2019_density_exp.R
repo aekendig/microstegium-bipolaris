@@ -34,13 +34,13 @@ source("code/brms_model_fitting_functions.R")
 
 # severity data
 sevD1Dat2 <- sevD1Dat %>%
-  select(-lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
 
 sevD2Dat2 <- sevD2Dat %>%
-  select(-lesions) %>%
+  select(month, site, treatment, plot, sp, age, severity) %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity")
@@ -136,7 +136,7 @@ adultSurvD1Dat <- survD1Dat %>%
 # includes non-focal
 
 
-#### fit models ####
+#### fit severity models ####
 
 survSevD1Mod <- brm(data = survD1Dat2, family = bernoulli,
                     survival ~ jul_severity * foc + (1|plotf),
@@ -151,20 +151,51 @@ survSevD2Mod <- brm(data = survD2Dat2, family = bernoulli,
                                prior(normal(0, 10), class = "b")), # use default for sigma
                     iter = 6000, warmup = 1000, chains = 3, cores = 3,
                     control = list(adapt_delta = 0.99)) 
+mod_check_fun(survSevD2Mod)
 
 winSurvSevD1Mod <- brm(data = winSurvD1Dat, family = bernoulli,
                        survival ~ sep_severity * foc + (1|plotf),
                        prior <- c(prior(normal(0, 10), class = "Intercept"),
                                   prior(normal(0, 10), class = "b")), # use default for sigma
-                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-winSurvSevD1Mod <- update(winSurvSevD1Mod,
-                          control = list(adapt_delta = 0.99))
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                       control = list(adapt_delta = 0.99)) 
 mod_check_fun(winSurvSevD1Mod)
 
 # save models
 save(survSevD1Mod, file = "output/survival_severity_model_2018_density_exp.rda")
 save(survSevD2Mod, file = "output/survival_severity_model_2019_density_exp.rda")
 save(winSurvSevD1Mod, file = "output/winter_survival_severity_model_2018_density_exp.rda")
+
+
+#### fit fungicide models ####
+
+survFungD1Mod <- brm(data = survD1Dat2, family = bernoulli,
+                    survival ~ fungicide * foc + (1|plotf),
+                    prior <- c(prior(normal(0, 10), class = "Intercept"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+mod_check_fun(survFungD1Mod)
+
+survFungD2Mod <- brm(data = survD2Dat2, family = bernoulli,
+                    survival ~ fungicide * foc + (1|plotf),
+                    prior <- c(prior(normal(0, 10), class = "Intercept"),
+                               prior(normal(0, 10), class = "b")), # use default for sigma
+                    iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                    control = list(adapt_delta = 0.99)) 
+mod_check_fun(survFungD2Mod)
+
+winSurvFungD1Mod <- brm(data = winSurvD1Dat, family = bernoulli,
+                       survival ~ fungicide * foc + (1|plotf),
+                       prior <- c(prior(normal(0, 10), class = "Intercept"),
+                                  prior(normal(0, 10), class = "b")), # use default for sigma
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                       control = list(adapt_delta = 0.99)) 
+mod_check_fun(winSurvFungD1Mod)
+
+# save models
+save(survFungD1Mod, file = "output/survival_fungicide_model_2018_density_exp.rda")
+save(survFungD2Mod, file = "output/survival_fungicide_model_2019_density_exp.rda")
+save(winSurvFungD1Mod, file = "output/winter_survival_fungicide_model_2018_density_exp.rda")
 
 
 #### adult survival ####
@@ -179,6 +210,28 @@ adultSurvD1Mod <- brm(data = adultSurvD1Dat, family = bernoulli,
 mod_check_fun(adultSurvD1Mod)
 
 save(adultSurvD1Mod, file = "output/ev_adult_survival_model_2018_2019_density_exp.rda")
+
+
+#### fungicide effects ####
+
+mv_fung_eff = "fungicide = 0"
+evS_fung_eff = "fungicide + fungicide:focs = 0"
+evA_fung_eff = "fungicide + fungicide:foca = 0"
+
+survFungEff <- hypothesis(survFungD1Mod,
+                          c(mv_fung_eff, evS_fung_eff, evA_fung_eff)) [[1]] %>%
+  mutate(Year = "2018", Season = "growing season") %>%
+  full_join(hypothesis(survFungD2Mod,
+                       c(mv_fung_eff, evS_fung_eff, evA_fung_eff)) [[1]] %>%
+              mutate(Year = "2019", Season = "growing season")) %>%
+  full_join(hypothesis(winSurvFungD1Mod,
+                       c(mv_fung_eff, evS_fung_eff)) [[1]] %>%
+              mutate(Year = "2018-2019", Season = "winter")) %>%
+  mutate(Focal = c(rep(c("Mv", "Ev first-year", "Ev adult"), 2), "Ev adult", "Ev first-year")) %>%
+  select(Year, Season, Focal, Estimate:CI.Upper) %>%
+  arrange(Season, Year, Focal)
+
+write_csv(survFungEff, "output/survival_fungicide_effect_2018_2019_density_exp.csv")
 
 
 #### severity effect coefficients ####
@@ -225,12 +278,12 @@ annSurvCoef <- "logit2prob(Intercept) = 0"
 hypothesis(survSevD1Mod, sumSurvCoef) # 1
 hypothesis(survSevD2Mod, sumSurvCoef) # .94, but severity increased survival
 hypothesis(winSurvSevD1Mod, winSurvCoef) # .98, but severity increased survival
-hypothesis(adultSurvD1Mod, annSurvCoef) # .88
+hypothesis(adultSurvD1Mod, annSurvCoef) # .87
 
+
+#### maybe remove below? not used in manuscript ####
 
 #### 2018 Mv model ####
-
-# may be able to remove -- I don't remember using this for anything
 
 # # initial visualization
 # ggplot(mvSurvD1Dat, aes(treatment, survival, color = treatment)) +
@@ -255,23 +308,24 @@ hypothesis(adultSurvD1Mod, annSurvCoef) # .88
 
 #### 2018 Ev seedling model ####
 
-# initial visualization
-ggplot(evSSurvD1Dat, aes(treatment, survival, color = treatment)) +
-  stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
-  stat_summary(geom = "point", fun = "mean", size = 2)
-
-# model
-evSSurvD1Mod <- update(mvSurvD1Mod, newdata = evSSurvD1Dat)
-mod_check_fun(evSSurvD1Mod)
-
-# posterior means
-post_pred_fun(evSSurvD1Mod)
-
-# save
-save(evSSurvD1Mod, file = "output/evS_growing_season_survival_model_2018_density_exp.rda")
+# # initial visualization
+# ggplot(evSSurvD1Dat, aes(treatment, survival, color = treatment)) +
+#   stat_summary(geom = "errorbar", fun.data = "mean_cl_boot", width = 0) +
+#   stat_summary(geom = "point", fun = "mean", size = 2)
+# 
+# # model
+# evSSurvD1Mod <- update(mvSurvD1Mod, newdata = evSSurvD1Dat)
+# mod_check_fun(evSSurvD1Mod)
+# 
+# # posterior means
+# post_pred_fun(evSSurvD1Mod)
+# 
+# # save
+# save(evSSurvD1Mod, file = "output/evS_growing_season_survival_model_2018_density_exp.rda")
 
 
 #### 2018 Ev adult model ####
+
 
 # initial visualization
 ggplot(evASurvD1Dat, aes(treatment, survival, color = treatment)) +
