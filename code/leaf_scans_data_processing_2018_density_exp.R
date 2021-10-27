@@ -351,7 +351,9 @@ datw_mv_t <- ls_mv_sep2_t %>%
   rename(leaf_area.pix = leaf_area,
          lesion_area.pix = lesion_area) %>%
   mutate(month = "sep", sp = "mv") %>%
-  select(month, site, transect, sp, distance.m, leaf_area.pix, lesion_area.pix, leaf_count)
+  select(month, site, transect, sp, distance.m, leaf_area.pix, lesion_area.pix, leaf_count) %>%
+  mutate(notes = case_when(transect == 2 & distance.m == 6 ~ "Two pictures labelled D2 T2 6m, but one should be D1 T2 6m. Assigned one with lower visible damage to D2 because it had lower counts (Transects_Inf_20180924)",
+                           TRUE ~ NA_character_))
 
 
 #### check values ####
