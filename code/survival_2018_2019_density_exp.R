@@ -209,7 +209,16 @@ adultSurvD1Mod <- brm(data = adultSurvD1Dat, family = bernoulli,
                       control = list(adapt_delta = 0.99)) 
 mod_check_fun(adultSurvD1Mod)
 
+adultSurvD1Mod2 <- brm(data = adultSurvD1Dat, family = bernoulli,
+                      survival ~ fungicide + (1|site),
+                      prior <- c(prior(normal(0, 10), class = "Intercept"), # use default for sigma
+                                 prior(normal(0, 10), class = "b")),
+                      iter = 6000, warmup = 1000, chains = 3, cores = 3,
+                      control = list(adapt_delta = 0.999)) 
+mod_check_fun(adultSurvD1Mod2)
+
 save(adultSurvD1Mod, file = "output/ev_adult_survival_model_2018_2019_density_exp.rda")
+save(adultSurvD1Mod2, file = "output/ev_adult_survival_fungicide_model_2018_2019_density_exp.rda")
 
 
 #### fungicide effects ####

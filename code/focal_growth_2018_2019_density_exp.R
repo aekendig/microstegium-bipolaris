@@ -59,13 +59,15 @@ sevD2Dat2 <- sevD2Dat %>%
 plotDens <- plotsD %>%
   mutate(density = case_when(background == "Mv seedling" ~ background_density + 3,
                              background == "Ev seedling" ~ background_density + 3,
-                             background == "Ev adult" ~ background_density + 1)) %>%
+                             background == "Ev adult" ~ background_density + 1,
+                             TRUE ~ background_density)) %>%
   select(plot, treatment, background, density)
 
 plotDens2 <- plotsD2 %>%
   mutate(density = case_when(background == "Mv seedling" ~ background_density + 3,
                              background == "Ev seedling" ~ background_density + 3,
-                             background == "Ev adult" ~ background_density + 1)) %>%
+                             background == "Ev adult" ~ background_density + 1,
+                             TRUE ~ background_density)) %>%
   select(plot, treatment, background, density)
 
 # missing data
@@ -117,7 +119,9 @@ growthD2Dat <- mvBioD2Dat %>%
   left_join(sevD2Dat2) %>%
   left_join(plotBioD2Dat %>%
               select(site, treatment, plot, biomass.g_m2) %>%
-              rename(plot_biomass = biomass.g_m2))
+              rename(plot_biomass = biomass.g_m2)) %>%
+  mutate(plot_biomass = if_else(as.character(focal) == as.character(background), 
+                                plot_biomass - biomass_weight.g, plot_biomass))
 
 
 #### competition models ####
@@ -149,7 +153,7 @@ ggplot(growthD2Dat2, aes(plot_biomass, plant_growth, color = treatment)) +
 
 # fit models
 growthD1Mod <- brm(data = growthD1Dat2, family = gaussian,
-                   plant_growth ~ density * foc * bg * fungicide + (1|site),
+                   plant_growth ~ foc * fungicide * (density + density:bg) + (1|plotf),
                    prior <- c(prior(normal(0.75, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
                    iter = 6000, warmup = 1000, chains = 3, cores = 3, 
@@ -158,8 +162,8 @@ growthD1Mod <- brm(data = growthD1Dat2, family = gaussian,
 mod_check_fun(growthD1Mod)
 
 growthD2Mod <- brm(data = growthD2Dat2, family = gaussian,
-                   plant_growth ~ density * foc * bg * fungicide + (1|site),
-                   prior <- c(prior(normal(0.75, 1), class = "Intercept"),
+                   plant_growth ~ foc * fungicide * (density + density:bg) + (1|plotf),
+                   prior <- c(prior(normal(3, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
                    iter = 6000, warmup = 1000, chains = 3, cores = 3, 
                    control = list(adapt_delta = 0.99999, max_treedepth = 15)) 
@@ -167,7 +171,7 @@ mod_check_fun(growthD2Mod)
 
 # biomass model
 growthD2Mod2 <- brm(data = growthD2Dat2, family = gaussian,
-                   plant_growth ~ plot_biomass * foc * bg * fungicide + (1|site),
+                   plant_growth ~ foc * fungicide * (plot_biomass + plot_biomass:bg) + (1|plotf),
                    prior <- c(prior(normal(3, 1), class = "Intercept"),
                               prior(normal(0, 1), class = "b")), # use default for sigma
                    iter = 6000, warmup = 1000, chains = 3, cores = 3, 
@@ -188,131 +192,6 @@ save(growthD2Mod2, file = "output/focal_growth_biomass_model_2019_density_exp.rd
 save(growthD2Mod2b, file = "output/focal_growth_biomass_model_no_high_EvA_2019_density_exp.rda")
 
 
-#### fungicide-only models ####
-
-# average fungicide effect across background plot types
-# keep plot 1
-
-# initial visualizations
-ggplot(growthD1Dat, aes(x = foc, y = plant_growth, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
-  stat_summary(geom = "point", fun = "mean")
-
-ggplot(growthD2Dat, aes(x = foc, y = plant_growth, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
-  stat_summary(geom = "point", fun = "mean")
-
-# fit models
-growthFungD1Mod <- brm(data = growthD1Dat, family = gaussian,
-                   plant_growth ~ foc * fungicide + (1|plotf),
-                   prior <- c(prior(normal(0.75, 1), class = "Intercept"),
-                              prior(normal(0, 1), class = "b")), # use default for sigma
-                   iter = 6000, warmup = 1000, chains = 3, cores = 3, 
-                   control = list(adapt_delta = 0.999)) 
-mod_check_fun(growthFungD1Mod)
-
-growthFungD2Mod <- brm(data = growthD2Dat, family = gaussian,
-                       plant_growth ~ foc * fungicide + (1|plotf),
-                       prior <- c(prior(normal(2, 1), class = "Intercept"),
-                                  prior(normal(0, 1), class = "b")), # use default for sigma
-                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(growthFungD2Mod)
-
-# save models
-save(growthFungD1Mod, file = "output/focal_growth_fungicide_model_2018_density_exp.rda")
-save(growthFungD2Mod, file = "output/focal_growth_fungicide_model_2019_density_exp.rda")
-
-
-#### intraspecific vs. interspecific ####
-
-# common terms on both sides of = were deleted
-# inter listed first in name
-# intra on left side of =
-
-# Mv 
-evS_mv_ctrl_hyp = "-density:focs = 0"
-evS_mv_fung_hyp = "-density:focs - density:focs:fungicide = 0"
-evA_mv_ctrl_hyp = "-density:foca = 0"
-evA_mv_fung_hyp = "-density:foca - density:foca:fungicide = 0"
-
-# EvS 
-mv_evS_ctrl_hyp = "0.5 * (density:focs + density:focs:bgs + density:foca + density:foca:bgs) = 0"
-mv_evS_fung_hyp = "0.5 * (density:focs + density:focs:bgs + density:focs:fungicide + density:focs:bgs:fungicide + density:foca + density:foca:bgs + density:foca:fungicide + density:foca:bgs:fungicide) = 0"
-
-# EvA 
-mv_evA_ctrl_hyp = "0.5 * (density:focs + density:focs:bga + density:foca + density:foca:bga) = 0"
-mv_evA_fung_hyp = "0.5 * (density:focs + density:focs:bga + density:focs:fungicide + density:focs:bga:fungicide + density:foca + density:foca:bga + density:foca:fungicide + density:foca:bga:fungicide) = 0"
-
-growthD1hyps <- hypothesis(growthD1Mod, 
-                           c(evS_mv_ctrl_hyp, evS_mv_fung_hyp, evA_mv_ctrl_hyp, evA_mv_fung_hyp,
-                             mv_evS_ctrl_hyp, mv_evS_fung_hyp, mv_evA_ctrl_hyp, mv_evA_fung_hyp))
-# none are significantly different from zero
-
-# biomass (inter = intra?)
-evA_mv_ctrl_hyp = "(plot_biomass + plot_biomass:foca) = plot_biomass"
-evA_mv_fung_hyp = "(plot_biomass + plot_biomass:fungicide + plot_biomass:foca + plot_biomass:foca:fungicide) = (plot_biomass + plot_biomass:fungicide)"
-mv_evA_ctrl_hyp = "(plot_biomass +  plot_biomass:bga) = (plot_biomass + plot_biomass:foca + plot_biomass:bga + plot_biomass:foca:bga)"
-mv_evA_fung_hyp = "(plot_biomass +  plot_biomass:bga + plot_biomass:fungicide + plot_biomass:bga:fungicide) = (plot_biomass + plot_biomass:foca + plot_biomass:bga + plot_biomass:foca:bga + plot_biomass:fungicide + plot_biomass:foca:fungicide + plot_biomass:bga:fungicide + plot_biomass:foca:bga:fungicide)"
-
-growthD2hyps <- hypothesis(growthD2Mod2, 
-                           c(evA_mv_ctrl_hyp, evA_mv_fung_hyp,
-                             mv_evA_ctrl_hyp, mv_evA_fung_hyp))[[1]] %>%
-  as_tibble() %>%
-  mutate(Competitor = rep(c("Mv", "Ev adult"), each = 2),
-         treatment = rep(c("control (water)", "fungicide"), 2),
-         estimate = Estimate * 10^3,
-         lower = CI.Lower * 10^3,
-         upper = CI.Upper * 10^3)
-
-
-write_csv(growthD1hyps[[1]], "output/focal_growth_intra_vs_intra_comp_2018_density_exp.csv")
-write_csv(growthD2hyps, "output/focal_growth_intra_vs_intra_comp_2019_density_exp.csv")
-
-
-#### intercepts ####
-
-# are Ev adult intercepts > Mv in 2019 (they have larger alphas)
-# common terms on both sides are deleted
-
-mv_ctrl_int <- "bga = 0"
-mv_fung_int <- "bga + bga:fungicide = 0"
-evS_ctrl_int <- "bga + focs:bga = 0"
-evS_fung_int <- "bga + focs:bga + bga:fungicide + focs:bga:fungicide = 0"
-evA_ctrl_int <- "bga + foca:bga = 0"
-evA_fung_int <- "bga + foca:bga + bga:fungicide + foca:bga:fungicide = 0"
-
-intD2hyps <- hypothesis(growthD2Mod, 
-                           c(mv_ctrl_int, mv_fung_int,
-                             evS_ctrl_int, evS_fung_int,
-                             evA_ctrl_int, evA_fung_int))
-
-write_csv(intD2hyps[[1]], "output/evA_mv_competition_intercept_comparison_2019_density_exp.csv")
-
-
-#### fungicide effects ####
-
-# fungicide - control when density = 0
-mv_fung_eff = "fungicide = 0"
-evS_fung_eff = "fungicide + focs:fungicide = 0"
-evA_fung_eff = "fungicide + foca:fungicide = 0"
-
-growthFungEff <- hypothesis(growthFungD1Mod,
-                             c(mv_fung_eff,
-                               evS_fung_eff,
-                               evA_fung_eff))[[1]] %>%
-  mutate(Year = 2018, Response = "tillers") %>%
-  full_join(hypothesis(growthFungD2Mod,
-                       c(mv_fung_eff,
-                         evS_fung_eff,
-                         evA_fung_eff))[[1]] %>%
-              mutate(Year = 2019, Response = "biomass")) %>%
-  mutate(Focal = rep(c("Mv", "Ev first-year", "Ev adult"), 2)) %>%
-  select(Year, Response, Focal, Estimate:CI.Upper) %>%
-  arrange(Year, Focal)
-
-write_csv(growthFungEff, "output/focal_growth_fungicide_effect_2018_2019_density_exp.csv")
-
-
 #### interaction coefficients (alphas) ####
 
 # are alphas different than 0? (_alpha)
@@ -320,38 +199,38 @@ write_csv(growthFungEff, "output/focal_growth_fungicide_effect_2018_2019_density
 
 # Mv background
 mv_mv_ctrl_alpha = "density = 0"
-mv_mv_fung_alpha = "density + density:fungicide = 0"
-mv_mv_trt_eff = "density:fungicide = 0"
-evS_mv_ctrl_alpha = "density + density:focs = 0"
-evS_mv_fung_alpha = "density + density:fungicide + density:focs + density:focs:fungicide = 0"
-evS_mv_trt_eff = "density:fungicide + density:focs:fungicide = 0"
-evA_mv_ctrl_alpha = "density + density:foca = 0"
-evA_mv_fung_alpha = "density + density:fungicide + density:foca + density:foca:fungicide = 0"
-evA_mv_trt_eff = "density:fungicide + density:foca:fungicide = 0"
+mv_mv_fung_alpha = "density + fungicide:density = 0"
+mv_mv_trt_eff = "fungicide:density = 0"
+evS_mv_ctrl_alpha = "density + focs:density = 0"
+evS_mv_fung_alpha = "density + fungicide:density + focs:density + focs:fungicide:density = 0"
+evS_mv_trt_eff = "fungicide:density + focs:fungicide:density = 0"
+evA_mv_ctrl_alpha = "density + foca:density = 0"
+evA_mv_fung_alpha = "density + fungicide:density + foca:density + foca:fungicide:density = 0"
+evA_mv_trt_eff = "fungicide:density + foca:fungicide:density = 0"
 
 # EvS background
-evS_evS_ctrl_alpha = "density + density:focs + density:bgs + density:focs:bgs = 0"
-evS_evS_fung_alpha = "density + density:focs + density:bgs + density:focs:bgs + density:fungicide + density:focs:fungicide + density:bgs:fungicide + density:focs:bgs:fungicide = 0"
-evS_evS_trt_eff = "density:fungicide + density:focs:fungicide + density:bgs:fungicide + density:focs:bgs:fungicide = 0"
+evS_evS_ctrl_alpha = "density + focs:density + density:bgs + focs:density:bgs = 0"
+evS_evS_fung_alpha = "density + focs:density + density:bgs + focs:density:bgs + fungicide:density + focs:fungicide:density + fungicide:density:bgs + focs:fungicide:density:bgs = 0"
+evS_evS_trt_eff = "fungicide:density + focs:fungicide:density + fungicide:density:bgs + focs:fungicide:density:bgs = 0"
 mv_evS_ctrl_alpha = "density +  density:bgs = 0"
-mv_evS_fung_alpha = "density +  density:bgs + density:fungicide + density:bgs:fungicide = 0"
-mv_evS_trt_eff = "density:fungicide + density:bgs:fungicide = 0"
-evA_evS_ctrl_alpha = "density +  density:bgs + density:foca + density:foca:bgs = 0"
-evA_evS_fung_alpha = "density +  density:bgs + density:foca + density:foca:bgs + density:fungicide +  density:bgs:fungicide + density:foca:fungicide + density:foca:bgs:fungicide = 0"
-evA_evS_trt_eff = "density:fungicide +  density:bgs:fungicide + density:foca:fungicide + density:foca:bgs:fungicide = 0"
+mv_evS_fung_alpha = "density +  density:bgs + fungicide:density + fungicide:density:bgs = 0"
+mv_evS_trt_eff = "fungicide:density + fungicide:density:bgs = 0"
+evA_evS_ctrl_alpha = "density +  density:bgs + foca:density + foca:density:bgs = 0"
+evA_evS_fung_alpha = "density +  density:bgs + foca:density + foca:density:bgs + fungicide:density +  fungicide:density:bgs + foca:fungicide:density + foca:fungicide:density:bgs = 0"
+evA_evS_trt_eff = "fungicide:density +  fungicide:density:bgs + foca:fungicide:density + foca:fungicide:density:bgs = 0"
 
 # EvA background
-evA_evA_ctrl_alpha = "density + density:foca + density:bga + density:foca:bga = 0"
-evA_evA_fung_alpha = "density + density:foca + density:bga + density:foca:bga + density:fungicide + density:foca:fungicide + density:bga:fungicide + density:foca:bga:fungicide = 0"
-evA_evA_trt_eff = "density:fungicide + density:foca:fungicide + density:bga:fungicide + density:foca:bga:fungicide = 0"
+evA_evA_ctrl_alpha = "density + foca:density + density:bga + foca:density:bga = 0"
+evA_evA_fung_alpha = "density + foca:density + density:bga + foca:density:bga + fungicide:density + foca:fungicide:density + fungicide:density:bga + foca:fungicide:density:bga = 0"
+evA_evA_trt_eff = "fungicide:density + foca:fungicide:density + fungicide:density:bga + foca:fungicide:density:bga = 0"
 mv_evA_ctrl_alpha = "density +  density:bga = 0"
-mv_evA_fung_alpha = "density +  density:bga + density:fungicide + density:bga:fungicide = 0"
-mv_evA_trt_eff = "density:fungicide + density:bga:fungicide = 0"
-evS_evA_ctrl_alpha = "density + density:bga + density:focs + density:focs:bga = 0"
-evS_evA_fung_alpha = "density + density:bga + density:focs + density:focs:bga + density:fungicide + density:bga:fungicide + density:focs:fungicide + density:focs:bga:fungicide = 0"
-evS_evA_trt_eff = "density:fungicide + density:bga:fungicide + density:focs:fungicide + density:focs:bga:fungicide = 0"
+mv_evA_fung_alpha = "density +  density:bga + fungicide:density + fungicide:density:bga = 0"
+mv_evA_trt_eff = "fungicide:density + fungicide:density:bga = 0"
+evS_evA_ctrl_alpha = "density + density:bga + focs:density + focs:density:bga = 0"
+evS_evA_fung_alpha = "density + density:bga + focs:density + focs:density:bga + fungicide:density + fungicide:density:bga + focs:fungicide:density + focs:fungicide:density:bga = 0"
+evS_evA_trt_eff = "fungicide:density + fungicide:density:bga + focs:fungicide:density + focs:fungicide:density:bga = 0"
 
-growthD1alphas <- hypothesis(growthD1Mod, 
+densityD1alphas <- hypothesis(growthD1Mod, 
                              c(mv_mv_ctrl_alpha, mv_mv_fung_alpha, 
                                evS_mv_ctrl_alpha, evS_mv_fung_alpha, 
                                evA_mv_ctrl_alpha, evA_mv_fung_alpha,
@@ -362,7 +241,7 @@ growthD1alphas <- hypothesis(growthD1Mod,
                                mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
                                evS_evA_ctrl_alpha, evS_evA_fung_alpha))
 
-growthD1TrtEff <- hypothesis(growthD1Mod,
+densityD1TrtEff <- hypothesis(growthD1Mod,
                           c(mv_mv_trt_eff, 
                             evS_mv_trt_eff, 
                             evA_mv_trt_eff,
@@ -370,43 +249,10 @@ growthD1TrtEff <- hypothesis(growthD1Mod,
                             mv_evS_trt_eff, 
                             evA_evS_trt_eff, 
                             evA_evA_trt_eff,
-                            mv_evA_trt_eff, # sig increase with fung
+                            mv_evA_trt_eff,
                             evS_evA_trt_eff))
 
-# Mv background
-mv_mv_ctrl_alpha = "plot_biomass = 0"
-mv_mv_fung_alpha = "plot_biomass + plot_biomass:fungicide = 0"
-mv_mv_trt_eff = "plot_biomass:fungicide = 0"
-evS_mv_ctrl_alpha = "plot_biomass + plot_biomass:focs = 0"
-evS_mv_fung_alpha = "plot_biomass + plot_biomass:fungicide + plot_biomass:focs + plot_biomass:focs:fungicide = 0"
-evS_mv_trt_eff = "plot_biomass:fungicide + plot_biomass:focs:fungicide = 0"
-evA_mv_ctrl_alpha = "plot_biomass + plot_biomass:foca = 0"
-evA_mv_fung_alpha = "plot_biomass + plot_biomass:fungicide + plot_biomass:foca + plot_biomass:foca:fungicide = 0"
-evA_mv_trt_eff = "plot_biomass:fungicide + plot_biomass:foca:fungicide = 0"
-
-# EvS background
-evS_evS_ctrl_alpha = "plot_biomass + plot_biomass:focs + plot_biomass:bgs + plot_biomass:focs:bgs = 0"
-evS_evS_fung_alpha = "plot_biomass + plot_biomass:focs + plot_biomass:bgs + plot_biomass:focs:bgs + plot_biomass:fungicide + plot_biomass:focs:fungicide + plot_biomass:bgs:fungicide + plot_biomass:focs:bgs:fungicide = 0"
-evS_evS_trt_eff = "plot_biomass:fungicide + plot_biomass:focs:fungicide + plot_biomass:bgs:fungicide + plot_biomass:focs:bgs:fungicide = 0"
-mv_evS_ctrl_alpha = "plot_biomass +  plot_biomass:bgs = 0"
-mv_evS_fung_alpha = "plot_biomass +  plot_biomass:bgs + plot_biomass:fungicide + plot_biomass:bgs:fungicide = 0"
-mv_evS_trt_eff = "plot_biomass:fungicide + plot_biomass:bgs:fungicide = 0"
-evA_evS_ctrl_alpha = "plot_biomass +  plot_biomass:bgs + plot_biomass:foca + plot_biomass:foca:bgs = 0"
-evA_evS_fung_alpha = "plot_biomass +  plot_biomass:bgs + plot_biomass:foca + plot_biomass:foca:bgs + plot_biomass:fungicide +  plot_biomass:bgs:fungicide + plot_biomass:foca:fungicide + plot_biomass:foca:bgs:fungicide = 0"
-evA_evS_trt_eff = "plot_biomass:fungicide +  plot_biomass:bgs:fungicide + plot_biomass:foca:fungicide + plot_biomass:foca:bgs:fungicide = 0"
-
-# EvA background
-evA_evA_ctrl_alpha = "plot_biomass + plot_biomass:foca + plot_biomass:bga + plot_biomass:foca:bga = 0"
-evA_evA_fung_alpha = "plot_biomass + plot_biomass:foca + plot_biomass:bga + plot_biomass:foca:bga + plot_biomass:fungicide + plot_biomass:foca:fungicide + plot_biomass:bga:fungicide + plot_biomass:foca:bga:fungicide = 0"
-evA_evA_trt_eff = "plot_biomass:fungicide + plot_biomass:foca:fungicide + plot_biomass:bga:fungicide + plot_biomass:foca:bga:fungicide = 0"
-mv_evA_ctrl_alpha = "plot_biomass +  plot_biomass:bga = 0"
-mv_evA_fung_alpha = "plot_biomass +  plot_biomass:bga + plot_biomass:fungicide + plot_biomass:bga:fungicide = 0"
-mv_evA_trt_eff = "plot_biomass:fungicide + plot_biomass:bga:fungicide = 0"
-evS_evA_ctrl_alpha = "plot_biomass + plot_biomass:bga + plot_biomass:focs + plot_biomass:focs:bga = 0"
-evS_evA_fung_alpha = "plot_biomass + plot_biomass:bga + plot_biomass:focs + plot_biomass:focs:bga + plot_biomass:fungicide + plot_biomass:bga:fungicide + plot_biomass:focs:fungicide + plot_biomass:focs:bga:fungicide = 0"
-evS_evA_trt_eff = "plot_biomass:fungicide + plot_biomass:bga:fungicide + plot_biomass:focs:fungicide + plot_biomass:focs:bga:fungicide = 0"
-
-growthD2alphas <- hypothesis(growthD2Mod2, 
+densityD2alphas <- hypothesis(growthD2Mod, 
                              c(mv_mv_ctrl_alpha, mv_mv_fung_alpha, 
                                evS_mv_ctrl_alpha, evS_mv_fung_alpha, 
                                evA_mv_ctrl_alpha, evA_mv_fung_alpha,
@@ -417,7 +263,63 @@ growthD2alphas <- hypothesis(growthD2Mod2,
                                mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
                                evS_evA_ctrl_alpha, evS_evA_fung_alpha))
 
-growthD2TrtEff <- hypothesis(growthD2Mod2,
+densityD2TrtEff <- hypothesis(growthD2Mod,
+                              c(mv_mv_trt_eff, 
+                                evS_mv_trt_eff, 
+                                evA_mv_trt_eff,
+                                evS_evS_trt_eff,
+                                mv_evS_trt_eff, 
+                                evA_evS_trt_eff, 
+                                evA_evA_trt_eff,
+                                mv_evA_trt_eff,
+                                evS_evA_trt_eff))
+
+
+# Mv background
+mv_mv_ctrl_alpha = "plot_biomass = 0"
+mv_mv_fung_alpha = "plot_biomass + fungicide:plot_biomass = 0"
+mv_mv_trt_eff = "fungicide:plot_biomass = 0"
+evS_mv_ctrl_alpha = "plot_biomass + focs:plot_biomass = 0"
+evS_mv_fung_alpha = "plot_biomass + fungicide:plot_biomass + focs:plot_biomass + focs:fungicide:plot_biomass = 0"
+evS_mv_trt_eff = "fungicide:plot_biomass + focs:fungicide:plot_biomass = 0"
+evA_mv_ctrl_alpha = "plot_biomass + foca:plot_biomass = 0"
+evA_mv_fung_alpha = "plot_biomass + fungicide:plot_biomass + foca:plot_biomass + foca:fungicide:plot_biomass = 0"
+evA_mv_trt_eff = "fungicide:plot_biomass + foca:fungicide:plot_biomass = 0"
+
+# EvS background
+evS_evS_ctrl_alpha = "plot_biomass + focs:plot_biomass + plot_biomass:bgs + focs:plot_biomass:bgs = 0"
+evS_evS_fung_alpha = "plot_biomass + focs:plot_biomass + plot_biomass:bgs + focs:plot_biomass:bgs + fungicide:plot_biomass + focs:fungicide:plot_biomass + fungicide:plot_biomass:bgs + focs:fungicide:plot_biomass:bgs = 0"
+evS_evS_trt_eff = "fungicide:plot_biomass + focs:fungicide:plot_biomass + fungicide:plot_biomass:bgs + focs:fungicide:plot_biomass:bgs = 0"
+mv_evS_ctrl_alpha = "plot_biomass +  plot_biomass:bgs = 0"
+mv_evS_fung_alpha = "plot_biomass +  plot_biomass:bgs + fungicide:plot_biomass + fungicide:plot_biomass:bgs = 0"
+mv_evS_trt_eff = "fungicide:plot_biomass + fungicide:plot_biomass:bgs = 0"
+evA_evS_ctrl_alpha = "plot_biomass +  plot_biomass:bgs + foca:plot_biomass + foca:plot_biomass:bgs = 0"
+evA_evS_fung_alpha = "plot_biomass +  plot_biomass:bgs + foca:plot_biomass + foca:plot_biomass:bgs + fungicide:plot_biomass +  fungicide:plot_biomass:bgs + foca:fungicide:plot_biomass + foca:fungicide:plot_biomass:bgs = 0"
+evA_evS_trt_eff = "fungicide:plot_biomass +  fungicide:plot_biomass:bgs + foca:fungicide:plot_biomass + foca:fungicide:plot_biomass:bgs = 0"
+
+# EvA background
+evA_evA_ctrl_alpha = "plot_biomass + foca:plot_biomass + plot_biomass:bga + foca:plot_biomass:bga = 0"
+evA_evA_fung_alpha = "plot_biomass + foca:plot_biomass + plot_biomass:bga + foca:plot_biomass:bga + fungicide:plot_biomass + foca:fungicide:plot_biomass + fungicide:plot_biomass:bga + foca:fungicide:plot_biomass:bga = 0"
+evA_evA_trt_eff = "fungicide:plot_biomass + foca:fungicide:plot_biomass + fungicide:plot_biomass:bga + foca:fungicide:plot_biomass:bga = 0"
+mv_evA_ctrl_alpha = "plot_biomass +  plot_biomass:bga = 0"
+mv_evA_fung_alpha = "plot_biomass +  plot_biomass:bga + fungicide:plot_biomass + fungicide:plot_biomass:bga = 0"
+mv_evA_trt_eff = "fungicide:plot_biomass + fungicide:plot_biomass:bga = 0"
+evS_evA_ctrl_alpha = "plot_biomass + plot_biomass:bga + focs:plot_biomass + focs:plot_biomass:bga = 0"
+evS_evA_fung_alpha = "plot_biomass + plot_biomass:bga + focs:plot_biomass + focs:plot_biomass:bga + fungicide:plot_biomass + fungicide:plot_biomass:bga + focs:fungicide:plot_biomass + focs:fungicide:plot_biomass:bga = 0"
+evS_evA_trt_eff = "fungicide:plot_biomass + fungicide:plot_biomass:bga + focs:fungicide:plot_biomass + focs:fungicide:plot_biomass:bga = 0"
+
+biomassD2alphas <- hypothesis(growthD2Mod2, 
+                             c(mv_mv_ctrl_alpha, mv_mv_fung_alpha, 
+                               evS_mv_ctrl_alpha, evS_mv_fung_alpha, 
+                               evA_mv_ctrl_alpha, evA_mv_fung_alpha,
+                               evS_evS_ctrl_alpha, evS_evS_fung_alpha,
+                               mv_evS_ctrl_alpha, mv_evS_fung_alpha, 
+                               evA_evS_ctrl_alpha, evA_evS_fung_alpha, 
+                               evA_evA_ctrl_alpha, evA_evA_fung_alpha,
+                               mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
+                               evS_evA_ctrl_alpha, evS_evA_fung_alpha))
+
+biomassD2TrtEff <- hypothesis(growthD2Mod2,
                              c(mv_mv_trt_eff, 
                                evS_mv_trt_eff, 
                                evA_mv_trt_eff,
@@ -428,7 +330,7 @@ growthD2TrtEff <- hypothesis(growthD2Mod2,
                                mv_evA_trt_eff,
                                evS_evA_trt_eff))
 
-growthD2balphas <- hypothesis(growthD2Mod2b, 
+biomassD2balphas <- hypothesis(growthD2Mod2b, 
                               c(mv_mv_ctrl_alpha, mv_mv_fung_alpha, 
                                 evS_mv_ctrl_alpha, evS_mv_fung_alpha, 
                                 evA_mv_ctrl_alpha, evA_mv_fung_alpha,
@@ -439,28 +341,43 @@ growthD2balphas <- hypothesis(growthD2Mod2b,
                                 mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
                                 evS_evA_ctrl_alpha, evS_evA_fung_alpha))
 
+biomassD2bTrtEff <- hypothesis(growthD2Mod2b,
+                              c(mv_mv_trt_eff, 
+                                evS_mv_trt_eff, 
+                                evA_mv_trt_eff,
+                                evS_evS_trt_eff,
+                                mv_evS_trt_eff, 
+                                evA_evS_trt_eff, 
+                                evA_evA_trt_eff,
+                                mv_evA_trt_eff,
+                                evS_evA_trt_eff))
+
 # combine alphas
-alphaDat <- growthD1alphas[[1]] %>%
-  mutate(year = "2018",
-         foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
-                        "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
-                        "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
-                        "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
-                        "s_a_ctrl", "s_a_fung")) %>%
-  full_join(growthD2alphas[[1]] %>%
-              mutate(year = "2019",
-                     foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
-                                    "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
-                                    "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
-                                    "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
-                                    "s_a_ctrl", "s_a_fung"))) %>%
-  full_join(growthD2balphas[[1]] %>%
-              mutate(year = "2019b",
-                     foc_bg_trt = c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
-                                    "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
-                                    "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
-                                    "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
-                                    "s_a_ctrl", "s_a_fung"))) %>%
+alphaDat <- densityD1alphas[[1]] %>%
+  mutate(year = 2018,
+         response = "tillers",
+         gradient = "density",
+         data = "full") %>%
+  full_join(densityD2alphas[[1]] %>%
+              mutate(year = 2019,
+                     response = "biomass",
+                     gradient = "density",
+                     data = "full")) %>%
+  full_join(biomassD2alphas[[1]] %>%
+              mutate(year = 2019,
+                     response = "biomass",
+                     gradient = "biomass",
+                     data = "full")) %>%
+  full_join(biomassD2balphas[[1]] %>%
+              mutate(year = 2019,
+                     response = "biomass",
+                     gradient = "biomass",
+                     data = "no high Ev A")) %>%
+  mutate(foc_bg_trt = rep(c("m_m_ctrl", "m_m_fung", "s_m_ctrl", "s_m_fung", 
+                            "a_m_ctrl", "a_m_fung", "s_s_ctrl", "s_s_fung",
+                            "m_s_ctrl", "m_s_fung", "a_s_ctrl", "a_s_fung", 
+                            "a_a_ctrl", "a_a_fung","m_a_ctrl", "m_a_fung", 
+                            "s_a_ctrl", "s_a_fung"), 4)) %>%
   select(-Hypothesis) %>%
   rowwise() %>%
   mutate(foc = str_split(foc_bg_trt, "_")[[1]][1],
@@ -480,19 +397,31 @@ alphaDatSave <- alphaDat %>%
   mutate(treatment = fct_recode(treatment, "control" = "control (water)"),
          focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
          background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
-  select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper) %>%
-  arrange(year, background, focal, treatment)
+  select(year, response, gradient, data, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper, sig) %>%
+  arrange(year, response, gradient, data, background, focal, treatment)
 
 # combine treatment effects
-trtEffDatSave <- growthD1TrtEff[[1]] %>%
+trtEffDatSave <- densityD1TrtEff[[1]] %>%
   mutate(Year = 2018,
+         Data = "full",
          Response = "tillers",
          Gradient = "density") %>%
-  full_join(growthD2TrtEff[[1]] %>%
+  full_join(densityD2TrtEff[[1]] %>%
               mutate(Year = 2019,
+                     Data = "full",
+                     Response = "biomass",
+                     Gradient = "density")) %>%
+  full_join(biomassD2TrtEff[[1]] %>%
+              mutate(Year = 2019,
+                     Data = "full",
                      Response = "biomass",
                      Gradient = "biomass")) %>%
-  mutate(foc_bg = rep(c("m_m", "s_m", "a_m", "s_s", "m_s", "a_s", "a_a", "m_a", "s_a"), 2)) %>%
+  full_join(biomassD2bTrtEff[[1]] %>%
+              mutate(Year = 2019,
+                     Data = "no high Ev A",
+                     Response = "biomass",
+                     Gradient = "biomass")) %>%
+  mutate(foc_bg = rep(c("m_m", "s_m", "a_m", "s_s", "m_s", "a_s", "a_a", "m_a", "s_a"), 4)) %>%
   rowwise() %>%
   mutate(foc = str_split(foc_bg, "_")[[1]][1],
          bg = str_split(foc_bg, "_")[[1]][2]) %>%
@@ -501,15 +430,43 @@ trtEffDatSave <- growthD1TrtEff[[1]] %>%
               select(foc, focal, bg, background) %>%
               unique()) %>% 
   mutate(focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
+         background = fct_recode(background, "Ev first-year" = "Ev seedling"),
+         sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
+                         TRUE ~ "includes 0")) %>%
   select(-c(Hypothesis, Evid.Ratio, Post.Prob, Star, foc_bg, foc, bg)) %>%
-  relocate(Year, Response, Gradient, focal, background) %>%
-  arrange(Year, background, focal)
+  relocate(Year, Response, Gradient, Data, focal, background) %>%
+  arrange(Year, Response, Gradient, Data, background, background, focal)
 
 # save
-write_csv(filter(alphaDatSave, year == 2018), "output/focal_growth_competition_coefficients_2018_density_exp.csv")
-write_csv(filter(alphaDatSave, year == 2019), "output/focal_growth_competition_coefficients_2019_density_exp.csv")
+write_csv(alphaDatSave, "output/focal_growth_competition_coefficients_2018_2019_density_exp.csv")
 write_csv(trtEffDatSave, "output/focal_growth_competition_treatment_effect_2018_2019_density_exp.csv")
+
+
+#### growth rate ####
+
+mv_trt_eff = "fungicide = 0"
+evS_trt_eff = "fungicide + focs:fungicide = 0"
+evA_trt_eff = "fungicide + foca:fungicide = 0"
+
+growthDensityD1TrtEff <- hypothesis(growthD1Mod, c(mv_trt_eff, evS_trt_eff, evA_trt_eff))
+growthDensityD2TrtEff <- hypothesis(growthD2Mod, c(mv_trt_eff, evS_trt_eff, evA_trt_eff))
+growthBiomassD2TrtEff <- hypothesis(growthD2Mod2, c(mv_trt_eff, evS_trt_eff, evA_trt_eff))
+
+growthTrtEff <- growthDensityD1TrtEff[[1]] %>%
+  mutate(year = 2018,
+         gradient = "density") %>%
+  full_join(growthDensityD2TrtEff[[1]] %>%
+              mutate(year = 2019,
+                     gradient = "density")) %>%
+  full_join(growthBiomassD2TrtEff[[1]] %>%
+              mutate(year = 2019,
+                     gradient = "biomass")) %>%
+  mutate(focal = rep(c("Mv", "Ev first-year", "Ev adult"), 3)) %>%
+  select(-Hypothesis) %>%
+  relocate(year, gradient, focal) %>%
+  arrange(year, gradient, focal)
+
+write_csv(growthTrtEff, "output/focal_growth_rate_treatment_effect_2018_2019_density_exp.csv")
 
 
 #### figure ####
@@ -809,9 +766,8 @@ dev.off()
 
 
 #### severity initial visualizations ####
-# not including biomass ~ severity because there are potential feedbacks (biomass increases severity)
 
-# remove repeat plot 1's
+# remove repeat plot 1's (will work whether or not they're present)
 growthD1Dat3 <- growthD1Dat %>%
   filter(!(plot == 1 & background %in% c("Ev seedling", "Ev adult"))) %>%
   mutate(background = case_when(plot == 1 ~ "none",
@@ -859,6 +815,21 @@ growthD2Dat3 %>%
 # maybe driven by 1 plots?
 
 # visualizations excluding 1 plots
+growthD1Dat2 %>%
+  filter(sp == "Mv") %>%
+  select(jul_severity, sep_severity, late_aug_severity, plant_growth) %>%
+  ggpairs()
+
+growthD1Dat3 %>%
+  filter(focal == "Ev seedling") %>%
+  select(jul_severity, sep_severity, late_aug_severity, plant_growth) %>%
+  ggpairs()
+
+growthD1Dat3 %>%
+  filter(focal == "Ev adult") %>%
+  select(jul_severity, sep_severity, late_aug_severity, plant_growth) %>%
+  ggpairs()
+
 growthD2Dat2 %>%
   filter(sp == "Mv") %>%
   select(jul_severity, early_aug_severity, late_aug_severity, plant_growth) %>%
@@ -876,101 +847,162 @@ growthD2Dat3 %>%
 # still positive
 # may be because plots that are good for growth are good for disease
 
+# severity months
+sum(!is.na(growthD1Dat2$jul_severity)) # most complete, broadest for Ev
+sum(!is.na(growthD1Dat2$late_aug_severity))
+sum(!is.na(growthD1Dat2$sep_severity)) # broadest for Mv
+
+sum(!is.na(growthD2Dat2$jul_severity)) # most complete
+sum(!is.na(growthD2Dat2$early_aug_severity))
+sum(!is.na(growthD2Dat2$late_aug_severity)) # broadest distribution
+
+# only use July for 2018 because growth measurements were taken in July
+# doesn't make sense for severity later in the season to affect early growth
+
 
 #### fit severity models ####
-growthSevD1Mod <- brm(data = growthD1Dat2, family = gaussian,
-                      plant_growth ~ jul_severity * foc * bg + (1|plotf),
+
+# July
+growthJulSevD1Mod <- brm(data = growthD1Dat2, family = gaussian,
+                      plant_growth ~ foc * (jul_severity + density + density:bg) + (1|plotf),
                       prior <- c(prior(normal(0.75, 1), class = "Intercept"),
                                  prior(normal(0, 1), class = "b")), # use default for sigma
                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(growthSevD1Mod)
+mod_check_fun(growthJulSevD1Mod)
 
-growthSevD2Mod <- brm(data = growthD2Dat2, family = gaussian,
-                      plant_growth ~ late_aug_severity * foc * bg + (1|plotf),
-                      prior <- c(prior(normal(0.75, 1), class = "Intercept"),
+growthJulSevD2Mod <- brm(data = growthD2Dat2, family = gaussian,
+                      plant_growth ~ foc * (jul_severity + density + density:bg) + (1|plotf),
+                      prior <- c(prior(normal(3, 1), class = "Intercept"),
                                  prior(normal(0, 1), class = "b")), # use default for sigma
-                      iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(growthSevD2Mod)
+                      iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                      control = list(max_treedepth = 15)) 
+mod_check_fun(growthJulSevD2Mod)
 
-# filter for plot 1 data
-growthNoBgD1Dat <- growthD1Dat3 %>%
-  filter(plot == 1)
+# early Aug
+growthEAugSevD2Mod <- brm(data = growthD2Dat2, family = gaussian,
+                         plant_growth ~ foc * (early_aug_severity + density + density:bg) + (1|plotf),
+                         prior <- c(prior(normal(3, 1), class = "Intercept"),
+                                    prior(normal(0, 1), class = "b")), # use default for sigma
+                         iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                         control = list(max_treedepth = 15)) 
+mod_check_fun(growthEAugSevD2Mod)
 
-growthNoBgD2Dat <- growthD2Dat3 %>%
-  filter(plot == 1)
-
-# fit models with no background
-growthSevNoBgD1Mod <- brm(data = growthNoBgD1Dat, family = gaussian,
-                      plant_growth ~ jul_severity * foc + (1|plotf),
-                      prior <- c(prior(normal(0.75, 1), class = "Intercept"),
-                                 prior(normal(0, 1), class = "b")), # use default for sigma
-                      iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-growthSevNoBgD1Mod <- update(growthSevNoBgD1Mod, control = list(adapt_delta = 0.999))
-mod_check_fun(growthSevNoBgD1Mod)
-
-growthSevNoBgD2Mod <- brm(data = growthNoBgD2Dat, family = gaussian,
-                          plant_growth ~ late_aug_severity * foc + (1|plotf),
-                          prior <- c(prior(normal(0.75, 1), class = "Intercept"),
+# late Aug
+growthLAugSevD2Mod <- brm(data = growthD2Dat2, family = gaussian,
+                          plant_growth ~ foc * (late_aug_severity + density + density:bg) + (1|plotf),
+                          prior <- c(prior(normal(3, 1), class = "Intercept"),
                                      prior(normal(0, 1), class = "b")), # use default for sigma
-                          iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(growthSevNoBgD2Mod)
+                          iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                          control = list(max_treedepth = 15)) 
+mod_check_fun(growthLAugSevD2Mod)
 
-# need to save these
+# save models
+save(growthJulSevD1Mod, file = "output/focal_growth_jul_severity_model_2018_density_exp.rda")
+save(growthJulSevD2Mod, file = "output/focal_growth_jul_severity_model_2019_density_exp.rda")
+save(growthEAugSevD2Mod, file = "output/focal_growth_early_aug_severity_model_2019_density_exp.rda")
+save(growthLAugSevD2Mod, file = "output/focal_growth_late_aug_severity_model_2019_density_exp.rda")
+
 
 #### severity coefficients ####
 
-# Mv background
-mv_mv_2018_sev = "jul_severity = 0"
-evS_mv_2018_sev = "jul_severity + jul_severity:focs = 0"
-evA_mv_2018_sev = "jul_severity + jul_severity:foca = 0"
+# July
+mv_jul_sev = "jul_severity = 0"
+evS_jul_sev = "jul_severity + focs:jul_severity = 0"
+evA_jul_sev = "jul_severity + foca:jul_severity = 0"
 
-# EvS background
-evS_evS_2018_sev = "jul_severity + jul_severity:focs + jul_severity:bgs + jul_severity:focs:bgs = 0"
-mv_evS_2018_sev = "jul_severity +  jul_severity:bgs = 0"
-evA_evS_2018_sev = "jul_severity +  jul_severity:bgs + jul_severity:foca + jul_severity:foca:bgs = 0"
+# early Aug
+mv_early_aug_sev = "early_aug_severity = 0"
+evS_early_aug_sev = "early_aug_severity + focs:early_aug_severity = 0"
+evA_early_aug_sev = "early_aug_severity + foca:early_aug_severity = 0"
 
-# EvA intra vs. inter
-evA_evA_2018_sev = "jul_severity + jul_severity:foca + jul_severity:bga + jul_severity:foca:bga = 0"
-mv_evA_2018_sev = "jul_severity +  jul_severity:bga = 0"
-evS_evA_2018_sev = "jul_severity + jul_severity:bga + jul_severity:focs + jul_severity:focs:bga = 0"
+# late Aug
+mv_late_aug_sev = "late_aug_severity = 0"
+evS_late_aug_sev = "late_aug_severity + focs:late_aug_severity = 0"
+evA_late_aug_sev = "late_aug_severity + foca:late_aug_severity = 0"
 
-growthSevD1coefs <- hypothesis(growthSevD1Mod, 
-                             c(mv_mv_2018_sev, evS_mv_2018_sev, evA_mv_2018_sev, 
-                               evS_evS_2018_sev, mv_evS_2018_sev, evA_evS_2018_sev, 
-                               evA_evA_2018_sev, mv_evA_2018_sev, evS_evA_2018_sev))
-# no sig effects
+growthJulSevD1coefs <- hypothesis(growthJulSevD1Mod, c(mv_jul_sev, evS_jul_sev, evA_jul_sev))
+growthJulSevD2coefs <- hypothesis(growthJulSevD2Mod, c(mv_jul_sev, evS_jul_sev, evA_jul_sev))
+# reduced seedling growth
+growthEAugSevD2coefs <- hypothesis(growthEAugSevD2Mod, c(mv_early_aug_sev, evS_early_aug_sev, evA_early_aug_sev))
+# increased Mv and adult growth
+growthLAugSevD2coefs <- hypothesis(growthLAugSevD2Mod, c(mv_late_aug_sev, evS_late_aug_sev, evA_late_aug_sev))
+# increased Mv and seedling growth
 
-# Mv background
-mv_mv_2019_sev = "late_aug_severity = 0"
-evS_mv_2019_sev = "late_aug_severity + late_aug_severity:focs = 0"
-evA_mv_2019_sev = "late_aug_severity + late_aug_severity:foca = 0"
+# save
+sevCoefs <- growthJulSevD1coefs[[1]] %>%
+  mutate(year = 2018,
+         month = "July") %>%
+  full_join(growthJulSevD2coefs[[1]] %>%
+              mutate(year = 2019,
+                     month = "July")) %>%
+  full_join(growthEAugSevD2coefs[[1]] %>%
+              mutate(year = 2019,
+                     month = "early August")) %>%
+  full_join(growthLAugSevD2coefs[[1]] %>%
+              mutate(year = 2019,
+                     month = "late August")) %>%
+  mutate(focal = rep(c("Mv", "Ev first-year", "Ev adult"), 4)) %>%
+  select(-c(Hypothesis, Evid.Ratio, Post.Prob)) %>%
+  relocate(year, month, focal)
 
-# EvS background
-evS_evS_2019_sev = "late_aug_severity + late_aug_severity:focs + late_aug_severity:bgs + late_aug_severity:focs:bgs = 0"
-mv_evS_2019_sev = "late_aug_severity +  late_aug_severity:bgs = 0"
-evA_evS_2019_sev = "late_aug_severity +  late_aug_severity:bgs + late_aug_severity:foca + late_aug_severity:foca:bgs = 0"
+# save
+write_csv(sevCoefs, "output/focal_growth_severity_effect_2018_2019_density_exp.csv")
 
-# EvA intra vs. inter
-evA_evA_2019_sev = "late_aug_severity + late_aug_severity:foca + late_aug_severity:bga + late_aug_severity:foca:bga = 0"
-mv_evA_2019_sev = "late_aug_severity +  late_aug_severity:bga = 0"
-evS_evA_2019_sev = "late_aug_severity + late_aug_severity:bga + late_aug_severity:focs + late_aug_severity:focs:bga = 0"
 
-growthSevD2coefs <- hypothesis(growthSevD2Mod, 
-                               c(mv_mv_2019_sev, evS_mv_2019_sev, evA_mv_2019_sev, 
-                                 evS_evS_2019_sev, mv_evS_2019_sev, evA_evS_2019_sev, 
-                                 evA_evA_2019_sev, mv_evA_2019_sev, evS_evA_2019_sev))
-# positive effects on Mv and EvA, both with Mv backgrounds
+#### fungicide-only models ####
 
-mv_2018_sev = "jul_severity = 0"
-evS_2018_sev = "jul_severity + jul_severity:focs = 0"
-evA_2018_sev = "jul_severity + jul_severity:foca = 0"
+# average fungicide effect across background plot types
+# keep plot 1
 
-growthSevNoBgD1coefs <- hypothesis(growthSevNoBgD1Mod, c(mv_2018_sev, evS_2018_sev, evA_2018_sev))
-# no significant effects
+# initial visualizations
+ggplot(growthD1Dat, aes(x = foc, y = plant_growth, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
+  stat_summary(geom = "point", fun = "mean")
 
-mv_2019_sev = "late_aug_severity = 0"
-evS_2019_sev = "late_aug_severity + late_aug_severity:focs = 0"
-evA_2019_sev = "late_aug_severity + late_aug_severity:foca = 0"
+ggplot(growthD2Dat, aes(x = foc, y = plant_growth, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
+  stat_summary(geom = "point", fun = "mean")
 
-growthSevNoBgD2coefs <- hypothesis(growthSevNoBgD2Mod, c(mv_2019_sev, evS_2019_sev, evA_2019_sev))
-# no significant effects
+# fit models
+growthFungD1Mod <- brm(data = growthD1Dat, family = gaussian,
+                       plant_growth ~ foc * fungicide + (1|plotf),
+                       prior <- c(prior(normal(0.75, 1), class = "Intercept"),
+                                  prior(normal(0, 1), class = "b")), # use default for sigma
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3, 
+                       control = list(adapt_delta = 0.999)) 
+mod_check_fun(growthFungD1Mod)
+
+growthFungD2Mod <- brm(data = growthD2Dat, family = gaussian,
+                       plant_growth ~ foc * fungicide + (1|plotf),
+                       prior <- c(prior(normal(2, 1), class = "Intercept"),
+                                  prior(normal(0, 1), class = "b")), # use default for sigma
+                       iter = 6000, warmup = 1000, chains = 3, cores = 3) 
+mod_check_fun(growthFungD2Mod)
+
+# save models
+save(growthFungD1Mod, file = "output/focal_growth_fungicide_model_2018_density_exp.rda")
+save(growthFungD2Mod, file = "output/focal_growth_fungicide_model_2019_density_exp.rda")
+
+
+#### fungicide effects ####
+
+# fungicide - control
+mv_fung_eff = "fungicide = 0"
+evS_fung_eff = "fungicide + focs:fungicide = 0"
+evA_fung_eff = "fungicide + foca:fungicide = 0"
+
+growthFungEff <- hypothesis(growthFungD1Mod,
+                            c(mv_fung_eff,
+                              evS_fung_eff,
+                              evA_fung_eff))[[1]] %>%
+  mutate(Year = 2018, Response = "tillers") %>%
+  full_join(hypothesis(growthFungD2Mod,
+                       c(mv_fung_eff,
+                         evS_fung_eff,
+                         evA_fung_eff))[[1]] %>%
+              mutate(Year = 2019, Response = "biomass")) %>%
+  mutate(Focal = rep(c("Mv", "Ev first-year", "Ev adult"), 2)) %>%
+  select(Year, Response, Focal, Estimate:CI.Upper) %>%
+  arrange(Year, Focal)
+
+write_csv(growthFungEff, "output/focal_growth_fungicide_effect_2018_2019_density_exp.csv")

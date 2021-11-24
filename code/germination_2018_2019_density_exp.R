@@ -234,13 +234,14 @@ mod_check_fun(mvPropLightMod2)
 
 # save
 save(mvGermD1Mod, file = "output/mv_germination_infection_model_2018_density_exp.rda")
+save(mvGermD1Mod3, file = "output/mv_germination_fungicide_model_2018_density_exp.rda")
 save(mvPropDarkMod, file = "output/mv_seed_infection_dark_model_2018_density_exp.rda")
 save(mvPropDarkMod2, file = "output/mv_seed_infection_dark_fungicide_model_2018_density_exp.rda")
 save(mvPropLightMod, file = "output/mv_seed_infection_light_model_2018_density_exp.rda")
 save(mvPropLightMod2, file = "output/mv_seed_infection_light_fungicide_model_2018_density_exp.rda")
 
 
-#### Ev model ####
+#### Ev models ####
 
 # initial visualization
 evGermD1Dat %>%
@@ -259,7 +260,11 @@ ggplot(evGermDat2, aes(year, germination, color = age)) +
   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.2)) +
   stat_summary(geom = "point", fun = "mean", position = position_dodge(0.2))
 
-# model
+ggplot(evGermDat2, aes(treatment, germination)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", fun = "mean")
+
+# models
 evGermMod <- brm(data = evGermDat2, family = binomial,
                    germinants | trials(seeds_planted) ~ final_severity*yearf + (1|site),
                    prior <- c(prior(normal(0, 10), class = "Intercept"),
@@ -268,8 +273,17 @@ evGermMod <- brm(data = evGermDat2, family = binomial,
                  control = list(adapt_delta = 0.999, max_treedepth = 15))
 mod_check_fun(evGermMod)
 
+evGermMod2 <- brm(data = evGermDat2, family = binomial,
+                 germinants | trials(seeds_planted) ~ fungicide + (1|site) + (1|yearf),
+                 prior <- c(prior(normal(0, 10), class = "Intercept"),
+                            prior(normal(0, 10), class = "b")), # use default for sigma
+                 iter = 6000, warmup = 1000, chains = 3, 
+                 control = list(adapt_delta = 0.999, max_treedepth = 15))
+mod_check_fun(evGermMod2)
+
 # save
 save(evGermMod, file = "output/ev_germination_severity_model_2018_2019_density_exp.rda")
+save(evGermMod2, file = "output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
 
 
 #### figure ####
