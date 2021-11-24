@@ -69,13 +69,13 @@ ggplot(evSeedD2Dat2, aes(treatment, seeds)) +
 #### Mv seeds ####
 
 # planted density
-mvPlantsD2Dat <- tibble(plot = 2:4,
-                        planted = c(11, 19, 67))
+mvPlantsD2Dat <- tibble(plot = 1:4,
+                        planted = c(3, 11, 19, 67))
 
 # format seeds
 mvSeedD2Dat2 <- mvSeedD2Dat %>%
   mutate(age = "seedling")  %>%
-  filter(plot %in% 2:4) %>%
+  filter(plot %in% 1:4) %>%
   group_by(site, plot, treatment, sp, age) %>%
   summarise(seeds_per_plant = mean(seeds, na.rm = T)) %>% # plot average
   ungroup() %>%
@@ -238,7 +238,8 @@ plotSevD2DatW <- plotSevD2Dat %>%
 
 dat <- evSeedD2Dat2 %>%
   mutate(sp = "Ev") %>%
-  full_join(mvSeedD2Dat2) %>%
+  full_join(mvSeedD2Dat2 %>%
+              filter(plot != 1)) %>%
   full_join(plotBioD2Dat %>%
               filter(plot != 1) %>%
               select(site, plot, treatment, biomass.g_m2)) %>%
@@ -250,9 +251,15 @@ dat %>%
   summarise(plot_types = length(unique(plot)),
             plots = n())
 
+dat2 <- mvSeedD2Dat2 %>%
+  full_join(plotBioD2Dat %>%
+              filter(plot %in% 1:4) %>%
+              select(site, plot, treatment, biomass_mv, biomass_bg, biomass_foc_mv))
+
 
 #### output ####
 
 write_csv(dat, "intermediate-data/plot_biomass_seeds_severity_2019_density_exp.csv")
+write_csv(dat2, "intermediate-data/mv_plot_biomass_seeds_2019_density_exp.csv")
 write_csv(plotSevD2Dat, "intermediate-data/plot_severity_2019_density_exp.csv")
 write_csv(plotBioD2Dat, "intermediate-data/plot_biomass_2019_density_exp.csv")

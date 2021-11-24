@@ -185,11 +185,13 @@ growthD2Dat2b <- growthD2Dat2 %>%
 growthD2Mod2b <- update(growthD2Mod2, newdata = growthD2Dat2b)
 summary(growthD2Mod2b)
 
-# save models
+# save models and data
 save(growthD1Mod, file = "output/focal_growth_density_model_2018_density_exp.rda")
 save(growthD2Mod, file = "output/focal_growth_density_model_2019_density_exp.rda")
 save(growthD2Mod2, file = "output/focal_growth_biomass_model_2019_density_exp.rda")
 save(growthD2Mod2b, file = "output/focal_growth_biomass_model_no_high_EvA_2019_density_exp.rda")
+write_csv(growthD1Dat2, "intermediate-data/focal_growth_density_data_2018_density_exp.csv")
+write_csv(growthD2Dat2, "intermediate-data/focal_growth_density_data_2019_density_exp.csv")
 
 
 #### interaction coefficients (alphas) ####
