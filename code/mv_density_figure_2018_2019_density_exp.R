@@ -14,9 +14,9 @@ rm(list=ls())
 
 # load packages
 library(tidyverse)
-library(grid)
-library(gridExtra)
 library(cowplot)
+library(brms)
+library(tidybayes)
 
 # import models
 load("output/focal_seed_density_model_2019_density_exp.rda")
@@ -39,21 +39,26 @@ plotD2Dat <- read_csv("intermediate-data/mv_plot_biomass_seeds_2019_density_exp.
 plotD2Alpha <- read_csv("output/mv_plot_biomass_seeds_density_treatment_effect_2019_dens_exp.csv")
 # mv_plot_biomass_seeds_density_2019_density_exp.R
 
+# density gradient function
+dens_fun <- function(min_dens, max_dens){
+  
+  density <- seq(min_dens, max_dens, length.out = 100)
+  
+  return(density)
+}
+
 
 #### edit data ####
 
 # plant group densities
 plotDens <- plots %>%
-  mutate(density = case_when(background == "Mv seedling" ~ background_density + 3,
-                             background == "Ev seedling" ~ background_density + 3,
-                             background == "Ev adult" ~ background_density + 1,
-                             TRUE ~ background_density)) %>%
-  select(plot, treatment, background, density)
+  select(plot, treatment, background, background_density)
 
 # plot biomass/seed data
 plotD2Dat2 <- plotD2Dat %>%
   left_join(plotDens) %>%
   filter(background %in% c("none", "Mv seedling")) %>%
+  mutate(density = background_density + 3) %>%
   rename(biomass = biomass_mv) %>%
   mutate(focal = "Invader",
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
@@ -65,12 +70,12 @@ plotD2Dat2 <- plotD2Dat %>%
 
 # raw data
 rawD2Dat <- seedD2Dat %>%
-  select(site, plot, treatment, fungicide, focal, foc, ID, background, bg,density, seeds, log_seeds) %>%
+  select(site, plot, treatment, fungicide, focal, foc, ID, background, bg, density, seeds, log_seeds) %>%
   mutate(response = "seeds") %>%
   rename(fitness = seeds,
          log_fitness = log_seeds) %>%
   full_join(growthD2Dat %>%
-              select(site, plot, treatment, fungicide, focal, foc, ID, background, bg,density, biomass_weight.g, plant_growth) %>%
+              select(site, plot, treatment, fungicide, focal, foc, ID, background, bg, density, biomass_weight.g, plant_growth) %>%
               mutate(response = "growth") %>%
               rename(fitness = biomass_weight.g,
                      log_fitness = plant_growth)) %>%
@@ -96,8 +101,8 @@ predDatTemplate <- rawD2Dat %>%
   unnest(density) %>%
   mutate(plotf = "A") 
 
-plotPredDatTemplate <- plotDens %>%
-  filter(background %in% c("none", "Mv seedling")) %>%
+plotPredDatTemplate <- plotD2Dat2 %>%
+  mutate(treatment = fct_recode(treatment, "water" = "control (water)")) %>%
   group_by(treatment) %>%
   summarize(min_dens = min(density),
             max_dens = max(density)) %>%
@@ -148,27 +153,21 @@ fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 8, color = "black"),
-        axis.text.x = element_text(size = 8, color = "black"),
+        axis.text.y = element_text(size = 7, color = "black"),
+        axis.text.x = element_text(size = 7, color = "black"),
         axis.title.y = element_blank(),
-        axis.title.x = element_blank(),
+        axis.title.x = element_text(size = 7, color = "black"),
         legend.text = element_text(size = 7),
-        legend.title = element_blank(),
+        legend.title = element_text(size = 7),
         legend.background = element_blank(),
         legend.margin = margin(-0.3, 0, -0.1, 0, unit = "cm"),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
         strip.background = element_blank(),
-        strip.text = element_text(size = 10),
+        strip.text = element_text(size = 7),
         strip.placement = "outside")
 
 col_pal = c("black", "#238A8DFF")
-
-# density gradient function
-dens_fun <- function(min_dens, max_dens){
-  
-  density <- seq(min_dens, max_dens, length.out = 100)
-  
-  return(density)
-}
 
 # dodge size
 dodge_width <- 3
@@ -181,8 +180,11 @@ plot_labels <- c(biomass = "Plot~biomass~(g~m^-2)",
                  seeds = "Plot~seeds~(m^-2)")
 
 
-response_labels <- c(growth = "Plant growth (ln[biomass])",
-                     seeds = "Seeds (ln[seeds + 1])")
+response_labels <- c(growth = "ln(Biomass) (g)",
+                     seeds = "ln(Seeds)")
+
+age_labels <- c("Adult competitor" = "Adult competitor",
+                "First-year competitor" = "1st yr competitor")
 
 # invader figure
 inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
@@ -197,6 +199,7 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
              labeller = labeller(response = as_labeller(plot_labels, label_parsed))) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = col_pal) +
+  labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
   fig_theme +
   theme(legend.position = "none")
 
@@ -210,19 +213,75 @@ comp_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
              cols = vars(focal),
              switch = "y",
              scales = "free",
-             labeller = labeller(response = response_labels)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  fig_theme +
-  theme(legend.position = c(0.82, 0.9))
+             labeller = labeller(response = response_labels,
+                                 focal = age_labels)) +
+  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  scale_fill_manual(values = col_pal, name = "Disease treatment") +
+  labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
+  fig_theme
 
-comb_fig <- plot_grid(inv_fig, comp_fig,
+comb_fig <- plot_grid(inv_fig, comp_fig + theme(legend.position = "none"),
+                      labels = LETTERS[1:2],
+                      label_size = 10,
                       nrow = 1,
-                      rel_widths = c(0.65, 1))
+                      rel_widths = c(0.67, 1))
 
-x_title <- textGrob(expression(paste("Invader density (", m^-2, ")", sep = "")), 
-                    gp = gpar(fontsize = 10))
+leg <- get_legend(comp_fig)
 
-pdf("output/mv_density_figure_2019_density_exp.pdf", width = 6, height =4.5)
-grid.arrange(arrangeGrob(comb_fig, bottom = x_title))
+pdf("output/mv_density_figure_2019_density_exp.pdf", width = 4.33, height = 2.76)
+plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.05))
 dev.off()
+
+
+#### values for text ####
+
+# Mv biomass
+set.seed(184)
+posterior_predict(mvBioDensMod,
+                  newdata = filter(plotPredDatTemplate, density == 67),
+                  allow_new_levels = T) %>%
+  as_tibble(.name_repair = ~ c("water", "fungicide")) %>%
+  mutate(fung_eff = 100 * (fungicide - water) / water) %>%
+  mean_hdi(fung_eff)
+
+set.seed(184)
+posterior_predict(mvBioDensMod,
+                  newdata = filter(plotPredDatTemplate, density == 3),
+                  allow_new_levels = T) %>%
+  as_tibble(.name_repair = ~ c("water", "fungicide")) %>%
+  mutate(fung_eff = 100 * (fungicide - water) / water) %>%
+  mean_hdi(fung_eff)
+
+# evA seeds and biomass
+evA_mv_trt_eff = "100 * (fungicide:density + foca:fungicide:density)/(density + foca:density) = 0"
+hypothesis(growthD2Mod, evA_mv_trt_eff, seed = 184)
+hypothesis(seedD2Mod, evA_mv_trt_eff, seed = 184)
+# used method below, but they're very similar
+
+set.seed(184)
+as_draws_df(growthD2Mod)  %>%
+  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(alpha_fungicide = -1 * (density + foca_density + fungicide_density + foca_fungicide_density),
+            alpha_water = -1 * (density + foca_density)) %>%
+  mutate(fung_eff = 100 * (alpha_fungicide - alpha_water) / alpha_water,
+         draws = 1:15000) %>%
+  pivot_longer(cols = c(alpha_fungicide, alpha_water, fung_eff),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable) %>%
+  mean_hdi(value)
+
+set.seed(184)
+as_draws_df(seedD2Mod)  %>%
+  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(alpha_fungicide = -1 * (density + foca_density + fungicide_density + foca_fungicide_density),
+            alpha_water = -1 * (density + foca_density)) %>%
+  mutate(fung_eff = 100 * (alpha_fungicide - alpha_water) / alpha_water,
+         draws = 1:15000) %>%
+  pivot_longer(cols = c(alpha_fungicide, alpha_water, fung_eff),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable) %>%
+  mean_hdi(value)

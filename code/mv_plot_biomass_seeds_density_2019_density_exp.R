@@ -30,16 +30,14 @@ source("code/brms_model_fitting_functions.R")
 
 # plant group densities
 plotDens <- plots %>%
-  mutate(density = case_when(background == "Mv seedling" ~ background_density + 3,
-                             background == "Ev seedling" ~ background_density + 3,
-                             background == "Ev adult" ~ background_density + 1,
-                             TRUE ~ background_density)) %>%
-  select(plot, treatment, background, density)
+  select(plot, treatment, background, background_density)
 
 # combine data
+# add focal Mv to background density
 plotD2Dat2 <- plotD2Dat %>%
   left_join(plotDens) %>%
   filter(background %in% c("none", "Mv seedling")) %>%
+  mutate(density = background_density + 3) %>%
   rename(biomass = biomass_mv)
 
 
