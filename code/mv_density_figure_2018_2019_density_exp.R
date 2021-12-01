@@ -181,7 +181,7 @@ plot_labels <- c(biomass = "Plot~biomass~(g~m^-2)",
 
 
 response_labels <- c(growth = "ln(Biomass) (g)",
-                     seeds = "ln(Seeds)")
+                     seeds = "ln(Seeds + 1)")
 
 age_labels <- c("Adult competitor" = "Adult competitor",
                 "First-year competitor" = "1st yr competitor")

@@ -18,6 +18,7 @@ library(tidybayes)
 library(cowplot)
 library(gridExtra)
 library(car)
+library(janitor)
 
 # import data
 d1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
@@ -613,13 +614,12 @@ predD2Dat <- tibble(foc = c("a", "s", "m")) %>%
 
 predDat <- predD1Dat %>%
   full_join(predD2Dat) %>%
-  mutate(focal = fct_recode(foc, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a") %>%
-           fct_relevel("Ev adult", "Ev first-year"),
-         background = fct_recode(bg, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a") %>%
-           fct_relevel("Ev adult", "Ev first-year"),
+  mutate(focal = fct_recode(foc, "Invader" = "m", "1st yr competitor" = "s", "Adult competitor" = "a") %>%
+           fct_relevel("Invader", "Adult competitor"),
+         background = fct_recode(bg, "Invader" = "m", "1st yr competitor" = "s", "Adult competitor" = "a") %>%
+           fct_relevel("Invader", "Adult competitor"),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev(),
-         bg_severity_logit = logit(bg_severity, adjust = logit_adjust),
          bg_severity = bg_severity * 100)
 
 # edge severity
@@ -629,7 +629,7 @@ sevD2Dat %>%
             maxEdge = max(edge_severity))
 
 predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
-                        focal = c("Ev adult", "Ev first-year", "Mv")) %>%
+                        focal = c("Adult competitor", "1st yr competitor", "Invader")) %>%
   expand_grid(tibble(treatment = rep(c("control (water)", "fungicide"), each = 100),
                      edge_severity = c(seq(0, 0.0856, length.out = 100),
                                        seq(0, 0.0639, length.out = 100)))) %>%
@@ -643,9 +643,9 @@ predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
   mutate(foc_healthy_change = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
          lower = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
          upper = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"],
-         edge_severity_logit = logit(edge_severity, adjust = logit_adjust),
          edge_severity = edge_severity * 100,
-         treatment = fct_rev(treatment))
+         treatment = fct_rev(treatment),
+         focal = fct_relevel(focal, "Invader", "Adult competitor"))
 
 # combine with preddat
 predDat2 <- predDat %>%
@@ -666,11 +666,15 @@ figDat <- sevD1Dat %>%
               unique()) %>%
   mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_relevel("control (water)"),
-         focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling"),
-         bg_severity_logit = logit(bg_severity, adjust = logit_adjust),
+         focal = fct_recode(focal, "Invader" = "Mv",
+                            "Adult competitor" = "Ev adult",
+                            "1st yr competitor" = "Ev seedling") %>%
+           fct_relevel("Invader", "Adult competitor"),
+         background = fct_recode(background, "Invader" = "Mv",
+                                 "Adult competitor" = "Ev adult",
+                                 "1st yr competitor" = "Ev seedling") %>%
+           fct_relevel("Invader", "Adult competitor"),
          bg_severity = bg_severity * 100,
-         edge_severity_logit = logit(edge_severity, adjust = logit_adjust),
          edge_severity = edge_severity * 100,
          density_level = fct_relevel(density_level, "low", "medium"),
          intra = if_else(focal == background, "yes", "no"))
@@ -681,8 +685,7 @@ betaDat2 <- betaDat %>%
   filter(sig == "omits 0") %>%
   left_join(predDat2 %>%
               group_by(year, bg, background) %>%
-              summarise(bg_severity = max(bg_severity),
-                        bg_severity_logit = max(bg_severity_logit))) %>%
+              summarise(bg_severity = max(bg_severity))) %>%
   left_join(predDat2 %>%
               select(foc, focal) %>% # add focal names
               unique()) %>%
@@ -697,7 +700,10 @@ betaDat2 <- betaDat %>%
               mutate(foc_healthy_change = max(c(dat, upper))) %>%
               ungroup() %>%
               select(-c(dat, upper))) %>%
-  mutate(parm = round(Estimate, 2))
+  rowwise() %>%
+  mutate(parm = as.character(as.expression(substitute(beta~"="~est,
+                                                      list(est = format(round_half_up(Estimate, 1), nsmall = 1)))))) %>%
+  ungroup()
 
 # add sig to pred data
 predD2EdgeDat2 <- predD2EdgeDat %>%
@@ -711,59 +717,50 @@ edgeD2hyps3 <- edgeD2hyps2 %>%
   left_join(predD2EdgeDat %>%
               group_by(foc, focal) %>%
               summarise(edge_severity = max(edge_severity),
-                        max_edge_sev_logit = max(edge_severity_logit),
-                        min_edge_sev_logit = min(edge_severity_logit),
                         upper = max(upper),
                         lower = min(lower)) %>%
               ungroup()) %>%
   left_join(sevD2Dat %>%
               group_by(foc) %>%
-              summarise(dat_max = max(foc_healthy_change),
-                        dat_min = min(foc_healthy_change)) %>%
+              summarise(dat_max = max(foc_healthy_change)) %>%
               ungroup()) %>%
   rowwise() %>%
-  mutate(foc_healthy_change = case_when(foc != "m" & treatment == "control (water)" ~ min(c(dat_min, lower)),
-                                        TRUE ~ max(c(dat_max, upper)))) %>%
+  mutate(foc_healthy_change = max(c(dat_max, upper))) %>%
   ungroup() %>%
-  select(-c(dat_max, dat_min, upper, lower)) %>%
-  mutate(parm = round(Estimate, 2),
-         # foc_healthy_change = case_when(treatment == "fungicide" & foc == "a" ~ foc_healthy_change - 1,
-         #                                treatment == "fungicide" & foc == "s" ~ foc_healthy_change - 0.5,
-         #                                treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.3,
-         #                                TRUE ~ foc_healthy_change),
-         foc_healthy_change = case_when(treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.3,
+  select(-c(dat_max, upper, lower)) %>%
+  rowwise() %>%
+  mutate(parm = as.character(as.expression(substitute(beta~"="~est,
+                                                      list(est = format(round_half_up(Estimate, 1), nsmall = 1)))))) %>%
+  ungroup() %>%
+  mutate(foc_healthy_change = case_when(treatment == "fungicide" & foc == "m" ~ foc_healthy_change - 0.25,
+                                        treatment == "fungicide" & foc == "a" ~ foc_healthy_change - 0.75,
+                                        treatment == "fungicide" & foc == "s" ~ foc_healthy_change - 0.4,
                                         TRUE ~ foc_healthy_change),
-         edge_severity_logit = case_when(foc == "m" ~ min_edge_sev_logit,
-                                         foc == "s" & treatment == "fungicide" ~ min_edge_sev_logit,
-                                         TRUE ~ max_edge_sev_logit),
-         vjust = case_when(foc != "m" & treatment == "control (water)" ~ 0,
-                           TRUE ~ 1),
-         hjust = case_when(foc == "m" ~ 0,
-                           foc == "s" & treatment == "fungicide" ~ 0,
-                           TRUE ~ 1),
+         vjust = 1,
+         hjust = 1,
          background = "Mv")
-
+         
 # figure settings
 fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 8, color = "black"),
-        axis.text.x = element_text(size = 8, color = "black"),
-        axis.title.y = element_text(size = 10),
-        axis.title.x = element_text(size = 10),
+        axis.text.y = element_text(size = 7, color = "black"),
+        axis.text.x = element_text(size = 7, color = "black"),
+        axis.title.y = element_text(size = 7),
+        axis.title.x = element_text(size = 7),
         legend.text = element_text(size = 7),
-        legend.title = element_text(size = 8),
+        legend.title = element_text(size = 7),
         legend.background = element_blank(),
         legend.position = "none",
         legend.margin = margin(-0.3, 0, -0.1, 0, unit = "cm"),
         strip.background = element_blank(),
-        strip.text = element_text(size = 8),
+        strip.text = element_text(size = 7),
         strip.placement = "outside")
 
 col_pal = c("black", "#238A8DFF")
 
-textSize = 3
+textSize = 2.5
 
 box_shade = "gray92"
 
@@ -795,7 +792,7 @@ legFig <- ggplot(predDat2, aes(x = bg_severity, y = foc_healthy_change)) +
 leg <- get_legend(legFig)
 
 # 2018 figure
-pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity_logit, y = foc_healthy_change)) +
+pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
@@ -810,25 +807,24 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity_logit,
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c(col_pal, "white", box_shade)) +
-  xlab("Initial disease severity (log-odds)") +
+  xlab("Initial disease severity (%)") +
   ylab("Change in infected tissue") +
   fig_theme
 
-tiff("output/plot_transmission_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", 
-     res = 300, compression = "lzw")
+pdf("output/plot_transmission_pairwise_figure_2018_density_exp.pdf", width = 3.54, height = 3.94)
 plot_grid(pairD1Fig, leg,
           nrow = 2, 
           rel_heights = c(1, 0.15))
 dev.off()
 
 # 2019 figure
-pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity_logit, y = foc_healthy_change)) +
+pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
   geom_text(data = filter(betaDat2, year == "2019"),
-            aes(label = paste("beta", " == ", parm, sep = ""),
+            aes(label = parm,
                 color = treatment), parse = T, hjust = 1, vjust = 1, show.legend = F, size = textSize) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
@@ -837,11 +833,11 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity_logit,
   scale_linetype_manual(values = c("dashed", "solid")) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c(col_pal, "white", box_shade)) +
-  xlab("Initial disease severity (log-odds)") +
+  xlab("Initial disease severity (%)") +
   ylab("Change in infected tissue") +
   fig_theme
 
-edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity_logit, y = foc_healthy_change)) +
+edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
@@ -849,7 +845,7 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity_logit, y = foc_healthy
                mutate(background = "Mv"), 
              aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
   geom_text(data = edgeD2hyps3, 
-            aes(label = paste("beta", " == ", parm, sep = ""), 
+            aes(label = parm, 
                 color = treatment,
                 hjust = hjust, vjust = vjust), 
             parse = T, show.legend = F, size = textSize) +
@@ -860,25 +856,24 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity_logit, y = foc_healthy
   # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab("Edge Mv\ndisease severity\n(log-odds)") +
-  ylab("Change in infected tissue") +
+  xlab("Edge invader\ndisease severity (%)") +
   fig_theme +
   theme(axis.text.y = element_blank(),
         axis.title.y = element_blank(),
         strip.text.y = element_blank(),
-        axis.title.x = element_text(size = 10, margin = margin(t = 0, r = 0, b = -0.3, l = 0)))
+        axis.title.x = element_text(size = 7, margin = margin(t = 12, r = 0, b = 0, l = 0)))
 
 # combine plots
 combFig <- plot_grid(pairD2Fig, 
                      edgeD2Fig,
                      nrow = 1,
                      labels = LETTERS[1:2],
+                     label_size = 10,
                      rel_widths = c(1, 0.33),
-                     hjust = c(0, 0.3))
+                     hjust = c(-0.5, 0.3))
 
 # combine
-tiff("output/plot_transmission_pairwise_figure_2019_density_exp.tiff", width = 11, height = 10, units = "cm", 
-     res = 300, compression = "lzw")
+pdf("output/plot_transmission_pairwise_figure_2019_density_exp.pdf", width = 4.33, height = 3.94)
 plot_grid(combFig, leg,
           nrow = 2,
           rel_heights = c(1, 0.15))
