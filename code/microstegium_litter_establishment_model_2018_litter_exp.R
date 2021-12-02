@@ -2,7 +2,7 @@
 
 # file: microstegium_litter_establishment_model_2018_litter_exp
 # author: Amy Kendig
-# date last edited: 10/24/20
+# date last edited: 12/1/21
 # goal: estimate the effect of litter on Microstegium establishment
 
 
@@ -35,7 +35,7 @@ plotsL2 <- plotsL %>%
 
 # select plots with seeds added only
 mvEstL1Dat <- estL1Dat %>%
-  filter(seeds_added == "yes" & litter != "none") %>%
+  filter(seeds_added == "yes") %>%
   left_join(plotsL2) %>%
   select(-c(date, seeds_added, ev_germ, ev_infec)) %>%
   rename(mv_germ_planted_bg = mv_germ,
@@ -60,7 +60,7 @@ mvEstL1Mod1 <- brm(mv_germ_planted_bg | trials(mv_planted_cor) ~ litter.g.cm2 * 
                              prior(normal(0, 10), class = b),
                              prior(cauchy(0, 1), class = sd)),
                    iter = 6000, warmup = 1000, chains = 1)
-# 10 divergent transitions
+# 46 divergent transitions
 summary(mvEstL1Mod1)
 
 # increase chains
@@ -69,15 +69,15 @@ mvEstL1Mod2 <- update(mvEstL1Mod1, chains = 3,
                                      max_treedepth = 15))
 summary(mvEstL1Mod2)
 plot(mvEstL1Mod2)
-pp_check(mvEstL1Mod2, nsamples = 50)
+pp_check(mvEstL1Mod2, ndraws = 50)
 
 
 #### visualize ####
 
 # simulate fit
-fitDat <- tibble(litter.g.cm2 = rep(seq(50/10000, 200/10000, length.out = 100), 2),
+fitDat <- tibble(litter.g.cm2 = rep(seq(0, 200/10000, length.out = 100), 2),
                  sterilized = rep(c(0, 1), each = 100)) %>%
-  mutate(mv_planted_cor = 747) %>%
+  mutate(mv_planted_cor = round(mean(mvEstL1Dat$mv_planted_cor))) %>%
   mutate(Est = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"]/mv_planted_cor,
          Est_lower = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"]/mv_planted_cor,
          Est_upper = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"]/mv_planted_cor,
@@ -97,7 +97,6 @@ ggplot(mvEstL1Dat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilized
   ggtitle(expression(italic("M. vimineum"))) +
   ylab("Proportion established") +
   xlab(expression(paste("Litter (g ", m^-2, ")", sep = ""))) +
-  coord_cartesian(ylim = c(0.2, 1)) +
   theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -106,6 +105,7 @@ ggplot(mvEstL1Dat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilized
         axis.title = element_text(size = 10),
         legend.text = element_text(size = 9),
         legend.title = element_text(size = 9),
+        legend.background = element_rect(fill = NA, color = NA),
         plot.title = element_text(size = 10, hjust = 0.5),
         legend.position = c(0.8, 0.83))
 dev.off()
@@ -114,3 +114,4 @@ dev.off()
 #### output ####
 
 save(mvEstL1Mod2, file = "output/microstegium_litter_establishment_model_2018_litter_exp.rda")
+write_csv(mvEstL1Dat, "intermediate-data/microstegium_litter_establishment_data_2018_litter_exp.csv")

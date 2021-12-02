@@ -82,7 +82,7 @@ growth_mod_samps <- as_draws_df(growthD2Mod2)  %>%
                names_to = "parameter",
                values_to = "estimate")
 
-# growth rates and interaction alphaficients
+# growth rates and interaction coefficients
 growth_mod_parms <- growth_mod_samps %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%

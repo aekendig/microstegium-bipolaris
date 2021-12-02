@@ -2,7 +2,7 @@
 
 # file: ev_germination_analysis_2018_litter_exp
 # author: Amy Kendig
-# date last edited: 1/18/20
+# date last edited: 12/1/21
 # goal: evaluate the effects of litter treatments on the germination and disease of Elymus
 
 
@@ -14,6 +14,7 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(cowplot)
+library(brms)
 
 # import data
 germ_jun <- read_csv("./data/both_germination_disease_jun_2019_litter_exp.csv")
@@ -34,6 +35,8 @@ plots2 <- plots %>%
   gather(key = "treatment", value = "litter_weight.lb", -c(date, site, block)) %>%
   mutate(litter_weight.scaled = (litter_weight.lb - mean(litter_weight.lb)) / sd(litter_weight.lb),
          litter_weight.g = litter_weight.lb * 453.592,
+         litter.g.m2 = litter_weight.g / 4, # 4 because the plots are 2m^2
+         litter.g.cm2 = litter.g.m2 / 10000,
          treatment = fct_relevel(treatment, "removal", "control"),
          plot = as.factor(paste(site, block, sep = "_"))) %>%
   select(-c(date))
@@ -123,3 +126,39 @@ germ %>% group_by(treatment) %>%
   summarise(mean = mean_cl_boot(ev_prop_germ)[ ,1],
             lower = mean_cl_boot(ev_prop_germ)[ ,2],
             upper = mean_cl_boot(ev_prop_germ)[ ,3])
+
+
+#### germination model ####
+
+# priors
+x <- seq(0, 0.4, length.out = 20)
+y <- 0.04/(1 + 5 * x)
+plot(x, y, type = "l")
+
+val <- seq(0, 10, length.out = 50)
+dens <- dexp(val, 1)
+plot(val, dens, type = "l")
+
+# initial fit
+evEstL2BhMod1 <- brm(bf(ev_prop_germ ~ maxEst / (1 + betaL * litter.g.cm2),
+                        maxEst ~ 1,
+                        betaL ~ 1,
+                        nl = T),
+                     data = germ, family = gaussian,
+                     prior = c(prior(normal(0.04, 1), nlpar = "maxEst", class = "b", lb = 0),
+                               prior(exponential(1), nlpar = "betaL", lb = 0)),
+                     iter = 6000, warmup = 1000, chains = 1)
+# 87 divergent transitions
+summary(evEstL2BhMod1)
+
+# increase chains
+evEstL2BhMod2 <- update(evEstL2BhMod1, chains = 3,
+                        control = list(adapt_delta = 0.9999))
+summary(evEstL2BhMod2)
+plot(evEstL2BhMod2)
+pp_check(evEstL2BhMod1, ndraws = 50)
+
+
+#### output ####
+save(evEstL2BhMod1, file = "output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
+write_csv(germ, "intermediate-data/elymus_litter_establishment_data_2018_litter_exp.csv")

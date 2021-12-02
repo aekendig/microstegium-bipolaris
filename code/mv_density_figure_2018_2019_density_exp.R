@@ -23,6 +23,8 @@ load("output/focal_seed_density_model_2019_density_exp.rda")
 load("output/focal_growth_density_model_2019_density_exp.rda")
 load("output/mv_plot_biomass_density_model_2019_dens_exp.rda")
 load("output/mv_plot_seed_density_model_2019_dens_exp.rda")
+load("output/microstegium_litter_establishment_model_2018_litter_exp.rda")
+load("output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
 
 # import data
 plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
@@ -38,6 +40,9 @@ growthD2Alpha <- read_csv("output/focal_growth_competition_coefficients_2018_201
 plotD2Dat <- read_csv("intermediate-data/mv_plot_biomass_seeds_2019_density_exp.csv")
 plotD2Alpha <- read_csv("output/mv_plot_biomass_seeds_density_treatment_effect_2019_dens_exp.csv")
 # mv_plot_biomass_seeds_density_2019_density_exp.R
+
+mvLitDat <- read_csv("intermediate-data/microstegium_litter_establishment_data_2018_litter_exp.csv")
+evLitDat <- read_csv("intermediate-data/elymus_litter_establishment_data_2018_litter_exp.csv")
 
 # density gradient function
 dens_fun <- function(min_dens, max_dens){
@@ -58,11 +63,10 @@ plotDens <- plots %>%
 plotD2Dat2 <- plotD2Dat %>%
   left_join(plotDens) %>%
   filter(background %in% c("none", "Mv seedling")) %>%
-  mutate(density = background_density + 3) %>%
+  mutate(density = background_density + 3,
+         focal = "Invader",
+         treatment = fct_relevel(treatment, "water")) %>%
   rename(biomass = biomass_mv) %>%
-  mutate(focal = "Invader",
-         treatment = fct_recode(treatment, "control (water)" = "water") %>%
-           fct_relevel("control (water)")) %>%
   select(-c(biomass_bg, biomass_foc_mv)) %>%
   pivot_longer(cols = c(seeds, biomass),
                names_to = "response",
@@ -79,8 +83,9 @@ rawD2Dat <- seedD2Dat %>%
               mutate(response = "growth") %>%
               rename(fitness = biomass_weight.g,
                      log_fitness = plant_growth)) %>%
-  mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
-           fct_relevel("control (water)"),
+  mutate(treatment = fct_recode(treatment, "control" = "water",
+                                "fungicide/autoclaved" = "fungicide") %>%
+           fct_relevel("control"),
          focal = fct_recode(focal, "First-year competitor" = "Ev seedling",
                             "Adult competitor" = "Ev adult",
                             "Invader" = "Mv") %>%
@@ -89,7 +94,7 @@ rawD2Dat <- seedD2Dat %>%
                                  "Adult competitor" = "Ev adult",
                                  "Invader" = "Mv") %>%
            fct_relevel("Invader")) %>%
-  filter(bg == "m" & foc != "m")
+  filter(bg == "m")
 
 # template prediction data
 predDatTemplate <- rawD2Dat %>%
@@ -102,7 +107,6 @@ predDatTemplate <- rawD2Dat %>%
   mutate(plotf = "A") 
 
 plotPredDatTemplate <- plotD2Dat2 %>%
-  mutate(treatment = fct_recode(treatment, "water" = "control (water)")) %>%
   group_by(treatment) %>%
   summarize(min_dens = min(density),
             max_dens = max(density)) %>%
@@ -142,9 +146,7 @@ predD2Dat <- seedPredD2Dat %>%
 plotPredD2Dat <- plotSeedPredD2Dat %>%
   mutate(response = "seeds") %>%
   full_join(plotBioPredD2Dat %>%
-              mutate(response = "biomass")) %>%
-  mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
-           fct_relevel("control (water)"))
+              mutate(response = "biomass"))
 
 
 #### figure settings ####
@@ -183,8 +185,9 @@ plot_labels <- c(biomass = "Plot~biomass~(g~m^-2)",
 response_labels <- c(growth = "ln(Biomass) (g)",
                      seeds = "ln(Seeds + 1)")
 
-age_labels <- c("Adult competitor" = "Adult competitor",
-                "First-year competitor" = "1st yr competitor")
+focal_labels <- c("Invader" = "Invader",
+                  "Adult competitor" = "Adult competitor",
+                  "First-year competitor" = "1st yr competitor")
 
 # invader figure
 inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
@@ -204,7 +207,7 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
   theme(legend.position = "none")
 
 # competitor figure
-comp_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
+percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
   stat_summary(data = rawD2Dat, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
@@ -214,23 +217,49 @@ comp_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
              switch = "y",
              scales = "free",
              labeller = labeller(response = response_labels,
-                                 focal = age_labels)) +
+                                 focal = focal_labels)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
   scale_fill_manual(values = col_pal, name = "Disease treatment") +
   labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
   fig_theme
 
-comb_fig <- plot_grid(inv_fig, comp_fig + theme(legend.position = "none"),
+comb_fig <- plot_grid(inv_fig, percap_fig + theme(legend.position = "none"),
                       labels = LETTERS[1:2],
                       label_size = 10,
                       nrow = 1,
                       rel_widths = c(0.67, 1))
 
-leg <- get_legend(comp_fig)
+leg <- get_legend(percap_fig)
 
 pdf("output/mv_density_figure_2019_density_exp.pdf", width = 4.33, height = 2.76)
 plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.05))
 dev.off()
+
+
+#### Mv litter ####
+
+# simulate fit
+mvLitFitDat <- tibble(litter.g.cm2 = rep(seq(0, 200/10000, length.out = 100), 2),
+                 sterilized = rep(c(0, 1), each = 100)) %>%
+  mutate(mv_planted_cor = round(mean(mvLitDat$mv_planted_cor))) %>%
+  mutate(Est = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"]/mv_planted_cor,
+         Est_lower = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"]/mv_planted_cor,
+         Est_upper = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"]/mv_planted_cor,
+         litter.g.m2 = litter.g.cm2 * 10000,
+         sterilizedF = ifelse(sterilized == 0, "live", "sterilized"))
+
+# figure
+ggplot(mvEstL1Dat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
+  geom_ribbon(data = fitDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.6, color = NA) +
+  geom_line(data = fitDat, aes(y = Est)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge(5)) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
+       y = "Invader",
+       title = "Establishment") +
+  fig_theme
 
 
 #### values for text ####
