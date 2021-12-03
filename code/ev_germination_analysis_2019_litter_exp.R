@@ -131,12 +131,16 @@ germ %>% group_by(treatment) %>%
 #### germination model ####
 
 # priors
+germ %>%
+  filter(litter.g.m2 == 0) %>%
+  summarize(mean = mean(ev_prop_germ))
+
 x <- seq(0, 0.4, length.out = 20)
-y <- 0.04/(1 + 5 * x)
+y <- 0.035/(1 + 10 * x)
 plot(x, y, type = "l")
 
-val <- seq(0, 10, length.out = 50)
-dens <- dexp(val, 1)
+val <- seq(0, 20, length.out = 50)
+dens <- dexp(val, 0.1)
 plot(val, dens, type = "l")
 
 # initial fit
@@ -146,19 +150,33 @@ evEstL2BhMod1 <- brm(bf(ev_prop_germ ~ maxEst / (1 + betaL * litter.g.cm2),
                         nl = T),
                      data = germ, family = gaussian,
                      prior = c(prior(normal(0.04, 1), nlpar = "maxEst", class = "b", lb = 0),
-                               prior(exponential(1), nlpar = "betaL", lb = 0)),
+                               prior(exponential(0.1), nlpar = "betaL", lb = 0)),
                      iter = 6000, warmup = 1000, chains = 1)
-# 87 divergent transitions
 summary(evEstL2BhMod1)
 
 # increase chains
 evEstL2BhMod2 <- update(evEstL2BhMod1, chains = 3,
-                        control = list(adapt_delta = 0.9999))
+                        control = list(adapt_delta = 0.99))
 summary(evEstL2BhMod2)
 plot(evEstL2BhMod2)
 pp_check(evEstL2BhMod1, ndraws = 50)
 
 
+#### visualize ####
+
+evEstPredDat <- tibble(litter.g.cm2 = seq(min(germ$litter.g.cm2), max(germ$litter.g.cm2), 
+                                          length.out = 100)) %>%
+  mutate(Est = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"],
+         Est_lower = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"],
+         Est_upper = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"],
+         litter.g.m2 = litter.g.cm2 * 10000)
+
+ggplot(germ, aes(x = litter.g.m2, y = ev_prop_germ)) +
+  geom_ribbon(data = evEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
+  geom_line(data = evEstPredDat, aes(y = Est)) +
+  geom_point()
+
+
 #### output ####
-save(evEstL2BhMod1, file = "output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
+save(evEstL2BhMod2, file = "output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
 write_csv(germ, "intermediate-data/elymus_litter_establishment_data_2018_litter_exp.csv")

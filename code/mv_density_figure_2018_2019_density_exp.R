@@ -53,7 +53,7 @@ dens_fun <- function(min_dens, max_dens){
 }
 
 
-#### edit data ####
+#### edit raw data ####
 
 # plant group densities
 plotDens <- plots %>%
@@ -96,6 +96,9 @@ rawD2Dat <- seedD2Dat %>%
            fct_relevel("Invader")) %>%
   filter(bg == "m")
 
+
+#### edit prediction data ####
+
 # template prediction data
 predDatTemplate <- rawD2Dat %>%
   group_by(focal, foc, background, bg, treatment, fungicide) %>%
@@ -136,6 +139,23 @@ plotBioPredD2Dat <- plotPredDatTemplate %>%
          lower = fitted(mvBioDensMod, newdata = ., allow_new_levels = T)[, "Q2.5"],
          upper = fitted(mvBioDensMod, newdata = ., allow_new_levels = T)[, "Q97.5"])
 
+mvEstPredDat <- tibble(litter.g.cm2 = rep(seq(min(mvLitDat$litter.g.cm2), max(mvLitDat$litter.g.cm2), 
+                                              length.out = 100), 2),
+                       sterilized = rep(c(0, 1), each = 100)) %>%
+  mutate(mv_planted_cor = round(mean(mvLitDat$mv_planted_cor))) %>%
+  mutate(Est = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"]/mv_planted_cor,
+         Est_lower = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"]/mv_planted_cor,
+         Est_upper = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"]/mv_planted_cor,
+         litter.g.m2 = litter.g.cm2 * 10000,
+         sterilizedF = ifelse(sterilized == 0, "live", "sterilized"))
+
+evEstPredDat <- tibble(litter.g.cm2 = seq(min(evLitDat$litter.g.cm2), max(evLitDat$litter.g.cm2), 
+                                              length.out = 100)) %>%
+  mutate(Est = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"],
+         Est_lower = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"],
+         Est_upper = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"],
+         litter.g.m2 = litter.g.cm2 * 10000)
+
 # combine
 predD2Dat <- seedPredD2Dat %>%
   mutate(response = "seeds") %>%
@@ -155,10 +175,8 @@ fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 7, color = "black"),
-        axis.text.x = element_text(size = 7, color = "black"),
-        axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 7, color = "black"),
+        axis.text = element_text(size = 7, color = "black"),
+        axis.title = element_text(size = 7, color = "black"),
         legend.text = element_text(size = 7),
         legend.title = element_text(size = 7),
         legend.background = element_blank(),
@@ -166,8 +184,12 @@ fig_theme <- theme_bw() +
         legend.position = "bottom",
         legend.direction = "horizontal",
         strip.background = element_blank(),
-        strip.text = element_text(size = 7),
-        strip.placement = "outside")
+        strip.text.x = element_text(size = 7,
+                                  margin = margin(0, 0, 0.1, 0, unit = "cm")),
+        strip.text.y = element_text(size = 7,
+                                    margin = margin(0, 0.1, 0, 0, unit = "cm")),
+        strip.placement = "outside",
+        plot.title = element_text(size = 7, hjust = 0.5))
 
 col_pal = c("black", "#238A8DFF")
 
@@ -194,7 +216,7 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
   stat_summary(data = plotD2Dat2, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
-  stat_summary(data = plotD2Dat2, geom = "point", fun = "mean", size = 1.5, position = position_dodge(dodge_width), aes(color = treatment)) +
+  stat_summary(data = plotD2Dat2, geom = "point", fun = "mean", size = 2, position = position_dodge(dodge_width), aes(color = treatment)) +
   facet_grid(rows = vars(response),
              cols = vars(focal),
              scales = "free",
@@ -204,14 +226,15 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
   scale_fill_manual(values = col_pal) +
   labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
   fig_theme +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
 
 # competitor figure
 percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
   stat_summary(data = rawD2Dat, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
-  stat_summary(data = rawD2Dat, geom = "point", fun = "mean", size = 1.5, position = position_dodge(dodge_width), aes(color = treatment)) +
+  stat_summary(data = rawD2Dat, geom = "point", fun = "mean", size = 2, position = position_dodge(dodge_width), aes(color = treatment)) +
   facet_grid(rows = vars(response),
              cols = vars(focal),
              switch = "y",
@@ -221,45 +244,46 @@ percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
   scale_fill_manual(values = col_pal, name = "Disease treatment") +
   labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
+  fig_theme +
+  theme(axis.title.y = element_blank())
+
+# litter figure
+mvLitFig <- ggplot(mvLitDat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
+  geom_ribbon(data = mvEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
+  geom_line(data = mvEstPredDat, aes(y = Est)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
+  stat_summary(fun = "mean", geom = "point", size = 2, position = position_dodge(5)) +
+  scale_color_manual(values = col_pal) +
+  scale_fill_manual(values = col_pal) +
+  labs(y = "Invader",
+       title = "Establishment") +
+  fig_theme +
+  theme(axis.title.x = element_blank(),
+        legend.position = "none")
+
+evLitFig <- ggplot(evLitDat, aes(x = litter.g.m2, y = ev_prop_germ)) +
+  geom_ribbon(data = evEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
+  geom_line(data = evEstPredDat, aes(y = Est)) +
+  geom_point() +
+  labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
+       y = "Competitor") +
   fig_theme
 
+lit_fig <- plot_grid(mvLitFig, evLitFig,
+                    nrow = 2)
+
 comb_fig <- plot_grid(inv_fig, percap_fig + theme(legend.position = "none"),
-                      labels = LETTERS[1:2],
+                      lit_fig,
+                      labels = LETTERS[1:3],
                       label_size = 10,
                       nrow = 1,
-                      rel_widths = c(0.67, 1))
+                      rel_widths = c(0.45, 1, 0.4))
 
 leg <- get_legend(percap_fig)
 
-pdf("output/mv_density_figure_2019_density_exp.pdf", width = 4.33, height = 2.76)
+pdf("output/mv_density_figure_2019_density_exp.pdf", width = 7.08, height = 3.54)
 plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.05))
 dev.off()
-
-
-#### Mv litter ####
-
-# simulate fit
-mvLitFitDat <- tibble(litter.g.cm2 = rep(seq(0, 200/10000, length.out = 100), 2),
-                 sterilized = rep(c(0, 1), each = 100)) %>%
-  mutate(mv_planted_cor = round(mean(mvLitDat$mv_planted_cor))) %>%
-  mutate(Est = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"]/mv_planted_cor,
-         Est_lower = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"]/mv_planted_cor,
-         Est_upper = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"]/mv_planted_cor,
-         litter.g.m2 = litter.g.cm2 * 10000,
-         sterilizedF = ifelse(sterilized == 0, "live", "sterilized"))
-
-# figure
-ggplot(mvEstL1Dat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
-  geom_ribbon(data = fitDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.6, color = NA) +
-  geom_line(data = fitDat, aes(y = Est)) +
-  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
-  stat_summary(fun = "mean", geom = "point", position = position_dodge(5)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
-       y = "Invader",
-       title = "Establishment") +
-  fig_theme
 
 
 #### values for text ####
