@@ -991,7 +991,7 @@ hypothesis(envBioD2Mod, c("biomass_c = 0", "biomass_c + biomass_c:monthlate_aug 
 # no sig effect
 
 
-#### water (control) effect ####
+#### water (control) effect - compare to edge ####
 
 # combine datasets
 ctrlD2Dat <- edgeSevD2Dat2 %>%
@@ -1074,3 +1074,50 @@ ggplot(ctrlD2Dat, aes(x = treatment, y = severity2*100, color = plant_type)) +
   fig_theme +
   theme(legend.position = c(0.7, 0.94))
 dev.off()
+
+
+#### treatment effect on severity ####
+
+# initial visualization
+ggplot(d2Dat, aes(x = month, y = severity, color = treatment)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot") +
+  stat_summary(geom = "point", fun = "mean") +
+  facet_wrap(~ paste0(sp, age))
+# most disease in late august
+# fungicide effect strongest for Ev in early August
+
+# edit dataset
+trtD2Dat <- d2Dat %>%
+  filter((month == "late_aug" & sp == "Mv") |
+           (month == "early_aug" & sp == "Ev")) %>%
+  mutate(treatment = fct_recode(treatment, "control" = "water") %>%
+           fct_relevel("control"),
+         plotf = paste0(site, plot, substr(treatment, 1, 1)),
+         plant_type = paste(sp, age, sep = "_"),
+         fungicide = if_else(treatment == "fungicide", 1, 0),
+         severity2 = severity + 1e-6) # lowest value is 2e-4
+
+# min severity
+min(filter(trtD2Dat, severity > 0)$severity)
+max(trtD2Dat$severity)
+
+# min severity
+min(filter(d2Dat, severity > 0)$severity)
+
+# model
+trtD2Mod <- brm(severity2 ~ plant_type*fungicide + (1|plotf),
+                 data = trtD2Dat, family = Beta,
+                 prior <- c(prior(normal(0, 10), class = "Intercept"),
+                            prior(normal(0, 10), class = "b")), # use default for sigma
+                 iter = 6000, warmup = 1000, chains = 3, cores = 3)
+
+mod_check_fun(trtD2Mod)
+
+# save model
+save(trtD2Mod, file = "output/severity_fungicide_model_2019_density_exp.rda")
+
+# treatment effects
+hypothesis(trtD2Mod, c("fungicide = 0",
+                       "fungicide + plant_typeEv_seedling:fungicide = 0",
+                       "fungicide + plant_typeMv_seedling:fungicide = 0"))
+# effect of fungicide on Mv is significantly different from zero
