@@ -1,64 +1,64 @@
 Parameter,Plant_group,Description,Treatment,Estimate,Lower,Upper,Units,Source
-alpha_AA,annual/annual,interaction,control (water),7.885555455394716e-4,-9.879158185343115e-4,0.002611386084654332,g^-1^,experiment
-alpha_AA_fung,annual/annual,interaction,fungicide,4.0003249669666533e-4,-9.472256610254714e-4,0.0017276949370357852,g^-1^,experiment
-alpha_AF,annual/fy perennial,interaction,control (water),0,0,0,g^-1^,experiment
-alpha_AF_fung,annual/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
-alpha_AP,annual/adult perennial,interaction,control (water),0.0016386389320037942,-0.008940151524795397,0.011979530048921534,g^-1^,experiment
-alpha_AP_fung,annual/adult perennial,interaction,fungicide,0.006380267584142629,4.4528806645435006e-4,0.012011498871628674,g^-1^,experiment
-alpha_FA,fy perennial/annual,interaction,control (water),0.0014909349289349823,-5.108118147757557e-4,0.003440318793556131,g^-1^,experiment
-alpha_FA_fung,fy perennial/annual,interaction,fungicide,9.598735951985535e-4,-4.767533893473161e-4,0.0023630196189116247,g^-1^,experiment
-alpha_FF,fy perennial/fy perennial,interaction,control (water),0,0,0,g^-1^,experiment
-alpha_FF_fung,fy perennial/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
-alpha_FP,fy perennial/adult perennial,interaction,control (water),0,0,0,g^-1^,experiment
-alpha_FP_fung,fy perennial/adult perennial,interaction,fungicide,0.005198029638986588,-5.226105579487297e-4,0.011271890448177623,g^-1^,experiment
-alpha_PA,adult perennial/annual,interaction,control (water),0.0010449138652151193,-0.0019011131965372906,0.004030656570476655,g^-1^,experiment
-alpha_PA_fung,adult perennial/annual,interaction,fungicide,0,0,0,g^-1^,experiment
-alpha_PF,adult perennial/fy perennial,interaction,control (water),0,0,0,g^-1^,experiment
-alpha_PF_fung,adult perennial/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
-alpha_PP,adult perennial/adult perennial,interaction,control (water),0,0,0,g^-1^,experiment
-alpha_PP_fung,adult perennial/adult perennial,interaction,fungicide,0,0,0,g^-1^,experiment
-r_A,annual,growth rate,control (water),0.03784878949002017,0.033820816548147295,0.041861951254291596,day^-1^,experiment
-r_A_fung,annual,growth rate,fungicide,0.037548980229079314,0.03366668282633954,0.04158992623653811,day^-1^,experiment
-r_F,perennial fy,growth rate,control (water),0.0381322315445668,0.03388005493990995,0.04245464116887761,day^-1^,experiment
-r_F_fung,perennial fy,growth rate,fungicide,0.038488992352840555,0.034383522034961714,0.04264360380688707,day^-1^,experiment
-r_P,perennial adult,growth rate,control (water),0.032712001952363824,0.027262358249279472,0.03820159286319367,day^-1^,experiment
-r_P_fung,perennial adult,growth rate,fungicide,0.02791529255969665,0.022384403822118558,0.03355440843728684,day^-1^,experiment
-beta_AA,annual/annual,transmission,control (water),0.03821817221375853,0.011980078852740902,0.06704606456224907,day^-1^ g^-1^,experiment
-beta_AA_fung,annual/annual,transmission,fungicide,0.04836055962787851,-2.489830722317047e-4,0.098730186746748,day^-1^ g^-1^,experiment
-beta_AF,annual/fy perennial,transmission,control (water),8.141589121252519e-4,-0.028002076677739005,0.030315106223198843,day^-1^ g^-1^,experiment
-beta_AF_fung,annual/fy perennial,transmission,fungicide,0.0234124792007014,-0.023009540379698643,0.06932761400595401,day^-1^ g^-1^,experiment
-beta_AP,annual/adult perennial,transmission,control (water),0.0043963797395309085,-0.025790993184967987,0.03425356575787169,day^-1^ g^-1^,experiment
-beta_AP_fung,annual/adult perennial,transmission,fungicide,0.008807268511475234,-0.015987749065778326,0.03437245042741131,day^-1^ g^-1^,experiment
-beta_FA,fy perennial/annual,transmission,control (water),0.03153577326383831,-0.004690442469688934,0.06671454099318029,day^-1^ g^-1^,experiment
-beta_FA_fung,fy perennial/annual,transmission,fungicide,0.06813475856152575,3.7412431082678443e-4,0.13527588708840377,day^-1^ g^-1^,experiment
-beta_FF,fy perennial/fy perennial,transmission,control (water),0,0,0,day^-1^ g^-1^,experiment
-beta_FF_fung,fy perennial/fy perennial,transmission,fungicide,0.041828448220097916,-0.012576437085629878,0.09415119703027056,day^-1^ g^-1^,experiment
-beta_FP,fy perennial/adult perennial,transmission,control (water),0,0,0,day^-1^ g^-1^,experiment
-beta_FP_fung,fy perennial/adult perennial,transmission,fungicide,0.03431439567737486,0.00509978555267915,0.06331095491436185,day^-1^ g^-1^,experiment
-beta_PA,adult perennial/annual,transmission,control (water),0.0709431825219581,0.034294279737049474,0.10785633858426362,day^-1^ g^-1^,experiment
-beta_PA_fung,adult perennial/annual,transmission,fungicide,0.06651735579814763,-6.11997034285459e-4,0.13630549586167057,day^-1^ g^-1^,experiment
-beta_PF,adult perennial/fy perennial,transmission,control (water),0.012434150958125206,-0.0321369827459844,0.05824786725396128,day^-1^ g^-1^,experiment
-beta_PF_fung,adult perennial/fy perennial,transmission,fungicide,0.016239650540168557,-0.04141458573340504,0.0744785952338242,day^-1^ g^-1^,experiment
-beta_PP,adult perennial/adult perennial,transmission,control (water),0.0032776787758466075,-0.03225510597089171,0.04233231882625417,day^-1^ g^-1^,experiment
-beta_PP_fung,adult perennial/adult perennial,transmission,fungicide,0,0,0,day^-1^ g^-1^,experiment
+alpha_AA,annual/annual,interaction,control,8.431228034364567e-4,-9.02774138289392e-4,0.0027047995445272474,g^-1^,experiment
+alpha_AA,annual/annual,interaction,fungicide,0.0011622462235073745,-1.3103388382083273e-4,0.00251442986162827,g^-1^,experiment
+alpha_AF,annual/fy perennial,interaction,control,0,0,0,g^-1^,experiment
+alpha_AF,annual/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
+alpha_AP,annual/adult perennial,interaction,control,0,0,0,g^-1^,experiment
+alpha_AP,annual/adult perennial,interaction,fungicide,3.5517922539457714e-4,-0.00579782842918641,0.006760845888376092,g^-1^,experiment
+alpha_FA,fy perennial/annual,interaction,control,4.113677967605777e-4,-0.0014029643233971247,0.0021111291240242976,g^-1^,experiment
+alpha_FA,fy perennial/annual,interaction,fungicide,8.039481689633847e-4,-4.801697040962993e-4,0.002118688962017818,g^-1^,experiment
+alpha_FF,fy perennial/fy perennial,interaction,control,0,0,0,g^-1^,experiment
+alpha_FF,fy perennial/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
+alpha_FP,fy perennial/adult perennial,interaction,control,0,0,0,g^-1^,experiment
+alpha_FP,fy perennial/adult perennial,interaction,fungicide,0.0013167836097408678,-0.005059915323676969,0.007493162639565671,g^-1^,experiment
+alpha_PA,adult perennial/annual,interaction,control,5.437044735214721e-4,-0.0017331492965193213,0.0027255056980806927,g^-1^,experiment
+alpha_PA,adult perennial/annual,interaction,fungicide,0,0,0,g^-1^,experiment
+alpha_PF,adult perennial/fy perennial,interaction,control,0,0,0,g^-1^,experiment
+alpha_PF,adult perennial/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
+alpha_PP,adult perennial/adult perennial,interaction,control,0.007808383132629296,-0.008635770429554268,0.023145968957097206,g^-1^,experiment
+alpha_PP,adult perennial/adult perennial,interaction,fungicide,0,0,0,g^-1^,experiment
+r_A,annual,growth rate,control,0.03732114557940697,0.035034108691701864,0.03953202165971883,day^-1^,experiment
+r_A,annual,growth rate,fungicide,0.038772231304150875,0.03665722063408294,0.04077192052926528,day^-1^,experiment
+r_F,perennial fy,growth rate,control,0.03573106284217064,0.033468349510802804,0.03802487618018021,day^-1^,experiment
+r_F,perennial fy,growth rate,fungicide,0.03769703257500638,0.035588330667544195,0.039771910410468854,day^-1^,experiment
+r_P,perennial adult,growth rate,control,0.03134498422257651,0.028495490173120797,0.03417804660531415,day^-1^,experiment
+r_P,perennial adult,growth rate,fungicide,0.02867175833578186,0.026016496497575696,0.03128796212589833,day^-1^,experiment
+beta_AA,annual/annual,transmission,control,0.03821817221375853,0.011980078852740902,0.06704606456224907,day^-1^ g^-1^,experiment
+beta_AA,annual/annual,transmission,fungicide,0.04836055962787851,-2.489830722317047e-4,0.098730186746748,day^-1^ g^-1^,experiment
+beta_AF,annual/fy perennial,transmission,control,8.141589121252519e-4,-0.028002076677739005,0.030315106223198843,day^-1^ g^-1^,experiment
+beta_AF,annual/fy perennial,transmission,fungicide,0.0234124792007014,-0.023009540379698643,0.06932761400595401,day^-1^ g^-1^,experiment
+beta_AP,annual/adult perennial,transmission,control,0.0043963797395309085,-0.025790993184967987,0.03425356575787169,day^-1^ g^-1^,experiment
+beta_AP,annual/adult perennial,transmission,fungicide,0.008807268511475234,-0.015987749065778326,0.03437245042741131,day^-1^ g^-1^,experiment
+beta_FA,fy perennial/annual,transmission,control,0.03153577326383831,-0.004690442469688934,0.06671454099318029,day^-1^ g^-1^,experiment
+beta_FA,fy perennial/annual,transmission,fungicide,0.06813475856152575,3.7412431082678443e-4,0.13527588708840377,day^-1^ g^-1^,experiment
+beta_FF,fy perennial/fy perennial,transmission,control,0,0,0,day^-1^ g^-1^,experiment
+beta_FF,fy perennial/fy perennial,transmission,fungicide,0.041828448220097916,-0.012576437085629878,0.09415119703027056,day^-1^ g^-1^,experiment
+beta_FP,fy perennial/adult perennial,transmission,control,0,0,0,day^-1^ g^-1^,experiment
+beta_FP,fy perennial/adult perennial,transmission,fungicide,0.03431439567737486,0.00509978555267915,0.06331095491436185,day^-1^ g^-1^,experiment
+beta_PA,adult perennial/annual,transmission,control,0.0709431825219581,0.034294279737049474,0.10785633858426362,day^-1^ g^-1^,experiment
+beta_PA,adult perennial/annual,transmission,fungicide,0.06651735579814763,-6.11997034285459e-4,0.13630549586167057,day^-1^ g^-1^,experiment
+beta_PF,adult perennial/fy perennial,transmission,control,0.012434150958125206,-0.0321369827459844,0.05824786725396128,day^-1^ g^-1^,experiment
+beta_PF,adult perennial/fy perennial,transmission,fungicide,0.016239650540168557,-0.04141458573340504,0.0744785952338242,day^-1^ g^-1^,experiment
+beta_PP,adult perennial/adult perennial,transmission,control,0.0032776787758466075,-0.03225510597089171,0.04233231882625417,day^-1^ g^-1^,experiment
+beta_PP,adult perennial/adult perennial,transmission,fungicide,0,0,0,day^-1^ g^-1^,experiment
 g_A,annual,germination fraction,fungicide,0.7794264932635581,0.7455394723126566,0.8127138023023993,"NA",experiment
-g_A,annual,germination fraction,control (water),0.7614408239721909,0.7270171246855069,0.7954815113455365,"NA",experiment
+g_A,annual,germination fraction,control,0.7614408239721909,0.7270171246855069,0.7954815113455365,"NA",experiment
 g_P,perennial,germination fraction,fungicide,0.1775777157626572,1.2900840000439615e-5,0.5565477123739282,"NA",experiment
-g_P,perennial,germination fraction,control (water),0.22366244574896152,1.9825682819651946e-5,0.6347971023585895,"NA",experiment
+g_P,perennial,germination fraction,control,0.22366244574896152,1.9825682819651946e-5,0.6347971023585895,"NA",experiment
 c_A,annual,seed conversion,fungicide,68.96720146182435,62.83656398506291,75.15373759974521,seeds g^-1^,experiment
-c_A,annual,seed conversion,control (water),76.91213399302326,69.19096928570664,84.42525364871562,seeds g^-1^,experiment
+c_A,annual,seed conversion,control,76.91213399302326,69.19096928570664,84.42525364871562,seeds g^-1^,experiment
 c_F,fy perennial,seed conversion,fungicide,7.783644027003126,6.522964136417486,9.065104199897522,seeds g^-1^,experiment
-c_F,fy perennial,seed conversion,control (water),8.467687590409884,6.900351388801406,9.975870678649343,seeds g^-1^,experiment
+c_F,fy perennial,seed conversion,control,8.467687590409884,6.900351388801406,9.975870678649343,seeds g^-1^,experiment
 c_P,adult perennial,seed conversion,fungicide,20.719443611020438,18.326716544532598,23.136438892368762,seeds g^-1^,experiment
-c_P,adult perennial,seed conversion,control (water),18.99489904932838,16.096628550735545,21.953204396785914,seeds g^-1^,experiment
+c_P,adult perennial,seed conversion,control,18.99489904932838,16.096628550735545,21.953204396785914,seeds g^-1^,experiment
 e_A,annual,establishment fraction,fungicide,0.9992236415151913,0.9959664973740957,0.9999999999999,"NA",experiment
-e_A,annual,establishment fraction,control (water),0.9887806779682138,0.9706261780912405,0.9999198306906609,"NA",experiment
+e_A,annual,establishment fraction,control,0.9887806779682138,0.9706261780912405,0.9999198306906609,"NA",experiment
 e_P,fy perennial,establishment fraction,fungicide,0.9936085538668656,0.9684597706440289,0.9999999999994713,"NA",experiment
-e_P,fy perennial,establishment fraction,control (water),0.9439475821551236,0.894960664801074,0.991133775071663,"NA",experiment
+e_P,fy perennial,establishment fraction,control,0.9439475821551236,0.894960664801074,0.991133775071663,"NA",experiment
 l_P,adult perennial,survival fraction,fungicide,0.9629224455141935,0.9154991231435249,0.9991987875501199,"NA",experiment
-l_P,adult perennial,survival fraction,control (water),0.9453855093428963,0.8855793621761783,0.9940312533861277,"NA",experiment
+l_P,adult perennial,survival fraction,control,0.9453855093428963,0.8855793621761783,0.9940312533861277,"NA",experiment
 n_P,adult perennial,surviving biomass,fungicide,0.41794695666338205,NA,NA,"NA",experiment
-n_P,adult perennial,surviving biomass,control (water),0.4103352230952859,NA,NA,"NA",experiment
+n_P,adult perennial,surviving biomass,control,0.4103352230952859,NA,NA,"NA",experiment
 b_A,annual,initial biomass,NA,0.031,NA,NA,g,experiment
 b_F,fy perennial,initial biomass,NA,0.004,NA,NA,g,experiment
 b_P,adult perennial,initial biomass,NA,0.031,NA,NA,g,experiment
@@ -71,7 +71,7 @@ h,NA,inoculum addition to litter,NA,5500,NA,NA,g^-1^,Benitez et al. 2021
 d,NA,litter decomposition fraction,NA,0.59,NA,NA,"NA",DeMeester and Richter 2010
 s_P,perennial,surviving seed fraction,NA,0.05,NA,NA,"NA",Garrison and Stier 2010
 s_A,annual,surviving seed fraction,fungicide,0.15,NA,NA,"NA",Redwood et al. 2018
-s_A,annual,surviving seed fraction,control (water),0,NA,NA,"NA",experiment
+s_A,annual,surviving seed fraction,control,0,NA,NA,"NA",experiment
 beta_AC,annual,litter transmission,NA,0.001,NA,NA,day^-1^ g^-1^,"NA"
 beta_FC,fy perennial,litter transmission,NA,0.001,NA,NA,day^-1^ g^-1^,"NA"
 beta_PC,adult perennial,litter transmission,NA,0.001,NA,NA,day^-1^ g^-1^,"NA"

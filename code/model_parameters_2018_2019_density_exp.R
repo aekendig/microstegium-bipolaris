@@ -61,23 +61,23 @@ growth_mod_samps <- as_draws_df(growthD2Mod2)  %>%
             r_F_fung = (Intercept + focs + fungicide + focs_fungicide) - log(b_F0),
             r_P_fung = (Intercept + foca + fungicide + foca_fungicide) - log(b_P0),
             alpha_AA = plot_biomass,
-            alpha_FA = plot_biomass + plot_biomass_focs,
-            alpha_PA = plot_biomass + plot_biomass_foca,
+            alpha_FA = plot_biomass + focs_plot_biomass,
+            alpha_PA = plot_biomass + foca_plot_biomass,
             alpha_AF = plot_biomass + plot_biomass_bgs,
-            alpha_FF = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs,
-            alpha_PF = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs,
+            alpha_FF = plot_biomass + focs_plot_biomass + plot_biomass_bgs + focs_plot_biomass_bgs,
+            alpha_PF = plot_biomass + foca_plot_biomass + plot_biomass_bgs + foca_plot_biomass_bgs,
             alpha_AP = plot_biomass + plot_biomass_bga,
-            alpha_FP = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga,
-            alpha_PP = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga,
-            alpha_AA_fung = plot_biomass + plot_biomass_fungicide,
-            alpha_FA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_focs + plot_biomass_focs_fungicide,
-            alpha_PA_fung = plot_biomass + plot_biomass_fungicide + plot_biomass_foca + plot_biomass_foca_fungicide,
-            alpha_AF_fung = plot_biomass + plot_biomass_bgs + plot_biomass_fungicide + plot_biomass_bgs_fungicide,
-            alpha_FF_fung = plot_biomass + plot_biomass_focs + plot_biomass_bgs + plot_biomass_focs_bgs + plot_biomass_fungicide + plot_biomass_focs_fungicide + plot_biomass_bgs_fungicide + plot_biomass_focs_bgs_fungicide,
-            alpha_PF_fung = plot_biomass + plot_biomass_foca + plot_biomass_bgs + plot_biomass_foca_bgs + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bgs_fungicide + plot_biomass_foca_bgs_fungicide,
-            alpha_AP_fung = plot_biomass + plot_biomass_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide,
-            alpha_FP_fung = plot_biomass + plot_biomass_bga + plot_biomass_focs + plot_biomass_focs_bga + plot_biomass_fungicide + plot_biomass_bga_fungicide + plot_biomass_focs_fungicide + plot_biomass_focs_bga_fungicide,
-            alpha_PP_fung = plot_biomass + plot_biomass_foca + plot_biomass_bga + plot_biomass_foca_bga + plot_biomass_fungicide + plot_biomass_foca_fungicide + plot_biomass_bga_fungicide + plot_biomass_foca_bga_fungicide) %>%
+            alpha_FP = plot_biomass + plot_biomass_bga + focs_plot_biomass + focs_plot_biomass_bga,
+            alpha_PP = plot_biomass + foca_plot_biomass + plot_biomass_bga + foca_plot_biomass_bga,
+            alpha_AA_fung = plot_biomass + fungicide_plot_biomass,
+            alpha_FA_fung = plot_biomass + fungicide_plot_biomass + focs_plot_biomass + focs_fungicide_plot_biomass,
+            alpha_PA_fung = plot_biomass + fungicide_plot_biomass + foca_plot_biomass + foca_fungicide_plot_biomass,
+            alpha_AF_fung = plot_biomass + plot_biomass_bgs + fungicide_plot_biomass + fungicide_plot_biomass_bgs,
+            alpha_FF_fung = plot_biomass + focs_plot_biomass + plot_biomass_bgs + focs_plot_biomass_bgs + fungicide_plot_biomass + focs_fungicide_plot_biomass + fungicide_plot_biomass_bgs + focs_fungicide_plot_biomass_bgs,
+            alpha_PF_fung = plot_biomass + foca_plot_biomass + plot_biomass_bgs + foca_plot_biomass_bgs + fungicide_plot_biomass + foca_fungicide_plot_biomass + fungicide_plot_biomass_bgs + foca_fungicide_plot_biomass_bgs,
+            alpha_AP_fung = plot_biomass + plot_biomass_bga + fungicide_plot_biomass + fungicide_plot_biomass_bga,
+            alpha_FP_fung = plot_biomass + plot_biomass_bga + focs_plot_biomass + focs_plot_biomass_bga + fungicide_plot_biomass + fungicide_plot_biomass_bga + focs_fungicide_plot_biomass + focs_fungicide_plot_biomass_bga,
+            alpha_PP_fung = plot_biomass + foca_plot_biomass + plot_biomass_bga + foca_plot_biomass_bga + fungicide_plot_biomass + foca_fungicide_plot_biomass + fungicide_plot_biomass_bga + foca_fungicide_plot_biomass_bga) %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate")
@@ -87,7 +87,7 @@ growth_mod_parms <- growth_mod_samps %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   ungroup() %>%
-  transmute(Parameter = parameter,
+  transmute(Parameter = str_replace(parameter, "_fung", ""),
             Plant_group = rep(c("annual/annual",
                                 "annual/fy perennial",
                                 "annual/adult perennial",
@@ -101,7 +101,7 @@ growth_mod_parms <- growth_mod_samps %>%
                                 "perennial fy",
                                 "perennial adult"), each = 2),
             Description = c(rep("interaction", 18), rep("growth rate", 6)),
-            Treatment = rep(c("control (water)", "fungicide"), 12),
+            Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
             Estimate = case_when(str_detect(parameter, "r_") == T ~ estimate/160, # r may not be sig, but we need an estimate
                                  str_detect(parameter, "alpha_") == T & estimate > 0 ~ 0,
                                  TRUE ~ estimate * -1),
@@ -151,7 +151,7 @@ trans_mod_parms <- trans_mod_samps %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   ungroup() %>%
-  transmute(Parameter = parameter,
+  transmute(Parameter = str_replace(parameter, "_fung", ""),
             Plant_group = rep(c("annual/annual",
                                 "annual/fy perennial",
                                 "annual/adult perennial",
@@ -162,7 +162,7 @@ trans_mod_parms <- trans_mod_samps %>%
                                 "adult perennial/fy perennial",
                                 "adult perennial/adult perennial"), each = 2),
             Description = "transmission",
-            Treatment = rep(c("control (water)", "fungicide"), 9),
+            Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
             Estimate = case_when(estimate < 0 ~ 0,
                                  TRUE ~ estimate/30), # days between censuses
             Lower = case_when(estimate < 0 ~ 0,
@@ -188,7 +188,7 @@ mv_germ_parms <- as_draws_df(mvGermD1Mod3)  %>%
   transmute(Parameter = "g_A",
             Plant_group = "annual",
             Description = "germination fraction",
-            Treatment = if_else(parameter == "g_W", "control (water)", "fungicide"),
+            Treatment = if_else(parameter == "g_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -209,7 +209,7 @@ ev_germ_parms <- as_draws_df(evGermMod2)  %>%
   transmute(Parameter = "g_P",
             Plant_group = "perennial",
             Description = "germination fraction",
-            Treatment = if_else(parameter == "g_W", "control (water)", "fungicide"),
+            Treatment = if_else(parameter == "g_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -236,7 +236,7 @@ mv_seed_parms <- as_draws_df(mvSeedsBioD2Mod2)  %>%
   transmute(Parameter = "c_A",
             Plant_group = "annual",
             Description = "seed conversion",
-            Treatment = if_else(parameter == "c_W", "control (water)", "fungicide"),
+            Treatment = if_else(parameter == "c_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -255,7 +255,7 @@ evS_seed_parms <- as_draws_df(evSSeedsBioD2Mod2)  %>%
   transmute(Parameter = "c_F",
             Plant_group = "fy perennial",
             Description = "seed conversion",
-            Treatment = if_else(parameter == "c_W", "control (water)", "fungicide"),
+            Treatment = if_else(parameter == "c_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -274,7 +274,7 @@ evA_seed_parms <- as_draws_df(evASeedsBioD2Mod2)  %>%
   transmute(Parameter = "c_P",
             Plant_group = "adult perennial",
             Description = "seed conversion",
-            Treatment = if_else(parameter == "c_W", "control (water)", "fungicide"),
+            Treatment = if_else(parameter == "c_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -301,7 +301,7 @@ est_mod_parms <- as_draws_df(survFungD2Mod)  %>%
   transmute(Parameter = str_sub(parameter, 1, 3),
             Plant_group = rep(c("annual", "fy perennial"), each = 2),
             Description = "establishment fraction",
-            Treatment = if_else(str_detect(parameter, "W") == T, "control (water)", "fungicide"),
+            Treatment = if_else(str_detect(parameter, "W") == T, "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -325,7 +325,7 @@ evA_surv_parms <- as_draws_df(adultSurvD1Mod2)  %>%
   transmute(Parameter = "l_P",
             Plant_group = "adult perennial",
             Description = "survival fraction",
-            Treatment = if_else(parameter == "l_W", "control (water)", "fungicide"),
+            Treatment = if_else(parameter == "l_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper,
@@ -450,7 +450,7 @@ lit_parms <- tibble(Parameter = c("h",
                                     "infected tissue loss",
                                     "infected tissue loss",
                                     "inoculum loss from litter"),
-                    Treatment = c(rep(NA_character_, 3), "fungicide", "control (water)", rep(NA_character_, 7)),
+                    Treatment = c(rep(NA_character_, 3), "fungicide", "control", rep(NA_character_, 7)),
                     Estimate = c(5500, 0.59, 0.05, 0.15, 0, rep(1e-3, 3), rep(1e-3, 3), 0.5),
                     Source = c("Benitez et al. 2021", "DeMeester and Richter 2010", "Garrison and Stier 2010", "Redwood et al. 2018", "experiment", rep("NA", 7))) %>%
   mutate(Lower = NA_real_,
@@ -478,6 +478,3 @@ parms <- growth_mod_parms %>%
 
 #### export ####
 write_csv(parms, "output/model_parameters_2018_2019_density_exp.csv")
-
-# growing season days
-gs_time <- 160
