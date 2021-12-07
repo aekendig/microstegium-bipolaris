@@ -115,6 +115,63 @@ growth_mod_parms <- growth_mod_samps %>%
             Source = "experiment")
 
 
+#### alternative Mv comp coef ####
+
+# because intraspecific competition coefficient is higher in fungicide than control
+
+load("output/mv_plot_biomass_density_model_2019_dens_exp.rda")
+
+# ratio of control:fungicide from plot biomass model
+mv_alpha_ratio <- as_draws_df(mvBioDensMod)  %>%
+  transmute(control = b_alpha_treatmentwater,
+            fungicide = b_alpha_treatmentfungicide,
+            ctrl_fung_ratio = control / fungicide) %>%
+  mean_hdi(ctrl_fung_ratio) %>%
+  ungroup() %>%
+  pull(ctrl_fung_ratio)
+
+# re-calculate control comp. coeff using fungicide 
+mv_alpha_samps <- as_draws_df(growthD2Mod2)  %>%
+  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(alpha_AA = (plot_biomass + fungicide_plot_biomass) * mv_alpha_ratio * -1) %>%
+  mean_hdi(alpha_AA) %>%
+  rename(estimate = "alpha_AA", lower = ".lower", upper = ".upper")
+
+# replace comp. coeff
+growth_mod_parms2 <- growth_mod_parms %>%
+  mutate(Estimate = if_else(Parameter == "alpha_AA" & Treatment == "control",
+                            mv_alpha_samps$estimate, Estimate),
+         Lower = if_else(Parameter == "alpha_AA" & Treatment == "control",
+                            mv_alpha_samps$lower, Lower),
+         Upper = if_else(Parameter == "alpha_AA" & Treatment == "control",
+                            mv_alpha_samps$upper, Upper))
+
+
+#### alternative Ev comp coefs ####
+
+# because intraspecific adult Ev competition coefficient is non-existent with fungicide
+# because adult regulation of Ev first-years is non-existent with control
+
+# use other intraspecific coefficients
+ev_PP_fung <- growth_mod_parms2 %>%
+  filter(Parameter == "alpha_FP" & Treatment == "fungicide")
+ev_FP_ctrl <- growth_mod_parms2 %>%
+  filter(Parameter == "alpha_PP" & Treatment == "control")
+
+# replace comp. coeff
+growth_mod_parms3 <- growth_mod_parms2 %>%
+  mutate(Estimate = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ ev_PP_fung$Estimate,
+                              Parameter == "alpha_FP" & Treatment == "control" ~ ev_FP_ctrl$Estimate,
+                              TRUE ~ Estimate),
+         Lower = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ ev_PP_fung$Lower,
+                              Parameter == "alpha_FP" & Treatment == "control" ~ ev_FP_ctrl$Lower,
+                              TRUE ~ Lower),
+         Upper = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ ev_PP_fung$Upper,
+                              Parameter == "alpha_FP" & Treatment == "control" ~ ev_FP_ctrl$Upper,
+                              TRUE ~ Upper))
+
+
 #### transmission ####
 
 # load model
@@ -459,7 +516,7 @@ lit_parms <- tibble(Parameter = c("h",
 
 
 #### combine ####
-parms <- growth_mod_parms %>%
+parms <- growth_mod_parms3 %>%
   full_join(trans_mod_parms) %>%
   full_join(mv_germ_parms) %>%
   full_join(ev_germ_parms) %>%

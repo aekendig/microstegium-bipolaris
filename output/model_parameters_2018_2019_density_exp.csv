@@ -1,5 +1,5 @@
 Parameter,Plant_group,Description,Treatment,Estimate,Lower,Upper,Units,Source
-alpha_AA,annual/annual,interaction,control,8.431228034364567e-4,-9.02774138289392e-4,0.0027047995445272474,g^-1^,experiment
+alpha_AA,annual/annual,interaction,control,0.0018374203241574188,-2.0715431585495908e-4,0.003975116836673288,g^-1^,experiment
 alpha_AA,annual/annual,interaction,fungicide,0.0011622462235073745,-1.3103388382083273e-4,0.00251442986162827,g^-1^,experiment
 alpha_AF,annual/fy perennial,interaction,control,0,0,0,g^-1^,experiment
 alpha_AF,annual/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
@@ -9,14 +9,14 @@ alpha_FA,fy perennial/annual,interaction,control,4.113677967605777e-4,-0.0014029
 alpha_FA,fy perennial/annual,interaction,fungicide,8.039481689633847e-4,-4.801697040962993e-4,0.002118688962017818,g^-1^,experiment
 alpha_FF,fy perennial/fy perennial,interaction,control,0,0,0,g^-1^,experiment
 alpha_FF,fy perennial/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
-alpha_FP,fy perennial/adult perennial,interaction,control,0,0,0,g^-1^,experiment
+alpha_FP,fy perennial/adult perennial,interaction,control,0.007808383132629296,-0.008635770429554268,0.023145968957097206,g^-1^,experiment
 alpha_FP,fy perennial/adult perennial,interaction,fungicide,0.0013167836097408678,-0.005059915323676969,0.007493162639565671,g^-1^,experiment
 alpha_PA,adult perennial/annual,interaction,control,5.437044735214721e-4,-0.0017331492965193213,0.0027255056980806927,g^-1^,experiment
 alpha_PA,adult perennial/annual,interaction,fungicide,0,0,0,g^-1^,experiment
 alpha_PF,adult perennial/fy perennial,interaction,control,0,0,0,g^-1^,experiment
 alpha_PF,adult perennial/fy perennial,interaction,fungicide,0,0,0,g^-1^,experiment
 alpha_PP,adult perennial/adult perennial,interaction,control,0.007808383132629296,-0.008635770429554268,0.023145968957097206,g^-1^,experiment
-alpha_PP,adult perennial/adult perennial,interaction,fungicide,0,0,0,g^-1^,experiment
+alpha_PP,adult perennial/adult perennial,interaction,fungicide,0.0013167836097408678,-0.005059915323676969,0.007493162639565671,g^-1^,experiment
 r_A,annual,growth rate,control,0.03732114557940697,0.035034108691701864,0.03953202165971883,day^-1^,experiment
 r_A,annual,growth rate,fungicide,0.038772231304150875,0.03665722063408294,0.04077192052926528,day^-1^,experiment
 r_F,perennial fy,growth rate,control,0.03573106284217064,0.033468349510802804,0.03802487618018021,day^-1^,experiment
