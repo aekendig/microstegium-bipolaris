@@ -7,6 +7,7 @@ rm(list = ls())
 library(tidyverse)
 library(deSolve)
 library(cowplot)
+library(patchwork)
 library(ggbreak)
 
 # import parameters
@@ -36,7 +37,7 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 7),
         legend.background = element_blank(),
         legend.margin = margin(-0.1, 0, -0.1, 0, unit = "cm"),
-        plot.title = element_text(size = 7, hjust = 0.5))
+        plot.title = element_text(size = 10, hjust = -0.1, face = "bold"))
 
 col_pal = c("black", "#238A8DFF")
 
@@ -379,7 +380,8 @@ mod_inv_dis3 <- mod_inv_dis2 %>%
 
 # save
 write_csv(mod_inv_dis3, "output/discrete_no_seed_infection_time_series.csv")
-mod_inv_dis3 <- read_csv("output/discrete_no_seed_infection_time_series.csv")
+mod_inv_dis3 <- read_csv("output/discrete_no_seed_infection_time_series.csv") %>%
+  mutate(Species = fct_relevel(Species, "invader"))
 
 # figure of discrete results
 time_series_fig <- mod_inv_dis3 %>%
@@ -387,9 +389,10 @@ time_series_fig <- mod_inv_dis3 %>%
   geom_line(aes(color = treatment, linetype = Species)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
   scale_x_break(c(10, 98)) +
-  labs(x = "Time (years)", y = expression(paste('Biomass (g/', m^2, ')', sep = ""))) +
-  fig_theme +
-    theme(legend.position = "bottom")
+  labs(x = "Time (years)", y = expression(paste('Biomass (g/', m^2, ')', sep = "")),
+       title = "A") +
+  fig_theme + 
+  theme(plot.title = element_text(size = 10, hjust = 0, face = "bold"))
 
 
 #### invader intraspecific comp ####
@@ -487,16 +490,18 @@ modAlphaAA3 <- modAlphaAA2 %>%
 # figure
 alphaAA_fig <- ggplot(modAlphaAA3, aes(x = alpha_AA, y = Perennial_biomass)) +
   geom_hline(yintercept = per_bio_alone, linetype = "dashed", color = "gray60") +
-  geom_text(x = max(modAlphaAA3$alpha_AA), y = per_bio_alone + 5, label = "Competitor biomass pre-invasion",
-            hjust = 1, vjust = 0, size = 2.5, check_overlap = T) +
+  geom_text(x = max(modAlphaAA3$alpha_AA), y = per_bio_alone - 10, label = "Pre-invasion biomass",
+            hjust = 1, vjust = 1, size = 2, check_overlap = T) +
   geom_line(color = "gray60") +
   geom_point(color = "gray60") +
   geom_point(data = filter(modAlphaAA3, !is.na(Coefficient)),
              aes(color = Coefficient), size = 3) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
-  labs(x = "Intraspecific invader competition", y = expression(paste('Competitor biomass (g/', m^2, ')', sep = ""))) +
+  labs(x = "Intraspecific invader competition", 
+       y = expression(paste('Competitor biomass (g/', m^2, ')', sep = "")),
+       title = "B") +
   fig_theme +
-  theme(legend.position = c(0.1, 0.5))
+  theme(legend.position = c(0.3, 0.5))
 
 
 #### invader interspecific comp ####
@@ -583,16 +588,19 @@ modAlphaPA3 <- modAlphaPA2 %>%
 # figure
 alphaPA_fig <- ggplot(modAlphaPA3, aes(x = alpha_PA, y = Perennial_biomass)) +
   geom_hline(yintercept = per_bio_alone, linetype = "dashed", color = "gray60") +
-  geom_text(x = max(modAlphaPA3$alpha_PA), y = per_bio_alone + 5, label = "Competitor biomass pre-invasion",
-            hjust = 1, vjust = 0, size = 2.5, check_overlap = T) +
+  geom_text(x = max(modAlphaPA3$alpha_PA), y = per_bio_alone - 10, label = "Pre-invasion biomass",
+            hjust = 1, vjust = 1, size = 2, check_overlap = T) +
   geom_line(color = "gray60") +
   geom_point(color = "gray60") +
   geom_point(data = filter(modAlphaPA3, !is.na(Coefficient)),
              aes(color = Coefficient), size = 3) +
   scale_color_manual(values = col_pal) +
-  labs(x = "Interspecific invader competition", y = expression(paste('Competitor biomass (g/', m^2, ')', sep = ""))) +
+  labs(x = "Interspecific invader competition", 
+       y = expression(paste('Competitor biomass (g/', m^2, ')', sep = "")),
+       title = "C") +
   fig_theme +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
 
 
 #### competitor intraspecific comp ####
@@ -679,30 +687,25 @@ modAlphaPP3 <- modAlphaPP2 %>%
 # figure
 alphaPP_fig <- ggplot(modAlphaPP3, aes(x = alpha_PP, y = Perennial_biomass)) +
   geom_hline(yintercept = per_bio_alone, linetype = "dashed", color = "gray60") +
-  geom_text(x = max(modAlphaPP3$alpha_PP), y = per_bio_alone + 10, label = "Competitor biomass pre-invasion",
-            hjust = 1, vjust = 0, size = 2.5, check_overlap = T) +
+  geom_text(x = max(modAlphaPP3$alpha_PP), y = per_bio_alone + 20, label = "Pre-invasion biomass",
+            hjust = 1, vjust = 0, size = 2, check_overlap = T) +
   geom_line(color = "gray60") +
   geom_point(color = "gray60") +
   geom_point(data = filter(modAlphaPP3, !is.na(Coefficient)),
              aes(color = Coefficient), size = 3) +
   scale_color_manual(values = col_pal) +
-  labs(x = "Intraspecific competitor competition", y = expression(paste('Competitor biomass (g/', m^2, ')', sep = ""))) +
+  labs(x = "Intraspecific competitor competition", 
+       y = expression(paste('Competitor biomass (g/', m^2, ')', sep = "")),
+       title = "D") +
   fig_theme +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
 
 
 #### figure ####
 
-#### start here ####
-# ggbreak doesn't work with plot_grid?
+ggsave("output/discrete_no_seed_infection_simulation_figure.pdf", 
+       device = "pdf", width = 15, height = 12, units = "cm")
+time_series_fig / (alphaAA_fig + alphaPA_fig + alphaPP_fig)
+dev.off()
 
-# extract legend
-leg <- get_legend(time_series_fig)
-
-# join on outside of time series
-time_series_fig2 <- plot_grid(time_series_fig + theme(legend.position = "none"), 
-                              leg, nrow = 2, rel_heights = c(1, 0.05))
-
-# combine all four
-plot_grid(time_series_fig, alphaAA_fig, alphaPA_fig, alphaPP_fig,
-          nrow = 2, labels = LETTERS[1:4], label_size = 10)
