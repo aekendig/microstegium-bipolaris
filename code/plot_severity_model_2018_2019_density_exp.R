@@ -615,9 +615,9 @@ predD2Dat <- tibble(foc = c("a", "s", "m")) %>%
 predDat <- predD1Dat %>%
   full_join(predD2Dat) %>%
   mutate(focal = fct_recode(foc, "Invader" = "m", "1st yr competitor" = "s", "Adult competitor" = "a") %>%
-           fct_relevel("Invader", "Adult competitor"),
+           fct_relevel("Invader", "1st yr competitor"),
          background = fct_recode(bg, "Invader" = "m", "1st yr competitor" = "s", "Adult competitor" = "a") %>%
-           fct_relevel("Invader", "Adult competitor"),
+           fct_relevel("Invader", "1st yr competitor"),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev(),
          bg_severity = bg_severity * 100)
@@ -645,7 +645,7 @@ predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
          upper = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"],
          edge_severity = edge_severity * 100,
          treatment = fct_rev(treatment),
-         focal = fct_relevel(focal, "Invader", "Adult competitor"))
+         focal = fct_relevel(focal, "Invader", "1st yr competitor"))
 
 # combine with preddat
 predDat2 <- predDat %>%
@@ -669,11 +669,11 @@ figDat <- sevD1Dat %>%
          focal = fct_recode(focal, "Invader" = "Mv",
                             "Adult competitor" = "Ev adult",
                             "1st yr competitor" = "Ev seedling") %>%
-           fct_relevel("Invader", "Adult competitor"),
+           fct_relevel("Invader", "1st yr competitor"),
          background = fct_recode(background, "Invader" = "Mv",
                                  "Adult competitor" = "Ev adult",
                                  "1st yr competitor" = "Ev seedling") %>%
-           fct_relevel("Invader", "Adult competitor"),
+           fct_relevel("Invader", "1st yr competitor"),
          bg_severity = bg_severity * 100,
          edge_severity = edge_severity * 100,
          density_level = fct_relevel(density_level, "low", "medium"),
@@ -856,12 +856,12 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_chang
   # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab("Edge invader\ndisease severity (%)") +
+  xlab("Disease severity\nof invader\nsurrounding plots (%)") +
   fig_theme +
   theme(axis.text.y = element_blank(),
         axis.title.y = element_blank(),
         strip.text.y = element_blank(),
-        axis.title.x = element_text(size = 7, margin = margin(t = 12, r = 0, b = 0, l = 0)))
+        axis.title.x = element_text(size = 7, margin = margin(t = 7, r = 0, b = 0, l = 0)))
 
 # combine plots
 combFig <- plot_grid(pairD2Fig, 

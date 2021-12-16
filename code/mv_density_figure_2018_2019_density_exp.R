@@ -17,6 +17,7 @@ library(tidyverse)
 library(cowplot)
 library(brms)
 library(tidybayes)
+library(lazerhawk)
 
 # import models
 load("output/focal_seed_density_model_2019_density_exp.rda")
@@ -83,17 +84,16 @@ rawD2Dat <- seedD2Dat %>%
               mutate(response = "growth") %>%
               rename(fitness = biomass_weight.g,
                      log_fitness = plant_growth)) %>%
-  mutate(treatment = fct_recode(treatment, "control" = "water",
-                                "fungicide/autoclaved" = "fungicide") %>%
+  mutate(treatment = fct_recode(treatment, "control" = "water") %>%
            fct_relevel("control"),
          focal = fct_recode(focal, "First-year competitor" = "Ev seedling",
                             "Adult competitor" = "Ev adult",
                             "Invader" = "Mv") %>%
-           fct_relevel("Invader"),
+           fct_relevel("Invader", "First-year competitor"),
          background = fct_recode(background, "First-year competitor" = "Ev seedling",
                                  "Adult competitor" = "Ev adult",
                                  "Invader" = "Mv") %>%
-           fct_relevel("Invader")) %>%
+           fct_relevel("Invader", "First-year competitor")) %>%
   filter(bg == "m")
 
 
@@ -192,6 +192,7 @@ fig_theme <- theme_bw() +
         plot.title = element_text(size = 7, hjust = 0.5))
 
 col_pal = c("black", "#238A8DFF")
+col_pal2 = c("black", "#482677FF")
 
 # dodge size
 dodge_width <- 3
@@ -245,7 +246,8 @@ percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
   scale_fill_manual(values = col_pal, name = "Disease treatment") +
   labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
   fig_theme +
-  theme(axis.title.y = element_blank())
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
 
 # litter figure
 mvLitFig <- ggplot(mvLitDat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
@@ -253,10 +255,10 @@ mvLitFig <- ggplot(mvLitDat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = 
   geom_line(data = mvEstPredDat, aes(y = Est)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
   stat_summary(fun = "mean", geom = "point", size = 2, position = position_dodge(5)) +
-  scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  labs(y = "Invader",
-       title = "Establishment") +
+  scale_color_manual(values = col_pal2) +
+  scale_fill_manual(values = col_pal2) +
+  labs(y = "Emergence",
+       title = "Invader") +
   fig_theme +
   theme(axis.title.x = element_blank(),
         legend.position = "none")
@@ -266,22 +268,39 @@ evLitFig <- ggplot(evLitDat, aes(x = litter.g.m2, y = ev_prop_germ)) +
   geom_line(data = evEstPredDat, aes(y = Est)) +
   geom_point() +
   labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
-       y = "Competitor") +
+       title = "Competitor",
+       y = "Emergence") +
+  fig_theme
+
+# legend figure
+leg_dat <- tibble(x = rep(seq(0, 2), 3),
+                  y = rep(seq(1, 3), 3),
+                  lower = rep(seq(0, 2), 3),
+                  upper = rep(seq(2, 4), 3),
+                  trt = rep(c("control", "fungicide", "autoclaved"), each = 3)) %>%
+  mutate(trt = fct_relevel(trt, "control", "fungicide"))
+leg_fig <- ggplot(leg_dat, aes(x = x, y = y, color = trt, fill = trt)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
+  geom_line() +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c(col_pal, col_pal2[2]), name = "Disease treatment") +
+  scale_fill_manual(values = c(col_pal, col_pal2[2]), name = "Disease treatment") +
   fig_theme
 
 lit_fig <- plot_grid(mvLitFig, evLitFig,
-                    nrow = 2)
+                    nrow = 2, rel_heights = c(0.9, 1))
 
-comb_fig <- plot_grid(inv_fig, percap_fig + theme(legend.position = "none"),
+comb_fig <- plot_grid(inv_fig, percap_fig,
                       lit_fig,
                       labels = LETTERS[1:3],
                       label_size = 10,
                       nrow = 1,
                       rel_widths = c(0.45, 1, 0.4))
 
-leg <- get_legend(percap_fig)
+leg <- get_legend(leg_fig)
 
-pdf("output/mv_density_figure_2019_density_exp.pdf", width = 7.08, height = 3.54)
+pdf("output/mv_density_figure_2019_density_exp.pdf", width = 7.08, height = 3.15)
 plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.05))
 dev.off()
 
@@ -295,7 +314,7 @@ posterior_predict(mvBioDensMod,
                   allow_new_levels = T) %>%
   as_tibble(.name_repair = ~ c("water", "fungicide")) %>%
   mutate(fung_eff = 100 * (fungicide - water) / water) %>%
-  mean_hdi(fung_eff)
+  median_hdi(fung_eff)
 
 set.seed(184)
 posterior_predict(mvBioDensMod,
@@ -303,7 +322,7 @@ posterior_predict(mvBioDensMod,
                   allow_new_levels = T) %>%
   as_tibble(.name_repair = ~ c("water", "fungicide")) %>%
   mutate(fung_eff = 100 * (fungicide - water) / water) %>%
-  mean_hdi(fung_eff)
+  median_hdi(fung_eff)
 
 # evA seeds and biomass
 evA_mv_trt_eff = "100 * (fungicide:density + foca:fungicide:density)/(density + foca:density) = 0"
@@ -311,30 +330,36 @@ hypothesis(growthD2Mod, evA_mv_trt_eff, seed = 184)
 hypothesis(seedD2Mod, evA_mv_trt_eff, seed = 184)
 # used method below, but they're very similar
 
-set.seed(184)
 as_draws_df(growthD2Mod)  %>%
   rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
   rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(alpha_fungicide = -1 * (density + foca_density + fungicide_density + foca_fungicide_density),
-            alpha_water = -1 * (density + foca_density)) %>%
+  transmute(alpha_fungicide = (density + foca_density + fungicide_density + foca_fungicide_density),
+            alpha_water = (density + foca_density)) %>%
   mutate(fung_eff = 100 * (alpha_fungicide - alpha_water) / alpha_water,
          draws = 1:15000) %>%
   pivot_longer(cols = c(alpha_fungicide, alpha_water, fung_eff),
                names_to = "variable",
                values_to = "value") %>%
   group_by(variable) %>%
-  mean_hdi(value)
+  median_hdi(value)
 
-set.seed(184)
 as_draws_df(seedD2Mod)  %>%
   rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
   rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(alpha_fungicide = -1 * (density + foca_density + fungicide_density + foca_fungicide_density),
-            alpha_water = -1 * (density + foca_density)) %>%
+  transmute(alpha_fungicide = (density + foca_density + fungicide_density + foca_fungicide_density),
+            alpha_water = (density + foca_density)) %>%
   mutate(fung_eff = 100 * (alpha_fungicide - alpha_water) / alpha_water,
          draws = 1:15000) %>%
   pivot_longer(cols = c(alpha_fungicide, alpha_water, fung_eff),
                names_to = "variable",
                values_to = "value") %>%
   group_by(variable) %>%
-  mean_hdi(value)
+  median_hdi(value)
+
+
+#### tables ####
+
+write_csv(brms_SummaryTable(mvBioDensMod), "output/mv_plot_biomass_density_model_2019_dens_exp.csv")
+write_csv(brms_SummaryTable(mvSeedDensMod), "output/mv_plot_seed_density_model_2019_dens_exp.csv")
+write_csv(brms_SummaryTable(mvEstL1Mod2), "output/microstegium_litter_establishment_model_2018_litter_exp.csv")
+write_csv(brms_SummaryTable(evEstL2BhMod2), "output/elymus_litter_establishment_bh_model_2019_litter_exp.csv")

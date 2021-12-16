@@ -1,0 +1,5 @@
+Covariate,Estimate,Est.Error,l-95% CI,u-95% CI
+Intercept,0.65,0.32,-0.01,1.30
+litter.g.cm2,-39.41,4.05,-47.37,-31.57
+sterilized,-0.03,0.06,-0.15,0.10
+litter.g.cm2:sterilized,-5.21,5.02,-15.09,4.45

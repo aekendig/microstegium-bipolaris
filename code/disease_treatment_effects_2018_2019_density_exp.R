@@ -16,6 +16,7 @@ library(tidyverse)
 library(brms)
 library(tidybayes)
 library(cowplot)
+library(lazerhawk)
 
 fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
@@ -50,7 +51,9 @@ sev <- as_draws_df(trtD2Mod) %>%
             s_W = exp(b_Intercept + b_plant_typeEv_seedling)/(1 +  exp(b_Intercept + b_plant_typeEv_seedling)),
             s_F = exp(b_Intercept + b_plant_typeEv_seedling + b_fungicide + b_plant_typeEv_seedling_fungicide)/(1 +  exp(b_Intercept + b_plant_typeEv_seedling + b_fungicide + b_plant_typeEv_seedling_fungicide)),
             m_W = exp(b_Intercept + b_plant_typeMv_seedling)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling)),
-            m_F = exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide))) %>%
+            m_F = exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide))) 
+
+sev2 <- sev %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
@@ -66,7 +69,7 @@ sev <- as_draws_df(trtD2Mod) %>%
             Lower = .lower * 100,
             Upper = .upper * 100)
 
-sev_fig <- ggplot(sev, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
+sev_fig <- ggplot(sev2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.3)) +
   geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
@@ -78,6 +81,20 @@ sev_fig <- ggplot(sev, aes(x = Species, y = Estimate, group = interaction(Treatm
   fig_theme +
   theme(axis.text.x = element_blank()) +
   guides(fill = guide_legend(override.aes = list(shape = 21)))
+
+# values for text
+sev %>%
+  transmute(mv = 100 * (m_F - m_W) / m_W,
+            evS = 100 * (s_F - s_W) / s_W,
+            evA = 100 * (a_F - a_W) / a_W) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  median_hdi(estimate)
+
+# table
+write_csv(brms_SummaryTable(trtD2Mod), "output/severity_fungicide_model_2019_density_exp.csv")
 
 
 #### germination ####

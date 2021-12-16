@@ -57,10 +57,9 @@ mvEstL1Dat <- estL1Dat %>%
 mvEstL1Mod1 <- brm(mv_germ_planted_bg | trials(mv_planted_cor) ~ litter.g.cm2 * sterilized + (1|site),
                    data = mvEstL1Dat, family = binomial,
                    prior = c(prior(normal(0, 10), class = Intercept),
-                             prior(normal(0, 10), class = b),
-                             prior(cauchy(0, 1), class = sd)),
+                             prior(normal(0, 10), class = b)),
                    iter = 6000, warmup = 1000, chains = 1)
-# 46 divergent transitions
+# 28 divergent transitions
 summary(mvEstL1Mod1)
 
 # increase chains
