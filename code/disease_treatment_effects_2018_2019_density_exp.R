@@ -42,8 +42,10 @@ col_pal = c("black", "#238A8DFF")
 
 #### severity ####
 
+# load model
 load("output/severity_fungicide_model_2019_density_exp.rda")
 
+# draws
 sev <- as_draws_df(trtD2Mod) %>%
   rename_with(str_replace, pattern = ":", replacement = "_") %>%
   transmute(a_W = exp(b_Intercept)/(1 +  exp(b_Intercept)),
@@ -53,6 +55,7 @@ sev <- as_draws_df(trtD2Mod) %>%
             m_W = exp(b_Intercept + b_plant_typeMv_seedling)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling)),
             m_F = exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide))) 
 
+# summarize for fig
 sev2 <- sev %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
@@ -69,6 +72,7 @@ sev2 <- sev %>%
             Lower = .lower * 100,
             Upper = .upper * 100)
 
+# fig
 sev_fig <- ggplot(sev2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.3)) +
@@ -99,8 +103,10 @@ write_csv(brms_SummaryTable(trtD2Mod), "output/severity_fungicide_model_2019_den
 
 #### germination ####
 
+# load model
 load("output/mv_germination_fungicide_model_2018_density_exp.rda")
 
+# draws and summarize
 mv_germ <- as_draws_df(mvGermD1Mod3)  %>%
   transmute(g_W = exp(b_Intercept)/(1 +  exp(b_Intercept)),
             g_F = exp(b_Intercept + b_fungicide)/(1 +  exp(b_Intercept + b_fungicide))) %>%
@@ -115,9 +121,10 @@ mv_germ <- as_draws_df(mvGermD1Mod3)  %>%
             Lower = .lower,
             Upper = .upper)
 
-
+# load model
 load("output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
 
+# draws and summarize
 ev_germ <- as_draws_df(evGermMod2)  %>%
   transmute(g_W = exp(b_Intercept)/(1 +  exp(b_Intercept)),
             g_F = exp(b_Intercept + b_fungicide)/(1 +  exp(b_Intercept + b_fungicide))) %>%
@@ -132,10 +139,12 @@ ev_germ <- as_draws_df(evGermMod2)  %>%
             Lower = .lower,
             Upper = .upper)
 
+# combine
 germ <- mv_germ %>%
   full_join(ev_germ) %>%
   mutate(Species = fct_relevel(Species, "Invader"))
 
+# fig
 germ_fig <- ggplot(germ, aes(x = Species, y = Estimate)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.3)) +
@@ -151,15 +160,19 @@ germ_fig <- ggplot(germ, aes(x = Species, y = Estimate)) +
 
 #### establishment ####
 
-# import model
+# load model
 load("output/survival_fungicide_model_2019_density_exp.rda")
 
+# draws
 est <- as_draws_df(survFungD2Mod)  %>%
   rename_with(str_replace, pattern = ":", replacement = "_") %>%
   transmute(e_A_W = exp(b_Intercept)/(1 + exp(b_Intercept)),
             e_A_F = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)),
             e_P_W = exp(b_Intercept + b_focs)/(1 + exp(b_Intercept + b_focs)),
-            e_P_F = exp(b_Intercept + b_focs + b_fungicide)/(1 + exp(b_Intercept + b_focs + b_fungicide))) %>%
+            e_P_F = exp(b_Intercept + b_focs + b_fungicide)/(1 + exp(b_Intercept + b_focs + b_fungicide)))
+
+# summarize for fig
+est2 <- est %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
@@ -173,7 +186,8 @@ est <- as_draws_df(survFungD2Mod)  %>%
             Upper = .upper) %>%
   mutate(Species = fct_relevel(Species, "Invader"))
 
-est_fig <- ggplot(est, aes(x = Species, y = Estimate)) +
+# fig
+est_fig <- ggplot(est2, aes(x = Species, y = Estimate)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.3)) +
   geom_point(aes(fill = Treatment), size = 2, stroke = 0.3, shape = 21, 
@@ -185,13 +199,27 @@ est_fig <- ggplot(est, aes(x = Species, y = Estimate)) +
   theme(legend.position = "none",
         axis.text.x = element_blank())
 
+# values for text
+est %>%
+  transmute(mv = 100 * (e_A_F - e_A_W) / e_A_W,
+            ev = 100 * (e_P_F - e_P_W) / e_P_W) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  median_hdi(estimate)
+
+# table
+write_csv(brms_SummaryTable(survFungD2Mod), 
+          "output/survival_fungicide_model_2019_density_exp.csv")
+
 
 #### biomass ####
 
 # load model
 load("output/focal_growth_density_model_2019_density_exp.rda")
 
-# sample model
+# draws
 bio <- as_draws_df(growthD2Mod)  %>%
   rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
   rename_with(str_replace, pattern = "b_", replacement = "") %>%
@@ -200,7 +228,10 @@ bio <- as_draws_df(growthD2Mod)  %>%
             r_P = (Intercept + foca),
             r_A_fung = (Intercept + fungicide),
             r_F_fung = (Intercept + focs + fungicide + focs_fungicide),
-            r_P_fung = (Intercept + foca + fungicide + foca_fungicide)) %>%
+            r_P_fung = (Intercept + foca + fungicide + foca_fungicide))
+
+# summarize for figure
+bio2 <- bio %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
@@ -219,7 +250,8 @@ bio <- as_draws_df(growthD2Mod)  %>%
   mutate(Species = fct_relevel(Species, "Invader"),
          Age = fct_relevel(Age, "first-year"))
 
-bio_fig <- ggplot(bio, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
+# fig
+bio_fig <- ggplot(bio2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.3)) +
   geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
@@ -231,13 +263,28 @@ bio_fig <- ggplot(bio, aes(x = Species, y = Estimate, group = interaction(Treatm
   fig_theme +
   theme(legend.position = "none")
 
+# values for text
+bio %>%
+  transmute(mv = 100 * (r_A_fung - r_A) / r_A,
+            evS = 100 * (r_F_fung - r_F) / r_F,
+            evA = 100 * (r_P_fung - r_P) / r_P) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  median_hdi(estimate)
+
+# table
+write_csv(brms_SummaryTable(growthD2Mod), 
+          "output/focal_growth_density_model_2019_density_exp.csv")
+
 
 #### seeds ####
 
 # load model
 load("output/focal_seed_density_model_2019_density_exp.rda")
 
-# sample model
+# draws
 seed <- as_draws_df(seedD2Mod)  %>%
   rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
   rename_with(str_replace, pattern = "b_", replacement = "") %>%
@@ -246,7 +293,10 @@ seed <- as_draws_df(seedD2Mod)  %>%
             r_P = (Intercept + foca),
             r_A_fung = (Intercept + fungicide),
             r_F_fung = (Intercept + focs + fungicide + focs_fungicide),
-            r_P_fung = (Intercept + foca + fungicide + foca_fungicide)) %>%
+            r_P_fung = (Intercept + foca + fungicide + foca_fungicide)) 
+
+# summarize for fig
+seed2 <- seed %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate") %>%
@@ -265,7 +315,7 @@ seed <- as_draws_df(seedD2Mod)  %>%
   mutate(Species = fct_relevel(Species, "Invader"),
          Age = fct_relevel(Age, "first-year"))
 
-seed_fig <- ggplot(seed, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
+seed_fig <- ggplot(seed2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.3)) +
   geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
@@ -276,6 +326,10 @@ seed_fig <- ggplot(seed, aes(x = Species, y = Estimate, group = interaction(Trea
   labs(y = "ln(Seeds + 1)") +
   fig_theme +
   theme(legend.position = "none")
+
+# table
+write_csv(brms_SummaryTable(seedD2Mod), 
+          "output/focal_seed_density_model_2019_density_exp.csv")
 
 
 

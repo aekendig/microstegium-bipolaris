@@ -1,0 +1,25 @@
+Covariate,Estimate,Est.Error,l-95% CI,u-95% CI
+Intercept,6.62,0.29,6.05,7.20
+focs,-4.43,0.30,-5.02,-3.83
+foca,-2.21,0.40,-2.99,-1.43
+fungicide,0.02,0.39,-0.74,0.77
+density,-0.02,0.01,-0.04,0.00
+focs:fungicide,-0.13,0.41,-0.93,0.67
+foca:fungicide,-1.14,0.53,-2.16,-0.08
+density:bgs,0.04,0.03,-0.01,0.09
+density:bga,-0.04,0.06,-0.15,0.07
+focs:density,0.00,0.01,-0.01,0.02
+foca:density,0.00,0.01,-0.02,0.03
+fungicide:density,0.00,0.01,-0.02,0.03
+focs:density:bgs,-0.04,0.03,-0.10,0.01
+foca:density:bgs,-0.05,0.04,-0.12,0.03
+focs:density:bga,0.01,0.06,-0.11,0.13
+foca:density:bga,-0.04,0.08,-0.20,0.13
+fungicide:density:bgs,-0.02,0.04,-0.09,0.05
+fungicide:density:bga,0.07,0.08,-0.09,0.22
+focs:fungicide:density,0.00,0.01,-0.03,0.02
+foca:fungicide:density,0.02,0.02,-0.02,0.05
+focs:fungicide:density:bgs,0.01,0.04,-0.07,0.08
+foca:fungicide:density:bgs,0.06,0.05,-0.04,0.16
+focs:fungicide:density:bga,-0.05,0.08,-0.21,0.12
+foca:fungicide:density:bga,0.16,0.12,-0.07,0.38
