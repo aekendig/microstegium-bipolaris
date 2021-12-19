@@ -17,6 +17,8 @@ library(brms)
 library(GGally)
 library(cowplot)
 library(car)
+library(lazerhawk)
+library(tidybayes)
 
 # import data
 mvGermD1Dat1 <- read_csv("data/mv_germination_disease_set_1_2018_density_exp.csv")
@@ -44,7 +46,7 @@ sevD1Dat2 <- sevD1Dat %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity") %>%
-  mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
+  mutate(treatment = fct_recode(treatment, "control" = "water") %>%
            fct_rev())
 
 sevD2Dat2 <- sevD2Dat %>%
@@ -52,7 +54,7 @@ sevD2Dat2 <- sevD2Dat %>%
   pivot_wider(names_from = month,
               values_from = severity,
               names_glue = "{month}_severity") %>%
-  mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
+  mutate(treatment = fct_recode(treatment, "control" = "water") %>%
            fct_rev())
 
 # notes
@@ -89,7 +91,7 @@ mvGermD1Dat <- mvGermD1Dat1 %>%
          treatment = gsub(".* ","", site_plot) %>% 
            gsub("[^[:alpha:]]", "", .) %>% 
            as.factor() %>%
-           dplyr::recode("F" = "fungicide", "W" = "control (water)") %>%
+           dplyr::recode("F" = "fungicide", "W" = "control") %>%
            fct_rev(),
          site = ifelse(site == "P1", "D1", site),
          fungicide = ifelse(treatment == "fungicide", 1, 0),
@@ -107,6 +109,12 @@ filter(mvGermD1Dat, prop_germ > 1 | prop_dark > 1 | prop_light > 1 | prop_infect
 filter(mvGermD1Dat, is.na(jul_severity)) # 1 plot
 filter(mvGermD1Dat, is.na(late_aug_severity)) # 3 plots
 filter(mvGermD1Dat, is.na(sep_severity)) # 3 plots (one missing late aug)
+
+# trials per plot
+mvGermD1Dat %>%
+  count(site_plot) %>%
+  rename(trials = "n") %>%
+  count(trials)
 
 # correct reduction in emergents between week 3 and 4
 # correct the increase in cut-tops
@@ -127,7 +135,7 @@ evGermDat2 <- evGermDat %>%
          fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotf = paste0(site, plot, substr(treatment, 1, 1)),
          yearf = ifelse(year == 2018, 0, 1),
-         treatment = fct_recode(treatment, "control (water)" = "water") %>%
+         treatment = fct_recode(treatment, "control" = "water") %>%
            fct_rev()) %>%
   left_join(sevD1Dat2 %>%
               filter(sp == "Ev") %>%
@@ -240,6 +248,10 @@ save(mvPropDarkMod2, file = "output/mv_seed_infection_dark_fungicide_model_2018_
 save(mvPropLightMod, file = "output/mv_seed_infection_light_model_2018_density_exp.rda")
 save(mvPropLightMod2, file = "output/mv_seed_infection_light_fungicide_model_2018_density_exp.rda")
 
+# tables
+write_csv(brms_SummaryTable(mvGermD1Mod), "output/mv_germination_infection_model_2018_density_exp.csv")
+write_csv(brms_SummaryTable(mvPropDarkMod2), "output/mv_seed_infection_dark_fungicide_model_2018_density_exp.csv")
+
 
 #### Ev models ####
 
@@ -293,23 +305,21 @@ fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 8, color = "black"),
-        axis.text.x = element_text(size = 8, color = "black"),
-        axis.title.y = element_text(size = 10),
-        axis.title.x = element_text(size = 10),
-        legend.text = element_text(size = 8),
-        legend.title = element_text(size = 8),
+        axis.text = element_text(size = 7, color = "black"),
+        axis.title = element_text(size = 7, color = "black"),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 7),
         legend.background = element_blank(),
-        legend.position = "none",
-        legend.margin = margin(-0.1, 0, 0.2, 2, unit = "cm"),
-        strip.background = element_blank(),
-        strip.text = element_text(size = 8),
-        strip.placement = "outside")
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.margin = margin(-0.3, 0, -0.1, 0, unit = "cm"),
+        legend.box = "vertical",
+        plot.title = element_text(size = 7, hjust = 0.5))
 
 # simulated data
 mvFungSim <- tibble(fungicide = c(0, 1)) %>%
   mutate(plotf = "A",
-         treatment = c("control (water)", "fungicide"),
+         treatment = c("control", "fungicide"),
          seeds = round(mean(mvGermD1Dat$seeds))) %>%
   mutate(prop_dark = fitted(mvPropDarkMod2, newdata = ., allow_new_levels = T)[, "Estimate"]/seeds,
          lower = fitted(mvPropDarkMod2, newdata = ., allow_new_levels = T)[, "Q2.5"]/seeds,
@@ -340,12 +350,11 @@ mvFungFig <- ggplot(mvGermD1Dat, aes(treatment, prop_dark)) +
                     fill = "#238A8DFF",
                     alpha = 0.7,
                     side = "both") +
-    geom_errorbar(data = mvFungSim, width = 0, size = 0.75, aes(ymin = lower, ymax = upper)) +
-    geom_point(data = mvFungSim, size = 2.5) +
-  geom_text(x = 1.5, y = 0.75, label = "*", size = 6, check_overlap = T) +
+    geom_errorbar(data = mvFungSim, width = 0, size = 0.25, aes(ymin = lower, ymax = upper)) +
+    geom_point(data = mvFungSim, size = 1.25) +
   fig_theme +
-  xlab("Plot treatment") +
-  ylab("Proportion seeds infected")
+  theme(axis.title.x = element_blank()) +
+  ylab("Infected fraction")
 
 mvDarkFig <- ggplot(mvGermD1Dat, aes(sep_severity, prop_dark)) +
   geom_point(alpha = 0.3, size = 0.7, color = "#238A8DFF") +
@@ -360,15 +369,14 @@ mvGermFig <- ggplot(mvGermD1Dat, aes(prop_dark, prop_germ)) +
   geom_line(data = mvGermSim) +
   geom_ribbon(data = mvGermSim, aes(ymin = lower, ymax = upper), alpha = 0.4) +
   fig_theme +
-  xlab("Proportion seeds infected") +
-  ylab("Proportion seeds germinated") +
-  theme(axis.title.y = element_text(size = 10, hjust = -0.05))
+  xlab("Infected fraction") +
+  ylab("Germination fraction")
 
-tiff("output/mv_germination_infection_figure_2018_density_exp.tiff", width = 18, height = 6, units = "cm", res = 300, compression = "lzw")
-plot_grid(mvFungFig, mvDarkFig, mvGermFig,
+pdf("output/mv_germination_infection_figure_2018_density_exp.pdf", width = 3.54, height = 1.57)
+plot_grid(mvFungFig, mvGermFig,
           nrow = 1,
-          labels = LETTERS[1:3],
-          vjust = 1.1)
+          labels = LETTERS[1:2],
+          label_size = 10)
 dev.off()
 
 
@@ -384,6 +392,28 @@ filter(mvPropDarkSim, sep_severity == max(sep_severity))
 # Mv infection effect on germination
 filter(mvGermSim, prop_dark == min(prop_dark))
 filter(mvGermSim, prop_dark == max(prop_dark))
+
+# Mv infection effect on germination2
+set.seed(184)
+posterior_predict(mvGermD1Mod,
+                  newdata = filter(mvGermD1Dat, 
+                                   prop_dark %in% c(max(mvGermD1Dat$prop_dark), min(mvGermD1Dat$prop_dark))) %>%
+                    select(prop_dark) %>%
+                    unique() %>%
+                    mutate(prop_light = 0,
+                           seeds = 30,
+                           plotf = "A"),
+                  allow_new_levels = T) %>%
+  as_tibble(.name_repair = ~ c("min_inf", "max_inf")) %>% # min_inf is first row
+  mutate(min_inf_prop = min_inf / 30,
+         max_inf_prop = max_inf / 30,
+         inf_eff = 100 * (max_inf_prop - min_inf_prop) / min_inf_prop) %>%
+  select(min_inf_prop, max_inf_prop, inf_eff) %>%
+  pivot_longer(cols = everything(),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable) %>%
+  median_hdi(value)
 
 # Ev severity hypotheses
 ev18 = "final_severity = 0"
