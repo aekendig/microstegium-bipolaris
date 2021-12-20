@@ -14,10 +14,11 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(brms)
+library(lazerhawk)
 
 # import data
-mv_dat <- read_csv("./data/mv_biomass_seeds_height_jun_2019_fungicide_exp.csv")
-ev_dat <- read_csv("./data/ev_biomass_dec_2019_fungicide_exp.csv")
+mv_dat <- read_csv("data/mv_biomass_seeds_height_jun_2019_fungicide_exp.csv")
+ev_dat <- read_csv("data/ev_biomass_dec_2019_fungicide_exp.csv")
 
 # model functions
 source("code/brms_model_fitting_functions.R")
@@ -170,6 +171,7 @@ hypothesis(mvBioGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
 
 # save
 save(mvBioGhMod, file = "output/mv_biomass_fungicide_effects_greenhouse_2019.rda")
+write_csv(brms_SummaryTable(mvBioGhMod), "output/mv_biomass_fungicide_effects_greenhouse_2019.csv")
 
 # Ev biomass
 evBioGhMod <- brm(log_bio.g ~ fungicide,
@@ -189,6 +191,7 @@ hypothesis(evBioGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
 
 # save
 save(evBioGhMod, file = "output/ev_biomass_fungicide_effects_greenhouse_2019.rda")
+write_csv(brms_SummaryTable(evBioGhMod), "output/ev_biomass_fungicide_effects_greenhouse_2019.csv")
   
 # Mv seed heads
 mean(mv_dat2$seed_heads)
@@ -211,3 +214,4 @@ hypothesis(mvSeedGhMod, "exp(Intercept + fungicide1) - exp(Intercept) = 0")
 
 # save
 save(mvSeedGhMod, file = "output/mv_seed_fungicide_effects_greenhouse_2019.rda")
+write_csv(brms_SummaryTable(mvSeedGhMod), "output/mv_seed_fungicide_effects_greenhouse_2019.csv")
