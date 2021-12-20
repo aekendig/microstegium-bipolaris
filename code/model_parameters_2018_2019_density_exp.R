@@ -230,6 +230,43 @@ trans_mod_parms <- trans_mod_samps %>%
             Source = "experiment")
 
 
+#### transmission edge Mv ####
+
+# load model
+load("output/plot_transmission_model_2019_density_exp.rda")
+
+# sample model
+edge_mod_samps <- as_draws_df(sevD2Mod)  %>%
+  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  transmute(beta_AA = edge_severity,
+            beta_AA_fung = edge_severity + fungicide_edge_severity,
+            beta_FA = edge_severity + focs_edge_severity,
+            beta_FA_fung = edge_severity + focs_edge_severity + fungicide_edge_severity + focs_fungicide_edge_severity,
+            beta_PA = edge_severity + foca_edge_severity,
+            beta_PA_fung = edge_severity + foca_edge_severity + fungicide_edge_severity + foca_fungicide_edge_severity) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  mean_hdi(estimate) %>%
+  ungroup() %>%
+  transmute(Parameter = str_replace(parameter, "_fung", ""),
+            Plant_group = case_when(str_starts(parameter, "beta_A") == T ~ "annual",
+                                    str_starts(parameter, "beta_F") == T ~ "fy perennial",
+                                    str_starts(parameter, "beta_P") == T ~ "adult perennial"),
+            Description = "transmission from edge",
+            Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
+            Estimate = case_when(estimate < 0 ~ 0,
+                                 TRUE ~ estimate/30), # days between censuses
+            Lower = case_when(estimate < 0 ~ 0,
+                              TRUE ~ .lower/30),
+            Upper = case_when(estimate < 0 ~ 0,
+                              TRUE ~ .upper/30),
+            Units = "day^-1^ g^-1^",
+            Source = "experiment")
+
+
 #### germination ####
 
 load("output/mv_germination_fungicide_model_2018_density_exp.rda")
@@ -535,3 +572,4 @@ parms <- growth_mod_parms3 %>%
 
 #### export ####
 write_csv(parms, "output/model_parameters_2018_2019_density_exp.csv")
+write_csv(edge_mod_samps, "output/edge_transmission_model_parameters_2019_density_exp.csv")
