@@ -719,9 +719,95 @@ time_series_fig / (alphaAA_fig + alphaPA_fig + alphaPP_fig)
 dev.off()
 
 
+#### add disease to perennial alone ####
+
+# add 100 years for comparison to disease
+modF_disc_fung2 <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, 
+                                simtime = years * 3, gs_time = gs_days, disc_parms = parms_fung, con_parms = parms_fung)
+
+# established perennial
+modF_disc_fung_fin2 <- modF_disc_fung2 %>%
+  filter(time == 200)
+
+# add disease
+modDisF_disc_ctrl <- disc_AFP_mod(A0 = 0, 
+                                  F0 = filter(modF_disc_fung_fin2, species == "Perennial first-year")$N, 
+                                  P0 = filter(modF_disc_fung_fin2, species == "Perennial adult")$N, 
+                                  L0 = filter(modF_disc_fung_fin2, species == "Litter")$N, 
+                                  C0 = conidia_init, 
+                                  IA0 = 0, 
+                                  IF0 = filter(modF_disc_fung_fin2, species == "Perennial first-year infected biomass")$N, 
+                                  IP0 = filter(modF_disc_fung_fin2, species == "Perennial adult infected biomass")$N, 
+                                  BP0 = filter(modF_disc_fung_fin2, species == "Perennial adult biomass")$N, 
+                                  BF0 = filter(modF_disc_fung_fin2, species == "Perennial first-year biomass")$N, 
+                                  simtime = years, gs_time = gs_days, 
+                                  disc_parms = parms_ctrl, con_parms = parms_ctrl)
+
+# combine model outputs
+mod_F_dis <- modF_disc_fung2 %>%
+  mutate(treatment = "fungicide") %>%
+  full_join(modDisF_disc_ctrl %>%
+              mutate(time = time + 200,
+                     treatment = "control"))
+
+mod_F_dis %>%
+  ggplot(aes(x = time, y = N, color = treatment)) +
+  geom_line() +
+  theme_classic() +
+  facet_wrap(~ species, scales = "free_y")
+
+# make discontinuous transitions continuous
+bio_F_dis <- mod_F_dis %>%
+  filter(time == 200 & 
+           (str_detect(species, "biomass") == T | species == "Conidia")) %>%
+  mutate(treatment = "control")
+
+# add transitions
+mod_F_dis2 <- mod_F_dis %>%
+  full_join(bio_F_dis)
+
+# figure of discrete results
+mod_F_dis2 %>%
+  ggplot(aes(x = time, y = N, color = treatment)) +
+  geom_line() +
+  theme_classic() +
+  facet_wrap(~ species, scales = "free_y")
+
+# combine adult & first-year perennial
+mod_F_dis3 <- mod_F_dis2 %>%
+  filter(species %in% c("Perennial adult biomass",
+                        "Perennial first-year biomass")) %>%
+  mutate(species = str_replace_all(species, " ", "_"),
+         species = str_replace_all(species, "-", "_")) %>%
+  pivot_wider(names_from = "species",
+              values_from = "N") %>%
+  mutate(Perennial_biomass = Perennial_first_year_biomass + Perennial_adult_biomass) %>%
+  select(time, treatment, Perennial_biomass)
+
+# save
+write_csv(mod_F_dis3, "output/discrete_no_seed_infection_perennial_only_time_series.csv")
+mod_F_dis3 <- read_csv("output/discrete_no_seed_infection_perennial_only_time_series.csv")
+
+# phase labels
+phase_lab_F <- tibble(time = c(100, 250),
+                      Perennial_biomass = 400,
+                      lab = c("pre-disease", "disease emergence"))
+
+# figure of discrete results
+mod_F_dis3 %>%
+  ggplot(aes(x = time, y = Perennial_biomass)) +
+  geom_rect(xmin = 200, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "gray75", color = NA, show.legend = F) +
+  geom_line(aes(color = treatment), linetype = "dashed") +
+  geom_text(data = phase_lab_F, check_overlap = T, size = 2.5,
+            aes(label = lab)) +
+  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  labs(x = "Time (years)", y = expression(paste('Biomass (g/', m^2, ')', sep = ""))) +
+  fig_theme
+
+
 #### values for text ####
 
-# extract perennial biomass values
+# extract perennial biomass values from invasion simulation
 pre_inv_bio <- mod_inv_dis3 %>%
   filter(time == -5 & species == "Perennial_biomass") %>%
   pull(N)
@@ -735,8 +821,30 @@ dis_inv_bio <- mod_inv_dis3 %>%
            treatment == "control") %>%
   pull(N)
 
+inv_bio2 <- mod_inv_dis3 %>%
+  filter(time == 10 & species == "Annual_biomass") %>%
+  pull(N)
+
+dis_inv_bio2 <- mod_inv_dis3 %>%
+  filter(time == 110 & species == "Annual_biomass" &
+           treatment == "control") %>%
+  pull(N)
+
 # invasion effect
 100 * (inv_bio - pre_inv_bio)/pre_inv_bio
 
 # disease effect
 100 * (dis_inv_bio - inv_bio)/inv_bio
+100 * (dis_inv_bio2 - inv_bio2)/inv_bio2
+
+# extract perennial biomass values from perennial alone simulation
+pre_dis_bio <- mod_F_dis3 %>%
+  filter(time == 199) %>%
+  pull(Perennial_biomass)
+
+post_dis_bio <- mod_F_dis3 %>%
+  filter(time == 300 & treatment == "control") %>%
+  pull(Perennial_biomass)
+
+# disease effect
+100 * (post_dis_bio - pre_dis_bio)/pre_dis_bio
