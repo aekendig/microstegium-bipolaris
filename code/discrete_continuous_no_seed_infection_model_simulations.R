@@ -512,6 +512,20 @@ alphaAA_fig <- ggplot(modAlphaAA3, aes(x = alpha_AA, y = Perennial_biomass)) +
   fig_theme +
   theme(legend.position = c(0.3, 0.5))
 
+# invader figure
+pdf("output/discrete_no_seed_infection_simulation_invader_alphaAA_figure.pdf", 
+       width = 2.76, height = 1.97)
+ggplot(modAlphaAA3, aes(x = alpha_AA, y = Annual_biomass)) +
+  geom_line(color = "gray60") +
+  geom_point(color = "gray60") +
+  geom_point(data = filter(modAlphaAA3, !is.na(Coefficient)),
+             aes(color = Coefficient), size = 3) +
+  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  labs(x = "Intraspecific invader competition", 
+       y = expression(paste('Invader biomass (g/', m^2, ')', sep = ""))) +
+  fig_theme
+dev.off()
+
 
 #### invader interspecific comp ####
 
