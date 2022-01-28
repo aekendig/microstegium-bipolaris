@@ -614,10 +614,10 @@ predD2Dat <- tibble(foc = c("a", "s", "m")) %>%
 
 predDat <- predD1Dat %>%
   full_join(predD2Dat) %>%
-  mutate(focal = fct_recode(foc, "Invader" = "m", "1st yr competitor" = "s", "Adult competitor" = "a") %>%
-           fct_relevel("Invader", "1st yr competitor"),
-         background = fct_recode(bg, "Invader" = "m", "1st yr competitor" = "s", "Adult competitor" = "a") %>%
-           fct_relevel("Invader", "1st yr competitor"),
+  mutate(focal = fct_recode(foc, "Invader (Mv)" = "m", "1st yr competitor (Ev)" = "s", "Adult competitor (Ev)" = "a") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
+         background = fct_recode(bg, "Invader (Mv)" = "m", "1st yr competitor (Ev)" = "s", "Adult competitor (Ev)" = "a") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev(),
          bg_severity = bg_severity * 100)
@@ -629,7 +629,7 @@ sevD2Dat %>%
             maxEdge = max(edge_severity))
 
 predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
-                        focal = c("Adult competitor", "1st yr competitor", "Invader")) %>%
+                        focal = c("Adult competitor (Ev)", "1st yr competitor (Ev)", "Invader (Mv)")) %>%
   expand_grid(tibble(treatment = rep(c("control (water)", "fungicide"), each = 100),
                      edge_severity = c(seq(0, 0.0856, length.out = 100),
                                        seq(0, 0.0639, length.out = 100)))) %>%
@@ -645,7 +645,7 @@ predD2EdgeDat <- tibble(foc = c("a", "s", "m"),
          upper = fitted(sevD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"],
          edge_severity = edge_severity * 100,
          treatment = fct_rev(treatment),
-         focal = fct_relevel(focal, "Invader", "1st yr competitor"))
+         focal = fct_relevel(focal, "Invader (Mv)", "1st yr competitor (Ev)"))
 
 # combine with preddat
 predDat2 <- predDat %>%
@@ -666,14 +666,14 @@ figDat <- sevD1Dat %>%
               unique()) %>%
   mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_relevel("control (water)"),
-         focal = fct_recode(focal, "Invader" = "Mv",
-                            "Adult competitor" = "Ev adult",
-                            "1st yr competitor" = "Ev seedling") %>%
-           fct_relevel("Invader", "1st yr competitor"),
-         background = fct_recode(background, "Invader" = "Mv",
-                                 "Adult competitor" = "Ev adult",
-                                 "1st yr competitor" = "Ev seedling") %>%
-           fct_relevel("Invader", "1st yr competitor"),
+         focal = fct_recode(focal, "Invader (Mv)" = "Mv",
+                            "Adult competitor (Ev)" = "Ev adult",
+                            "1st yr competitor (Ev)" = "Ev seedling") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
+         background = fct_recode(background, "Invader (Mv)" = "Mv",
+                                 "Adult competitor (Ev)" = "Ev adult",
+                                 "1st yr competitor (Ev)" = "Ev seedling") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
          bg_severity = bg_severity * 100,
          edge_severity = edge_severity * 100,
          density_level = fct_relevel(density_level, "low", "medium"),
@@ -794,6 +794,7 @@ leg <- get_legend(legFig)
 # 2018 figure
 pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  geom_hline(yintercept = 0, size = 0.15) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
@@ -811,7 +812,7 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = f
   ylab("Change in infected tissue") +
   fig_theme
 
-pdf("output/plot_transmission_pairwise_figure_2018_density_exp.pdf", width = 3.54, height = 3.94)
+pdf("output/plot_transmission_pairwise_figure_2018_density_exp.pdf", width = 3.94, height = 4.33)
 plot_grid(pairD1Fig, leg,
           nrow = 2, 
           rel_heights = c(1, 0.15))
@@ -820,6 +821,7 @@ dev.off()
 # 2019 figure
 pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  geom_hline(yintercept = 0, size = 0.15) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
@@ -839,6 +841,7 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = f
 
 edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_change)) +
   geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  geom_hline(yintercept = 0, size = 0.15) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
   geom_point(data = filter(figDat, year == "2019") %>% 
@@ -856,7 +859,7 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_chang
   # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c(col_pal, "white", "gray85")) +
-  xlab("Disease severity\nof invader\nsurrounding plots (%)") +
+  xlab("Disease severity\nof invader (Mv)\nsurrounding plots (%)") +
   fig_theme +
   theme(axis.text.y = element_blank(),
         axis.title.y = element_blank(),
@@ -873,7 +876,7 @@ combFig <- plot_grid(pairD2Fig,
                      hjust = c(-0.5, 0.3))
 
 # combine
-pdf("output/plot_transmission_pairwise_figure_2019_density_exp.pdf", width = 4.33, height = 3.94)
+pdf("output/plot_transmission_pairwise_figure_2019_density_exp.pdf", width = 5.12, height = 4.33)
 plot_grid(combFig, leg,
           nrow = 2,
           rel_heights = c(1, 0.15))

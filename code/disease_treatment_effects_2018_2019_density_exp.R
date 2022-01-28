@@ -42,6 +42,8 @@ fig_theme <- theme_bw() +
 
 col_pal = c("black", "#238A8DFF")
 
+box_shade = "gray92"
+
 
 #### severity ####
 
@@ -66,8 +68,9 @@ sev2 <- sev %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   transmute(Parameter = parameter, 
-            Species = c(rep("Competitor", 2), rep("Invader", 2), rep("Competitor", 2)) %>%
-              fct_relevel("Invader"),
+            Species = c(rep("Competitor (Ev)", 2), rep("Invader (Mv)", 2), rep("Competitor (Ev)", 2)) %>%
+              fct_relevel("Invader (Mv)"),
+            SpeciesN = as.numeric(Species),
             Age = c(rep("adult", 2), rep("1st year", 4)) %>%
                       fct_relevel("1st year"),
             Treatment = if_else(str_ends(parameter, "_W") == T, "control", "fungicide"),
@@ -76,18 +79,21 @@ sev2 <- sev %>%
             Upper = .upper * 100)
 
 # fig
-sev_fig <- ggplot(sev2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
+sev_fig <- ggplot(sev2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
+                fill = Species), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
+  geom_point(aes(color = Treatment, shape = Age), size = 2, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
-  scale_fill_manual(values = col_pal, name = "Disease treatment") +
-  scale_shape_manual(values = c(21, 22)) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_shape_manual(values = c(19, 17)) +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "Disease severity (%)") +
   fig_theme +
-  theme(axis.text.x = element_blank()) +
-  guides(fill = guide_legend(override.aes = list(shape = 21)))
+  theme(axis.text.x = element_blank())
 
 # values for text
 sev %>%
@@ -120,7 +126,7 @@ mv_germ2 <- mv_germ %>%
                values_to = "estimate") %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
-  transmute(Species = "Invader",
+  transmute(Species = "Invader (Mv)",
             Treatment = if_else(parameter == "g_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
@@ -140,7 +146,7 @@ ev_germ2 <- ev_germ %>%
                values_to = "estimate") %>%
   group_by(parameter) %>%
   mean_hdci(estimate) %>%
-  transmute(Species = "Competitor",
+  transmute(Species = "Competitor (Ev)",
             Treatment = if_else(parameter == "g_W", "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
@@ -149,16 +155,21 @@ ev_germ2 <- ev_germ %>%
 # combine
 germ <- mv_germ2 %>%
   full_join(ev_germ2) %>%
-  mutate(Species = fct_relevel(Species, "Invader"))
+  mutate(Species = fct_relevel(Species, "Invader (Mv)"),
+         SpeciesN = as.numeric(Species))
 
 # fig
-germ_fig <- ggplot(germ, aes(x = Species, y = Estimate)) +
+germ_fig <- ggplot(germ, aes(x = SpeciesN, y = Estimate)) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
+                fill = Species), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment), size = 2, stroke = 0.3, shape = 21, 
+  geom_point(aes(color = Treatment), size = 2, shape = 19, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "Germination fraction") +
   fig_theme +
   theme(legend.position = "none",
@@ -199,21 +210,26 @@ est2 <- est %>%
   group_by(parameter) %>%
   mean_hdci(estimate) %>%
   transmute(Parameter = parameter,
-            Species = rep(c("Invader", "Competitor"), each = 2),
+            Species = rep(c("Invader (Mv)", "Competitor (Ev)"), each = 2),
             Treatment = if_else(str_detect(parameter, "W") == T, "control", "fungicide"),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper) %>%
-  mutate(Species = fct_relevel(Species, "Invader"))
+  mutate(Species = fct_relevel(Species, "Invader (Mv)"),
+         SpeciesN = as.numeric(Species))
 
 # fig
-est_fig <- ggplot(est2, aes(x = Species, y = Estimate)) +
+est_fig <- ggplot(est2, aes(x = SpeciesN, y = Estimate)) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
+                fill = Species), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment), size = 2, stroke = 0.3, shape = 21, 
+  geom_point(aes(color = Treatment), size = 2, shape = 19, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "Establishment fraction") +
   fig_theme +
   theme(legend.position = "none",
@@ -259,26 +275,31 @@ bio2 <- bio %>%
   mean_hdi(estimate) %>%
   ungroup() %>%
   transmute(Parameter = parameter,
-            Species = rep(c("Invader",
-                            "Competitor",
-                            "Competitor"), each = 2),
+            Species = rep(c("Invader (Mv)",
+                            "Competitor (Ev)",
+                            "Competitor (Ev)"), each = 2),
             Age = c(rep("1st year", 4), rep("adult", 2)),
             Treatment = rep(c("control", "fungicide"), 3),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper) %>%
-  mutate(Species = fct_relevel(Species, "Invader"),
+  mutate(Species = fct_relevel(Species, "Invader (Mv)"),
+         SpeciesN = as.numeric(Species),
          Age = fct_relevel(Age, "1st year"))
 
 # fig
-bio_fig <- ggplot(bio2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
+bio_fig <- ggplot(bio2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
+                fill = Species), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
+  geom_point(aes(color = Treatment, shape = Age), size = 2, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  scale_shape_manual(values = c(21, 22)) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_shape_manual(values = c(19, 17)) +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "ln(Biomass) (g)") +
   fig_theme +
   theme(legend.position = "none",
@@ -325,25 +346,30 @@ seed2 <- seed %>%
   mean_hdi(estimate) %>%
   ungroup() %>%
   transmute(Parameter = parameter,
-            Species = rep(c("Invader",
-                            "Competitor",
-                            "Competitor"), each = 2),
+            Species = rep(c("Invader (Mv)",
+                            "Competitor (Ev)",
+                            "Competitor (Ev)"), each = 2),
             Age = c(rep("1st year", 4), rep("adult", 2)),
             Treatment = rep(c("control", "fungicide"), 3),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper) %>%
-  mutate(Species = fct_relevel(Species, "Invader"),
+  mutate(Species = fct_relevel(Species, "Invader (Mv)"),
+         SpeciesN = as.numeric(Species),
          Age = fct_relevel(Age, "1st year"))
 
-seed_fig <- ggplot(seed2, aes(x = Species, y = Estimate, group = interaction(Treatment, Age))) +
+seed_fig <- ggplot(seed2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
+                fill = Species), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
+  geom_point(aes(color = Treatment, shape = Age), size = 2, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  scale_shape_manual(values = c(21, 22)) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_shape_manual(values = c(19, 17)) +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "ln(Seeds + 1)") +
   fig_theme +
   theme(legend.position = "none",
@@ -404,57 +430,70 @@ alpha2 <- alpha %>%
   ungroup() %>%
   transmute(Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
             Parameter = str_replace(parameter, "_fung", ""),
-            Focal = if_else(str_starts(parameter, "alpha_A"), "Invader", "Competitor") %>%
-              fct_relevel("Invader"),
+            Focal = if_else(str_starts(parameter, "alpha_A"), "Invader (Mv)", "Competitor (Ev)") %>%
+              fct_relevel("Invader (Mv)"),
+            FocalN = as.numeric(Focal),
             Age = if_else(str_starts(parameter, "alpha_P"), "adult", "1st year") %>%
               fct_relevel("1st year"),
-            Competitor = case_when(str_ends(Parameter, "A") ~ "Invader",
+            Competitor = case_when(str_ends(Parameter, "A") ~ "Invader (Mv)",
                                    str_ends(Parameter, "F") ~ "1st year comp.",
                                    str_ends(Parameter, "P") ~ "Adult comp."),
             Estimate = estimate,
             Lower = .lower,
             Upper = .upper)
 
-# separate by competitor
-alpha_A <- alpha2 %>% filter(Competitor == "Invader")
+# separate by Competitor
+alpha_A <- alpha2 %>% filter(Competitor == "Invader (Mv)")
 alpha_F <- alpha2 %>% filter(Competitor == "1st year comp.")
 alpha_P <- alpha2 %>% filter(Competitor == "Adult comp.")
 
 # figs
-alphaA_fig <- ggplot(alpha_A, aes(x = Focal, y = Estimate, group = interaction(Treatment, Age))) +
+alphaA_fig <- ggplot(alpha_A, aes(x = FocalN, y = Estimate, group = interaction(Treatment, Age))) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = FocalN-0.5, xmax = Inf,
+                fill = Focal), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
+  geom_point(aes(color = Treatment, shape = Age), size = 2, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  scale_shape_manual(values = c(21, 22)) +
-  labs(y = "Invader competition") +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_shape_manual(values = c(19, 17)) +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
+  labs(y = "Invader (Mv) competition") +
   fig_theme +
   theme(legend.position = "none",
         axis.text.x = element_blank())
 
-alphaF_fig <- ggplot(alpha_F, aes(x = Focal, y = Estimate, group = interaction(Treatment, Age))) +
+alphaF_fig <- ggplot(alpha_F, aes(x = FocalN, y = Estimate, group = interaction(Treatment, Age))) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = FocalN-0.5, xmax = Inf,
+                fill = Focal), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
+  geom_point(aes(color = Treatment, shape = Age), size = 2, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  scale_shape_manual(values = c(21, 22)) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_shape_manual(values = c(19, 17)) +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "1st yr comp. competition") +
   fig_theme +
   theme(legend.position = "none",
         axis.title.y = element_text(size = 7, color = "black", hjust = 0))
 
-alphaP_fig <- ggplot(alpha_P, aes(x = Focal, y = Estimate, group = interaction(Treatment, Age))) +
+alphaP_fig <- ggplot(alpha_P, aes(x = FocalN, y = Estimate, group = interaction(Treatment, Age))) +
+  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = FocalN-0.5, xmax = Inf,
+                fill = Focal), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
                 width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(fill = Treatment, shape = Age), size = 2, stroke = 0.3, 
+  geom_point(aes(color = Treatment, shape = Age), size = 2, 
              position = position_dodge(0.5)) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = col_pal) +
-  scale_shape_manual(values = c(21, 22)) +
+  scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
+  scale_shape_manual(values = c(19, 17)) +
+  scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
+                     limits = c(0.6, 2.4)) + 
   labs(y = "Adult comp. competition") +
   fig_theme +
   theme(legend.position = "none",
@@ -497,6 +536,6 @@ bot_row <- plot_grid(alphaF_fig, alphaP_fig,
                       label_size = 10)
 comb_fig <- plot_grid(top_row, mid_row1, mid_row2, bot_row, ncol = 1)
 
-pdf("output/disease_treatment_effects_2018_2019_density_exp.pdf", width = 3.54, height = 6.29)
+pdf("output/disease_treatment_effects_2018_2019_density_exp.pdf", width = 3.74, height = 6.29)
 plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.07))
 dev.off()

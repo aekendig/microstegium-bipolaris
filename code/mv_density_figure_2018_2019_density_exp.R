@@ -65,7 +65,7 @@ plotD2Dat2 <- plotD2Dat %>%
   left_join(plotDens) %>%
   filter(background %in% c("none", "Mv seedling")) %>%
   mutate(density = background_density + 3,
-         focal = "Invader",
+         focal = "Invader (Mv)",
          treatment = fct_relevel(treatment, "water")) %>%
   rename(biomass = biomass_mv) %>%
   select(-c(biomass_bg, biomass_foc_mv)) %>%
@@ -86,15 +86,21 @@ rawD2Dat <- seedD2Dat %>%
                      log_fitness = plant_growth)) %>%
   mutate(treatment = fct_recode(treatment, "control" = "water") %>%
            fct_relevel("control"),
-         focal = fct_recode(focal, "First-year competitor" = "Ev seedling",
-                            "Adult competitor" = "Ev adult",
-                            "Invader" = "Mv") %>%
-           fct_relevel("Invader", "First-year competitor"),
-         background = fct_recode(background, "First-year competitor" = "Ev seedling",
-                                 "Adult competitor" = "Ev adult",
-                                 "Invader" = "Mv") %>%
-           fct_relevel("Invader", "First-year competitor")) %>%
+         focal = fct_recode(focal, "First-year competitor (Ev)" = "Ev seedling",
+                            "Adult competitor (Ev)" = "Ev adult",
+                            "Invader (Mv)" = "Mv") %>%
+           fct_relevel("Invader (Mv)", "First-year competitor (Ev)"),
+         background = fct_recode(background, "First-year competitor (Ev)" = "Ev seedling",
+                                 "Adult competitor (Ev)" = "Ev adult",
+                                 "Invader (Mv)" = "Mv") %>%
+           fct_relevel("Invader (Mv)", "First-year competitor (Ev)")) %>%
   filter(bg == "m")
+
+mvLitDat2 <- mvLitDat %>%
+  mutate(focal = "Invader (Mv)")
+
+evLitDat2 <- evLitDat %>%
+  mutate(focal = "Competitor (Ev)")
 
 
 #### edit prediction data ####
@@ -147,14 +153,16 @@ mvEstPredDat <- tibble(litter.g.cm2 = rep(seq(min(mvLitDat$litter.g.cm2), max(mv
          Est_lower = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"]/mv_planted_cor,
          Est_upper = fitted(mvEstL1Mod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"]/mv_planted_cor,
          litter.g.m2 = litter.g.cm2 * 10000,
-         sterilizedF = ifelse(sterilized == 0, "live", "sterilized"))
+         sterilizedF = ifelse(sterilized == 0, "live", "sterilized"),
+         focal = "Invader (Mv)")
 
 evEstPredDat <- tibble(litter.g.cm2 = seq(min(evLitDat$litter.g.cm2), max(evLitDat$litter.g.cm2), 
                                               length.out = 100)) %>%
   mutate(Est = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Estimate"],
          Est_lower = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Q2.5"],
          Est_upper = fitted(evEstL2BhMod2, newdata = ., type = "response", re_formula = NA)[, "Q97.5"],
-         litter.g.m2 = litter.g.cm2 * 10000)
+         litter.g.m2 = litter.g.cm2 * 10000,
+         focal = "Competitor (Ev)")
 
 # combine
 predD2Dat <- seedPredD2Dat %>%
@@ -166,7 +174,8 @@ predD2Dat <- seedPredD2Dat %>%
 plotPredD2Dat <- plotSeedPredD2Dat %>%
   mutate(response = "seeds") %>%
   full_join(plotBioPredD2Dat %>%
-              mutate(response = "biomass"))
+              mutate(response = "biomass")) %>%
+  mutate(focal = "Invader (Mv)")
 
 
 #### figure settings ####
@@ -189,7 +198,7 @@ fig_theme <- theme_bw() +
         strip.text.y = element_text(size = 7,
                                     margin = margin(0, 0.1, 0, 0, unit = "cm")),
         strip.placement = "outside",
-        plot.title = element_text(size = 7, hjust = 0.5))
+        plot.title = element_text(size = 8, hjust = 0.5, face = "bold"))
 
 col_pal = c("black", "#238A8DFF")
 col_pal2 = c("black", "#482677FF")
@@ -208,9 +217,9 @@ plot_labels <- c(biomass = "Plot~biomass~(g~m^-2)",
 response_labels <- c(growth = "ln(Biomass) (g)",
                      seeds = "ln(Seeds + 1)")
 
-focal_labels <- c("Invader" = "Invader",
-                  "Adult competitor" = "Adult competitor",
-                  "First-year competitor" = "1st yr competitor")
+focal_labels <- c("Invader (Mv)" = "Invader (Mv)",
+                  "Adult competitor (Ev)" = "Adult competitor (Ev)",
+                  "First-year competitor (Ev)" = "1st yr competitor (Ev)")
 
 # invader figure
 inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
@@ -225,7 +234,8 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
              labeller = labeller(response = as_labeller(plot_labels, label_parsed))) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = col_pal) +
-  labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
+  labs(x = expression(paste("Invader density (", m^-2, ")", sep = "")),
+       title = "Invader abundance") +
   fig_theme +
   theme(legend.position = "none",
         axis.title.y = element_blank())
@@ -244,31 +254,33 @@ percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
                                  focal = focal_labels)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
   scale_fill_manual(values = col_pal, name = "Disease treatment") +
-  labs(x = expression(paste("Invader density (", m^-2, ")", sep = ""))) +
+  labs(x = expression(paste("Invader density (", m^-2, ")", sep = "")),
+       title = "Invader per capita effects") +
   fig_theme +
   theme(legend.position = "none",
         axis.title.y = element_blank())
 
 # litter figure
-mvLitFig <- ggplot(mvLitDat, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
+mvLitFig <- ggplot(mvLitDat2, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
   geom_ribbon(data = mvEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
   geom_line(data = mvEstPredDat, aes(y = Est)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
   stat_summary(fun = "mean", geom = "point", size = 2, position = position_dodge(5)) +
   scale_color_manual(values = col_pal2) +
   scale_fill_manual(values = col_pal2) +
+  facet_grid(cols = vars(focal)) +
   labs(y = "Emergence",
-       title = "Invader") +
+       title = "Invader litter effects") +
   fig_theme +
   theme(axis.title.x = element_blank(),
         legend.position = "none")
 
-evLitFig <- ggplot(evLitDat, aes(x = litter.g.m2, y = ev_prop_germ)) +
+evLitFig <- ggplot(evLitDat2, aes(x = litter.g.m2, y = ev_prop_germ)) +
   geom_ribbon(data = evEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
   geom_line(data = evEstPredDat, aes(y = Est)) +
   geom_point() +
+  facet_grid(cols = vars(focal)) +
   labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
-       title = "Competitor",
        y = "Emergence") +
   fig_theme
 
@@ -279,6 +291,7 @@ leg_dat <- tibble(x = rep(seq(0, 2), 3),
                   upper = rep(seq(2, 4), 3),
                   trt = rep(c("control", "fungicide", "autoclaved"), each = 3)) %>%
   mutate(trt = fct_relevel(trt, "control", "fungicide"))
+
 leg_fig <- ggplot(leg_dat, aes(x = x, y = y, color = trt, fill = trt)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
   geom_line() +
@@ -289,7 +302,7 @@ leg_fig <- ggplot(leg_dat, aes(x = x, y = y, color = trt, fill = trt)) +
   fig_theme
 
 lit_fig <- plot_grid(mvLitFig, evLitFig,
-                    nrow = 2, rel_heights = c(0.9, 1))
+                    nrow = 2)
 
 comb_fig <- plot_grid(inv_fig, percap_fig,
                       lit_fig,
