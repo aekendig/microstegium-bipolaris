@@ -37,7 +37,8 @@ fig_theme <- theme_bw() +
         legend.title = element_text(size = 7),
         legend.background = element_blank(),
         legend.margin = margin(-0.1, 0, -0.1, 0, unit = "cm"),
-        plot.title = element_text(size = 10, hjust = -0.1, face = "bold"))
+        plot.title = element_text(size = 10, hjust = -0.1, face = "bold"),
+        plot.subtitle = element_text(size = 8, hjust = 0, face = "bold"))
 
 col_pal = c("black", "#238A8DFF")
 
@@ -182,9 +183,11 @@ modF_cont_fung %>%
 # discrete input values
 modF_disc_ctrl <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = conidia_init, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = years, gs_time = gs_days, disc_parms = parms_ctrl, con_parms = parms_ctrl)
 
-# multiply by 2 for invasion
+# multiply years by 2 for invasion
 # want Perennial adult to be at equilibrium
 modF_disc_fung <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = years * 2, gs_time = gs_days, disc_parms = parms_fung, con_parms = parms_fung)
+write_csv(modF_disc_fung, "output/discrete_continuous_model_no_invasion_no_disease.csv")
+modF_disc_fung <- read.csv("output/discrete_continuous_model_no_invasion_no_disease.csv")
 
 # figure of discrete results
 modF_disc_ctrl %>%
@@ -285,6 +288,8 @@ modInv_disc_fung <- disc_AFP_mod(A0 = 10,
                                  BF0 = filter(modF_disc_fung_fin, species == "Perennial first-year biomass")$N, 
                                  simtime = years*2, gs_time = gs_days, 
                                  disc_parms = parms_fung, con_parms = parms_fung)
+write_csv(modInv_disc_fung, "output/discrete_continuous_model_invasion_no_disease.csv")
+modInv_disc_fung <- read.csv("output/discrete_continuous_model_invasion_no_disease.csv")
 
 # figure of discrete results
 modInv_disc_fung %>%
@@ -360,6 +365,7 @@ mod_inv_dis2 %>%
 # adjust time to invasion = 0
 # remove early/late dynamics
 # combine adult & first-year perennial
+# create a relative biomass
 mod_inv_dis3 <- mod_inv_dis2 %>%
   filter(species %in% c("Annual biomass",
                         "Perennial adult biomass",
@@ -376,7 +382,8 @@ mod_inv_dis3 <- mod_inv_dis2 %>%
                names_to = "species",
                values_to = "N") %>%
   mutate(Species = if_else(species == "Annual_biomass", "invader", "competitor") %>%
-           fct_relevel("invader"))
+           fct_relevel("invader"),
+         RelN = N / max(N))
 
 # save
 write_csv(mod_inv_dis3, "output/discrete_no_seed_infection_time_series.csv")
@@ -385,12 +392,12 @@ mod_inv_dis3 <- read_csv("output/discrete_no_seed_infection_time_series.csv") %>
 
 # phase labels
 phase_lab <- tibble(time = c(-5, 5, 107),
-                    N = 400,
-                    lab = c("pre-invasion", "invasion", "disease emergence"))
+                    RelN = 1.1,
+                    lab = c("Pre-invasion", "Invasion", "Disease emergence"))
 
 # figure of discrete results
 time_series_fig <- mod_inv_dis3 %>%
-  ggplot(aes(x = time, y = N)) +
+  ggplot(aes(x = time, y = RelN)) +
   geom_rect(xmin = 0, xmax = 100, ymin = -Inf, ymax = Inf, fill = "gray95", color = NA, show.legend = F) +
   geom_rect(xmin = 100, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "gray75", color = NA, show.legend = F) +
   geom_line(aes(color = treatment, linetype = Species)) +
@@ -398,13 +405,13 @@ time_series_fig <- mod_inv_dis3 %>%
             aes(label = lab)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
   scale_x_break(c(10, 100)) +
-  labs(x = "Time (years)", y = expression(paste('Biomass (g/', m^2, ')', sep = "")),
+  labs(x = "Time (years)", y = "Relative biomass",
        title = "A") +
   fig_theme + 
   theme(plot.title = element_text(size = 10, hjust = 0, face = "bold"))
 
 
-#### invader intraspecific comp ####
+#### invader abundance and per capita effects ####
 
 # extract alpha values
 alpha_AA_fung <- parms_fung %>%
@@ -415,23 +422,38 @@ alpha_AA_ctrl <- parms_ctrl %>%
   filter(Parameter == "alpha_AA") %>%
   pull(Estimate)
 
+alpha_PA_fung <- parms_fung %>%
+  filter(Parameter == "alpha_PA") %>%
+  pull(Estimate)
+
+alpha_PA_ctrl <- parms_ctrl %>%
+  filter(Parameter == "alpha_PA") %>%
+  pull(Estimate)
+
 # alpha values
-alpha_AA_vals <- c(seq(alpha_AA_fung, 100 * alpha_AA_ctrl, length.out = 19),
+alpha_AA_vals <- c(seq(alpha_AA_fung, 50 * alpha_AA_ctrl, length.out = 10),
                    alpha_AA_ctrl) %>%
   unique() %>% sort()
 
+alpha_PA_vals <- c(seq(alpha_PA_fung, alpha_PA_ctrl, length.out = 10))
+
+alpha_AA_PA_vals <- tibble(alpha_AA = alpha_AA_vals) %>%
+  expand_grid(tibble(alpha_PA = alpha_PA_vals))
+
 # empty list
-modAlphaAA <- vector(mode = "list", length = length(alpha_AA_vals))
+mod_AA_PA <- vector(mode = "list", length = nrow(alpha_AA_PA_vals))
 
 # cycle through alpha values
-for(i in 1:length(alpha_AA_vals)){
+for(i in 1:nrow(alpha_AA_PA_vals)){
   
   # update parameters
   parms_ctrl_temp <- parms_ctrl %>%
-    mutate(Estimate = if_else(Parameter == "alpha_AA", alpha_AA_vals[i], Estimate))
+    mutate(Estimate = case_when(Parameter == "alpha_AA" ~ alpha_AA_PA_vals$alpha_AA[i], 
+                                Parameter == "alpha_PA" ~ alpha_AA_PA_vals$alpha_PA[i],
+                                TRUE ~ Estimate))
   
   # add disease
-  modAlphaAA_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "Annual")$N, 
+  mod_AA_PA_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "Annual")$N, 
                                        F0 = filter(modInv_disc_fung_fin, species == "Perennial first-year")$N, 
                                        P0 = filter(modInv_disc_fung_fin, species == "Perennial adult")$N, 
                                        L0 = filter(modInv_disc_fung_fin, species == "Litter")$N, 
@@ -445,29 +467,33 @@ for(i in 1:length(alpha_AA_vals)){
                                        disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
   
   # save data table
-  modAlphaAA[[i]] <- modAlphaAA_disc_ctrl %>%
-    mutate(alpha_AA = alpha_AA_vals[i])
+  mod_AA_PA[[i]] <- mod_AA_PA_disc_ctrl %>%
+    mutate(alpha_AA = alpha_AA_PA_vals$alpha_AA[i],
+           alpha_PA = alpha_AA_PA_vals$alpha_PA[i])
 }
 
 # collapse list
-modAlphaAA2 <- modAlphaAA %>%
+mod_AA_PA2 <- mod_AA_PA %>%
   bind_rows()
 
 # save file
-write_csv(modAlphaAA2, "output/discrete_no_seed_infection_alphaAA_sim.csv")
-modAlphaAA2 <- read_csv("output/discrete_no_seed_infection_alphaAA_sim.csv")
+write_csv(mod_AA_PA2, "output/discrete_no_seed_infection_alphaAA_alphaPA_sim.csv")
+mod_AA_PA2 <- read_csv("output/discrete_no_seed_infection_alphaAA_alphaPA_sim.csv")
 
 # check that each simulation looks reasonable and that biomass stabilizes
-for(i in 1:length(alpha_AA_vals)){
+pdf("output/discrete_no_seed_infection_alphaAA_alphaPA_sim.pdf")
+for(i in 1:nrow(alpha_AA_PA_vals)){
   
-  print(modAlphaAA2 %>%
-          filter(alpha_AA == alpha_AA_vals[i]) %>%
+  print(mod_AA_PA2 %>%
+          filter(alpha_AA == alpha_AA_PA_vals$alpha_AA[i] &
+                   alpha_PA == alpha_AA_PA_vals$alpha_PA[i]) %>%
           ggplot(aes(x = time, y = N)) +
           geom_line() +
           theme_classic() +
           facet_wrap(~ species, scales = "free_y"))
   
 }
+dev.off()
 
 # extract equilibrium perennial biomass
 per_bio_alone <- modF_disc_fung_fin %>%
@@ -480,8 +506,9 @@ per_bio_alone <- modF_disc_fung_fin %>%
 
 # select last time point
 # combine adult & first-year perennial
-modAlphaAA3 <- modAlphaAA2 %>%
-  filter(species %in% c("Annual biomass",
+mod_AA_PA3 <- mod_AA_PA2 %>%
+  filter(species %in% c("Annual",
+                        "Annual biomass",
                         "Perennial adult biomass",
                         "Perennial first-year biomass") &
            time == max(time)) %>%
@@ -491,142 +518,28 @@ modAlphaAA3 <- modAlphaAA2 %>%
               values_from = "N") %>%
   mutate(Perennial_biomass = Perennial_first_year_biomass + Perennial_adult_biomass,
          Impact = per_bio_alone/Perennial_biomass,
-         Coefficient = case_when(alpha_AA == alpha_AA_ctrl ~ "control",
-                                 alpha_AA == alpha_AA_fung ~ "fungicide",
-                                 TRUE ~ NA_character_)) %>%
-  filter(alpha_AA < 0.09) # trim to 10 values
+         Coefficient = case_when(alpha_AA == alpha_AA_ctrl & alpha_PA == alpha_PA_ctrl ~ "control",
+                                 alpha_AA == alpha_AA_fung & alpha_PA == alpha_PA_fung ~ "fungicide",
+                                 TRUE ~ NA_character_),
+         RelAnnual_biomass = Annual_biomass / per_bio_alone)
 
 # figure
-alphaAA_fig <- ggplot(modAlphaAA3, aes(x = alpha_AA, y = Perennial_biomass)) +
-  geom_hline(yintercept = per_bio_alone, linetype = "dashed", color = "gray60") +
-  geom_text(x = max(modAlphaAA3$alpha_AA), y = per_bio_alone - 10, label = "Pre-invasion biomass",
-            hjust = 1, vjust = 1, size = 2, check_overlap = T) +
-  geom_line(color = "gray60") +
-  geom_point(color = "gray60") +
-  geom_point(data = filter(modAlphaAA3, !is.na(Coefficient)),
-             aes(color = Coefficient), size = 3) +
-  scale_color_manual(values = col_pal, name = "Disease treatment") +
-  labs(x = "Intraspecific invader competition", 
-       y = expression(paste('Competitor biomass (g/', m^2, ')', sep = "")),
+alpha_AA_PA_fig <- ggplot(mod_AA_PA3, aes(x = RelAnnual_biomass, y = Impact, by = as.factor(alpha_PA))) +
+  geom_hline(yintercept = 1, size = 0.25, linetype = "dashed") +
+  geom_line(aes(color = alpha_PA)) +
+  geom_point(data = filter(mod_AA_PA3, !is.na(Coefficient)),
+             aes(shape = Coefficient), size = 2, show.legend = F) +
+  scale_color_viridis_c(name = "Invader\nper capita\neffect",
+                        direction = -1) +
+  labs(x = "Invader abundance (relative biomass)", 
+       y = expression(paste("Impact (competitor relative ", biomass^-1, ")", sep = "")),
        title = "B") +
   fig_theme +
-  theme(legend.position = c(0.3, 0.5))
-
-# invader figure
-pdf("output/discrete_no_seed_infection_simulation_invader_alphaAA_figure.pdf", 
-       width = 2.76, height = 1.97)
-ggplot(modAlphaAA3, aes(x = alpha_AA, y = Annual_biomass)) +
-  geom_line(color = "gray60") +
-  geom_point(color = "gray60") +
-  geom_point(data = filter(modAlphaAA3, !is.na(Coefficient)),
-             aes(color = Coefficient), size = 3) +
-  scale_color_manual(values = col_pal, name = "Disease treatment") +
-  labs(x = "Intraspecific invader competition", 
-       y = expression(paste('Invader biomass (g/', m^2, ')', sep = ""))) +
-  fig_theme
-dev.off()
+  theme(legend.margin = margin(-0.1, 0, 0, 0, unit = "cm")) +
+  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact)))
 
 
-#### invader interspecific comp ####
-
-# extract alpha values
-alpha_PA_fung <- parms_fung %>%
-  filter(Parameter == "alpha_PA") %>%
-  pull(Estimate)
-
-alpha_PA_ctrl <- parms_ctrl %>%
-  filter(Parameter == "alpha_PA") %>%
-  pull(Estimate)
-
-# alpha values
-alpha_PA_vals <- c(seq(alpha_PA_fung, alpha_PA_ctrl, length.out = 10)) %>%
-  unique() %>% sort()
-
-# empty list
-modAlphaPA <- vector(mode = "list", length = length(alpha_PA_vals))
-
-# cycle through alpha values
-for(i in 1:length(alpha_PA_vals)){
-  
-  # update parameters
-  parms_ctrl_temp <- parms_ctrl %>%
-    mutate(Estimate = if_else(Parameter == "alpha_PA", alpha_PA_vals[i], Estimate))
-  
-  # add disease
-  modAlphaPA_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "Annual")$N, 
-                                       F0 = filter(modInv_disc_fung_fin, species == "Perennial first-year")$N, 
-                                       P0 = filter(modInv_disc_fung_fin, species == "Perennial adult")$N, 
-                                       L0 = filter(modInv_disc_fung_fin, species == "Litter")$N, 
-                                       C0 = conidia_init, 
-                                       IA0 = filter(modInv_disc_fung_fin, species == "Annual infected biomass")$N, 
-                                       IF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year infected biomass")$N, 
-                                       IP0 = filter(modInv_disc_fung_fin, species == "Perennial adult infected biomass")$N, 
-                                       BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
-                                       BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
-                                       simtime = years/2, gs_time = gs_days, 
-                                       disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
-  
-  # save data table
-  modAlphaPA[[i]] <- modAlphaPA_disc_ctrl %>%
-    mutate(alpha_PA = alpha_PA_vals[i])
-}
-
-# collapse list
-modAlphaPA2 <- modAlphaPA %>%
-  bind_rows()
-
-# save file
-write_csv(modAlphaPA2, "output/discrete_no_seed_infection_alphaPA_sim.csv")
-modAlphaPA2 <- read_csv("output/discrete_no_seed_infection_alphaPA_sim.csv")
-
-# check that each simulation looks reasonable and that biomass stabilizes
-for(i in 1:length(alpha_PA_vals)){
-  
-  print(modAlphaPA2 %>%
-          filter(alpha_PA == alpha_PA_vals[i]) %>%
-          ggplot(aes(x = time, y = N)) +
-          geom_line() +
-          theme_classic() +
-          facet_wrap(~ species, scales = "free_y"))
-  
-}
-
-# select last time point
-# combine adult & first-year perennial
-modAlphaPA3 <- modAlphaPA2 %>%
-  filter(species %in% c("Annual biomass",
-                        "Perennial adult biomass",
-                        "Perennial first-year biomass") &
-           time == max(time)) %>%
-  mutate(species = str_replace_all(species, " ", "_"),
-         species = str_replace_all(species, "-", "_")) %>%
-  pivot_wider(names_from = "species",
-              values_from = "N") %>%
-  mutate(Perennial_biomass = Perennial_first_year_biomass + Perennial_adult_biomass,
-         Impact = per_bio_alone/Perennial_biomass,
-         Coefficient = case_when(alpha_PA == alpha_PA_ctrl ~ "control",
-                                 alpha_PA == alpha_PA_fung ~ "fungicide",
-                                 TRUE ~ NA_character_))
-
-# figure
-alphaPA_fig <- ggplot(modAlphaPA3, aes(x = alpha_PA, y = Perennial_biomass)) +
-  geom_hline(yintercept = per_bio_alone, linetype = "dashed", color = "gray60") +
-  geom_text(x = max(modAlphaPA3$alpha_PA), y = per_bio_alone - 10, label = "Pre-invasion biomass",
-            hjust = 1, vjust = 1, size = 2, check_overlap = T) +
-  geom_line(color = "gray60") +
-  geom_point(color = "gray60") +
-  geom_point(data = filter(modAlphaPA3, !is.na(Coefficient)),
-             aes(color = Coefficient), size = 3) +
-  scale_color_manual(values = col_pal) +
-  labs(x = "Interspecific invader competition", 
-       y = expression(paste('Competitor biomass (g/', m^2, ')', sep = "")),
-       title = "C") +
-  fig_theme +
-  theme(legend.position = "none",
-        axis.title.y = element_blank())
-
-
-#### competitor intraspecific comp ####
+#### invader abundance and competitor per capita effects ####
 
 # extract alpha values
 alpha_PP_fung <- parms_fung %>%
@@ -641,59 +554,69 @@ alpha_PP_ctrl <- parms_ctrl %>%
 alpha_PP_vals <- c(seq(alpha_PP_fung/5, alpha_PP_ctrl, length.out = 9), alpha_PP_fung) %>%
   unique() %>% sort()
 
+alpha_AA_PP_vals <- tibble(alpha_AA = alpha_AA_vals) %>%
+  expand_grid(tibble(alpha_PP = alpha_PP_vals))
+
 # empty list
-modAlphaPP <- vector(mode = "list", length = length(alpha_PP_vals))
+mod_AA_PP <- vector(mode = "list", length = nrow(alpha_AA_PP_vals))
 
 # cycle through alpha values
-for(i in 1:length(alpha_PP_vals)){
+for(i in 1:nrow(alpha_AA_PP_vals)){
   
   # update parameters
   parms_ctrl_temp <- parms_ctrl %>%
-    mutate(Estimate = if_else(Parameter %in% c("alpha_PP", "alpha_FP"), alpha_PP_vals[i], Estimate))
+    mutate(Estimate = case_when(Parameter == "alpha_AA" ~ alpha_AA_PP_vals$alpha_AA[i], 
+                                Parameter %in% c("alpha_PP", "alpha_FP") ~ alpha_AA_PP_vals$alpha_PP[i],
+                                TRUE ~ Estimate))
   
   # add disease
-  modAlphaPP_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "Annual")$N, 
-                                       F0 = filter(modInv_disc_fung_fin, species == "Perennial first-year")$N, 
-                                       P0 = filter(modInv_disc_fung_fin, species == "Perennial adult")$N, 
-                                       L0 = filter(modInv_disc_fung_fin, species == "Litter")$N, 
-                                       C0 = conidia_init, 
-                                       IA0 = filter(modInv_disc_fung_fin, species == "Annual infected biomass")$N, 
-                                       IF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year infected biomass")$N, 
-                                       IP0 = filter(modInv_disc_fung_fin, species == "Perennial adult infected biomass")$N, 
-                                       BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
-                                       BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
-                                       simtime = years/2, gs_time = gs_days, 
-                                       disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
+  mod_AA_PP_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "Annual")$N, 
+                                      F0 = filter(modInv_disc_fung_fin, species == "Perennial first-year")$N, 
+                                      P0 = filter(modInv_disc_fung_fin, species == "Perennial adult")$N, 
+                                      L0 = filter(modInv_disc_fung_fin, species == "Litter")$N, 
+                                      C0 = conidia_init, 
+                                      IA0 = filter(modInv_disc_fung_fin, species == "Annual infected biomass")$N, 
+                                      IF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year infected biomass")$N, 
+                                      IP0 = filter(modInv_disc_fung_fin, species == "Perennial adult infected biomass")$N, 
+                                      BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
+                                      BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
+                                      simtime = years/2, gs_time = gs_days, 
+                                      disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
   
   # save data table
-  modAlphaPP[[i]] <- modAlphaPP_disc_ctrl %>%
-    mutate(alpha_PP = alpha_PP_vals[i])
+  mod_AA_PP[[i]] <- mod_AA_PP_disc_ctrl %>%
+    mutate(alpha_AA = alpha_AA_PP_vals$alpha_AA[i],
+           alpha_PP = alpha_AA_PP_vals$alpha_PP[i])
 }
 
 # collapse list
-modAlphaPP2 <- modAlphaPP %>%
+mod_AA_PP2 <- mod_AA_PP %>%
   bind_rows()
 
 # save file
-write_csv(modAlphaPP2, "output/discrete_no_seed_infection_alphaPP_sim.csv")
-modAlphaPP2 <- read_csv("output/discrete_no_seed_infection_alphaPP_sim.csv")
+write_csv(mod_AA_PP2, "output/discrete_no_seed_infection_alphaAA_alphaPP_sim.csv")
+mod_AA_PP2 <- read_csv("output/discrete_no_seed_infection_alphaAA_alphaPP_sim.csv")
 
 # check that each simulation looks reasonable and that biomass stabilizes
-for(i in 1:length(alpha_PP_vals)){
+pdf("output/discrete_no_seed_infection_alphaAA_alphaPP_sim.pdf")
+for(i in 1:nrow(alpha_AA_PP_vals)){
   
-  print(modAlphaPP2 %>%
-          filter(alpha_PP == alpha_PP_vals[i]) %>%
+  print(mod_AA_PP2 %>%
+          filter(alpha_AA == alpha_AA_PP_vals$alpha_AA[i] &
+                   alpha_PP == alpha_AA_PP_vals$alpha_PP[i]) %>%
           ggplot(aes(x = time, y = N)) +
           geom_line() +
           theme_classic() +
           facet_wrap(~ species, scales = "free_y"))
   
 }
+dev.off()
 
 # select last time point
 # combine adult & first-year perennial
-modAlphaPP3 <- modAlphaPP2 %>%
-  filter(species %in% c("Annual biomass",
+mod_AA_PP3 <- mod_AA_PP2 %>%
+  filter(species %in% c("Annual",
+                        "Annual biomass",
                         "Perennial adult biomass",
                         "Perennial first-year biomass") &
            time == max(time)) %>%
@@ -703,33 +626,35 @@ modAlphaPP3 <- modAlphaPP2 %>%
               values_from = "N") %>%
   mutate(Perennial_biomass = Perennial_first_year_biomass + Perennial_adult_biomass,
          Impact = per_bio_alone/Perennial_biomass,
-         Coefficient = case_when(alpha_PP == alpha_PP_ctrl ~ "control",
-                                 alpha_PP == alpha_PP_fung ~ "fungicide",
-                                 TRUE ~ NA_character_))
+         Coefficient = case_when(alpha_AA == alpha_AA_ctrl & alpha_PP == alpha_PP_ctrl ~ "control",
+                                 alpha_AA == alpha_AA_fung & alpha_PP == alpha_PP_fung ~ "fungicide",
+                                 TRUE ~ NA_character_),
+         RelAnnual_biomass = Annual_biomass / per_bio_alone) %>%
+  filter(alpha_PP < 0.001 | alpha_PP > 0.0013) # remove value that's redundant with fungicide value
 
 # figure
-alphaPP_fig <- ggplot(modAlphaPP3, aes(x = alpha_PP, y = Perennial_biomass)) +
-  geom_hline(yintercept = per_bio_alone, linetype = "dashed", color = "gray60") +
-  geom_text(x = max(modAlphaPP3$alpha_PP), y = per_bio_alone + 20, label = "Pre-invasion biomass",
-            hjust = 1, vjust = 0, size = 2, check_overlap = T) +
-  geom_line(color = "gray60") +
-  geom_point(color = "gray60") +
-  geom_point(data = filter(modAlphaPP3, !is.na(Coefficient)),
-             aes(color = Coefficient), size = 3) +
-  scale_color_manual(values = col_pal) +
-  labs(x = "Intraspecific competitor competition", 
-       y = expression(paste('Competitor biomass (g/', m^2, ')', sep = "")),
-       title = "D") +
+alpha_AA_PP_fig <- ggplot(mod_AA_PP3, aes(x = RelAnnual_biomass, y = Impact, by = as.factor(alpha_PP))) +
+  geom_hline(yintercept = 1, size = 0.25, linetype = "dashed") +
+  geom_line(aes(color = alpha_PP)) +
+  geom_point(data = filter(mod_AA_PP3, !is.na(Coefficient)),
+             aes(shape = Coefficient), size = 2) +
+  scale_shape(name = "Disease\ntreatment") +
+  scale_color_viridis_c(name = "Competitor\nintraspecific\neffect",
+                        direction = -1) +
+  labs(x = "Invader abundance (relative biomass)", 
+       title = "C") +
   fig_theme +
-  theme(legend.position = "none",
-        axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.box = "horizontal") +
+  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact)))
 
 
 #### figure ####
 
 ggsave("output/discrete_no_seed_infection_simulation_figure.pdf", 
-       device = "pdf", width = 15, height = 12, units = "cm")
-time_series_fig / (alphaAA_fig + alphaPA_fig + alphaPP_fig)
+       device = "pdf", width = 14, height = 11, units = "cm")
+time_series_fig / (alpha_AA_PA_fig + alpha_AA_PP_fig)
 dev.off()
 
 
