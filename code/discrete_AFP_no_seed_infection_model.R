@@ -48,7 +48,6 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, IA0, IF0, IP0, BP0, BF0, simtime, g
   c_F <- as.numeric(parms[parms$Parameter == "c_F", "Estimate"])
   c_P <- as.numeric(parms[parms$Parameter == "c_P", "Estimate"])
   b_F <- as.numeric(parms[parms$Parameter == "b_F", "Estimate"])
-  b_P <- as.numeric(parms[parms$Parameter == "b_P", "Estimate"])
   e_P <- as.numeric(parms[parms$Parameter == "e_P", "Estimate"])
   gamma_P <- as.numeric(parms[parms$Parameter == "gamma_P", "Estimate"])
   l_P <- as.numeric(parms[parms$Parameter == "l_P", "Estimate"])

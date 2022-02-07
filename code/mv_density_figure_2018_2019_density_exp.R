@@ -5,7 +5,6 @@
 # date last edited: 11/24/21
 # goal: figure of invader abundance vs. density and competitor fitness vs. invader density
 
-# for 2018 figure, add annual survival of Ev as a function of Mv density
 
 #### set up ####
 
@@ -20,7 +19,9 @@ library(tidybayes)
 library(lazerhawk)
 
 # import models
+load("output/focal_seed_density_model_2018_density_exp.rda")
 load("output/focal_seed_density_model_2019_density_exp.rda")
+load("output/focal_growth_density_model_2018_density_exp.rda")
 load("output/focal_growth_density_model_2019_density_exp.rda")
 load("output/mv_plot_biomass_density_model_2019_dens_exp.rda")
 load("output/mv_plot_seed_density_model_2019_dens_exp.rda")
@@ -30,10 +31,12 @@ load("output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
 # import data
 plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
+seedD1Dat <- read_csv("intermediate-data/focal_seed_density_data_2018_density_exp.csv")
 seedD2Dat <- read_csv("intermediate-data/focal_seed_density_data_2019_density_exp.csv")
 seedD2Alpha <- read_csv("output/focal_seed_competition_coefficients_2018_2019_density_exp.csv")
 # focal_seed_density_2018_2019_density_exp.R
 
+growthD1Dat <- read_csv("intermediate-data/focal_growth_density_data_2018_density_exp.csv")
 growthD2Dat <- read_csv("intermediate-data/focal_growth_density_data_2019_density_exp.csv")
 growthD2Alpha <- read_csv("output/focal_growth_competition_coefficients_2018_2019_density_exp.csv")
 # focal_growth_2018_2019_density_exp.R
@@ -74,6 +77,28 @@ plotD2Dat2 <- plotD2Dat %>%
                values_to = "value")
 
 # raw data
+rawD1Dat <- seedD1Dat %>%
+  select(site, plot, treatment, fungicide, focal, foc, ID, background, bg, density, seeds, log_seeds) %>%
+  mutate(response = "seeds") %>%
+  rename(fitness = seeds,
+         log_fitness = log_seeds) %>%
+  full_join(growthD1Dat %>%
+              select(site, plot, treatment, fungicide, focal, foc, ID, background, bg, density, tillers_jul, tillers_jun, plant_growth) %>%
+              mutate(response = "growth") %>%
+              rename(fitness = tillers_jul/tillers_jun,
+                     log_fitness = plant_growth)) %>%
+  mutate(treatment = fct_recode(treatment, "control" = "water") %>%
+           fct_relevel("control"),
+         focal = fct_recode(focal, "First-year competitor (Ev)" = "Ev seedling",
+                            "Adult competitor (Ev)" = "Ev adult",
+                            "Invader (Mv)" = "Mv") %>%
+           fct_relevel("Invader (Mv)", "First-year competitor (Ev)"),
+         background = fct_recode(background, "First-year competitor (Ev)" = "Ev seedling",
+                                 "Adult competitor (Ev)" = "Ev adult",
+                                 "Invader (Mv)" = "Mv") %>%
+           fct_relevel("Invader (Mv)", "First-year competitor (Ev)")) %>%
+  filter(bg == "m")
+
 rawD2Dat <- seedD2Dat %>%
   select(site, plot, treatment, fungicide, focal, foc, ID, background, bg, density, seeds, log_seeds) %>%
   mutate(response = "seeds") %>%
@@ -125,10 +150,20 @@ plotPredDatTemplate <- plotD2Dat2 %>%
   mutate(plotf = "A") 
 
 # prediction data
+seedPredD1Dat <- predDatTemplate %>%
+  mutate(log_fitness = fitted(seedD1Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+         lower = fitted(seedD1Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
+         upper = fitted(seedD1Mod, newdata = ., allow_new_levels = T)[, "Q97.5"])
+
 seedPredD2Dat <- predDatTemplate %>%
     mutate(log_fitness = fitted(seedD2Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
            lower = fitted(seedD2Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
            upper = fitted(seedD2Mod, newdata = ., allow_new_levels = T)[, "Q97.5"])
+
+growthPredD1Dat <- predDatTemplate %>%
+  mutate(log_fitness = fitted(growthD1Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
+         lower = fitted(growthD1Mod, newdata = ., allow_new_levels = T)[, "Q2.5"],
+         upper = fitted(growthD1Mod, newdata = ., allow_new_levels = T)[, "Q97.5"])
 
 growthPredD2Dat <- predDatTemplate %>%
   mutate(log_fitness = fitted(growthD2Mod, newdata = ., allow_new_levels = T)[, "Estimate"],
@@ -165,6 +200,12 @@ evEstPredDat <- tibble(litter.g.cm2 = seq(min(evLitDat$litter.g.cm2), max(evLitD
          focal = "Competitor (Ev)")
 
 # combine
+predD1Dat <- seedPredD1Dat %>%
+  mutate(response = "seeds") %>%
+  full_join(growthPredD1Dat %>%
+              mutate(response = "growth")) %>%
+  mutate(fitness = exp(log_fitness))
+
 predD2Dat <- seedPredD2Dat %>%
   mutate(response = "seeds") %>%
   full_join(growthPredD2Dat %>%
@@ -213,8 +254,10 @@ dodge_width <- 3
 plot_labels <- c(biomass = "Plot~biomass~(g~m^-2)",
                  seeds = "Plot~seeds~(m^-2)")
 
-
 response_labels <- c(growth = "ln(Biomass) (g)",
+                     seeds = "ln(Seeds + 1)")
+
+response_labels2 <- c(growth = "ln(Tiller growth)",
                      seeds = "ln(Seeds + 1)")
 
 focal_labels <- c("Invader (Mv)" = "Invader (Mv)",
@@ -318,6 +361,30 @@ plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.05))
 dev.off()
 
 
+#### supplementary figure ####
+
+# competitor figure
+pdf("output/mv_per_capita_effects_figure_2018_density_exp.pdf", width = 4, height = 3.15)
+ggplot(predD1Dat, aes(x = density, y = log_fitness)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
+  geom_line(aes(color = treatment)) +
+  stat_summary(data = rawD1Dat, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
+  stat_summary(data = rawD1Dat, geom = "point", fun = "mean", size = 2, position = position_dodge(dodge_width), aes(color = treatment)) +
+  facet_grid(rows = vars(response),
+             cols = vars(focal),
+             switch = "y",
+             scales = "free",
+             labeller = labeller(response = response_labels2,
+                                 focal = focal_labels)) +
+  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  scale_fill_manual(values = col_pal, name = "Disease treatment") +
+  labs(x = expression(paste("Invader density (", m^-2, ")", sep = "")),
+       title = "Invader per capita effects") +
+  fig_theme +
+  theme(axis.title.y = element_blank())
+dev.off()
+
+
 #### values for text ####
 
 # Mv biomass
@@ -369,6 +436,50 @@ as_draws_df(seedD2Mod)  %>%
   group_by(variable) %>%
   median_hdi(value)
 
+growthD1Table <- as_draws_df(growthD1Mod)  %>%
+  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  mutate(alpha_fungicide_a = (density + foca_density + fungicide_density + foca_fungicide_density),
+         alpha_water_a = (density + foca_density),
+         alpha_fungicide_s = (density + focs_density + fungicide_density + focs_fungicide_density),
+         alpha_water_s = (density + focs_density),
+         alpha_fungicide_m = (density + fungicide_density),
+         alpha_water_m = density) %>%
+  transmute(EvA_fung_eff = 100 * (alpha_fungicide_a - alpha_water_a) / alpha_water_a,
+            EvS_fung_eff = 100 * (alpha_fungicide_s - alpha_water_s) / alpha_water_s,
+            Mv_fung_eff = 100 * (alpha_fungicide_m - alpha_water_m) / alpha_water_m,
+            draws = 1:15000) %>%
+  pivot_longer(cols = c(EvA_fung_eff, EvS_fung_eff, Mv_fung_eff),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable) %>%
+  median_hdi(value)
+
+seedD1Table <- as_draws_df(seedD1Mod)  %>%
+  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
+  rename_with(str_replace, pattern = "b_", replacement = "") %>%
+  mutate(alpha_fungicide_a = (density + foca_density + fungicide_density + foca_fungicide_density),
+         alpha_water_a = (density + foca_density),
+         alpha_fungicide_s = (density + focs_density + fungicide_density + focs_fungicide_density),
+         alpha_water_s = (density + focs_density),
+         alpha_fungicide_m = (density + fungicide_density),
+         alpha_water_m = density) %>%
+  transmute(EvA_fung_eff = 100 * (alpha_fungicide_a - alpha_water_a) / alpha_water_a,
+            EvS_fung_eff = 100 * (alpha_fungicide_s - alpha_water_s) / alpha_water_s,
+            Mv_fung_eff = 100 * (alpha_fungicide_m - alpha_water_m) / alpha_water_m,
+            draws = 1:15000) %>%
+  pivot_longer(cols = c(EvA_fung_eff, EvS_fung_eff, Mv_fung_eff),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable) %>%
+  median_hdi(value)
+
+perCapD1Table <- growthD1Table %>%
+  mutate(response = "tiller growth") %>%
+  full_join(seedD1Table %>%
+              mutate(response = "seeds")) %>%
+  select(response, variable, value, .lower, .upper)
+
 
 #### tables ####
 
@@ -376,3 +487,4 @@ write_csv(brms_SummaryTable(mvBioDensMod), "output/mv_plot_biomass_density_model
 write_csv(brms_SummaryTable(mvSeedDensMod), "output/mv_plot_seed_density_model_2019_dens_exp.csv")
 write_csv(brms_SummaryTable(mvEstL1Mod2), "output/microstegium_litter_establishment_model_2018_litter_exp.csv")
 write_csv(brms_SummaryTable(evEstL2BhMod2), "output/elymus_litter_establishment_bh_model_2019_litter_exp.csv")
+write_csv(perCapD1Table, "output/mv_per_capita_effects_2018_dens_exp.csv")
