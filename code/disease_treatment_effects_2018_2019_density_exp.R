@@ -17,6 +17,7 @@ library(brms)
 library(tidybayes)
 library(cowplot)
 library(lazerhawk)
+library(patchwork)
 
 fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
@@ -40,7 +41,7 @@ fig_theme <- theme_bw() +
         strip.placement = "outside",
         plot.title = element_text(size = 7, hjust = 0.5))
 
-col_pal = c("black", "#238A8DFF")
+col_pal = c("black", "#238A8D")
 
 box_shade = "gray92"
 
@@ -128,9 +129,9 @@ mv_germ2 <- mv_germ %>%
   mean_hdi(estimate) %>%
   transmute(Species = "Invader (Mv)",
             Treatment = if_else(parameter == "g_W", "control", "fungicide"),
-            Estimate = estimate,
-            Lower = .lower,
-            Upper = .upper)
+            Estimate = 100 * estimate,
+            Lower = 100 * .lower,
+            Upper = 100 * .upper)
 
 # load model
 load("output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
@@ -148,9 +149,9 @@ ev_germ2 <- ev_germ %>%
   mean_hdci(estimate) %>%
   transmute(Species = "Competitor (Ev)",
             Treatment = if_else(parameter == "g_W", "control", "fungicide"),
-            Estimate = estimate,
-            Lower = .lower,
-            Upper = .upper)
+            Estimate = 100 * estimate,
+            Lower = 100 * .lower,
+            Upper = 100 * .upper)
 
 # combine
 germ <- mv_germ2 %>%
@@ -170,7 +171,7 @@ germ_fig <- ggplot(germ, aes(x = SpeciesN, y = Estimate)) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
-  labs(y = "Germination fraction") +
+  labs(y = "Germination (%)") +
   fig_theme +
   theme(legend.position = "none",
         axis.text.x = element_blank())
@@ -212,9 +213,9 @@ est2 <- est %>%
   transmute(Parameter = parameter,
             Species = rep(c("Invader (Mv)", "Competitor (Ev)"), each = 2),
             Treatment = if_else(str_detect(parameter, "W") == T, "control", "fungicide"),
-            Estimate = estimate,
-            Lower = .lower,
-            Upper = .upper) %>%
+            Estimate = 100 * estimate,
+            Lower = 100 * .lower,
+            Upper = 100 * .upper) %>%
   mutate(Species = fct_relevel(Species, "Invader (Mv)"),
          SpeciesN = as.numeric(Species))
 
@@ -229,8 +230,9 @@ est_fig <- ggplot(est2, aes(x = SpeciesN, y = Estimate)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
-                     limits = c(0.6, 2.4)) + 
-  labs(y = "Establishment fraction") +
+                     limits = c(0.6, 2.4)) +
+  scale_y_continuous(breaks = c(90, 95, 100)) +
+  labs(y = "Establishment (%)") +
   fig_theme +
   theme(legend.position = "none",
         axis.text.x = element_blank())
@@ -300,7 +302,7 @@ bio_fig <- ggplot(bio2, aes(x = SpeciesN, y = Estimate, group = interaction(Trea
   scale_shape_manual(values = c(19, 17)) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
-  labs(y = "ln(Biomass) (g)") +
+  labs(y = "Biomass (ln[g])") +
   fig_theme +
   theme(legend.position = "none",
         axis.text.x = element_blank())
@@ -370,7 +372,7 @@ seed_fig <- ggplot(seed2, aes(x = SpeciesN, y = Estimate, group = interaction(Tr
   scale_shape_manual(values = c(19, 17)) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
-  labs(y = "ln(Seeds + 1)") +
+  labs(y = "Seed production (ln[x+1])") +
   fig_theme +
   theme(legend.position = "none",
         axis.text.x = element_blank())
@@ -435,7 +437,7 @@ alpha2 <- alpha %>%
             FocalN = as.numeric(Focal),
             Age = if_else(str_starts(parameter, "alpha_P"), "adult", "1st year") %>%
               fct_relevel("1st year"),
-            Competitor = case_when(str_ends(Parameter, "A") ~ "Invader (Mv)",
+            Competitor = case_when(str_ends(Parameter, "A") ~ "Invader",
                                    str_ends(Parameter, "F") ~ "1st year comp.",
                                    str_ends(Parameter, "P") ~ "Adult comp."),
             Estimate = estimate,
@@ -443,7 +445,7 @@ alpha2 <- alpha %>%
             Upper = .upper)
 
 # separate by Competitor
-alpha_A <- alpha2 %>% filter(Competitor == "Invader (Mv)")
+alpha_A <- alpha2 %>% filter(Competitor == "Invader")
 alpha_F <- alpha2 %>% filter(Competitor == "1st year comp.")
 alpha_P <- alpha2 %>% filter(Competitor == "Adult comp.")
 
@@ -460,7 +462,7 @@ alphaA_fig <- ggplot(alpha_A, aes(x = FocalN, y = Estimate, group = interaction(
   scale_shape_manual(values = c(19, 17)) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
-  labs(y = "Invader (Mv) competition") +
+  labs(y = "Invader (Mv) effect") +
   fig_theme +
   theme(legend.position = "none",
         axis.text.x = element_blank())
@@ -477,7 +479,7 @@ alphaF_fig <- ggplot(alpha_F, aes(x = FocalN, y = Estimate, group = interaction(
   scale_shape_manual(values = c(19, 17)) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
-  labs(y = "1st yr comp. competition") +
+  labs(y = "1st yr comp. (Ev) effect") +
   fig_theme +
   theme(legend.position = "none",
         axis.title.y = element_text(size = 7, color = "black", hjust = 0))
@@ -494,7 +496,7 @@ alphaP_fig <- ggplot(alpha_P, aes(x = FocalN, y = Estimate, group = interaction(
   scale_shape_manual(values = c(19, 17)) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
-  labs(y = "Adult comp. competition") +
+  labs(y = "Adult comp. (Ev) effect") +
   fig_theme +
   theme(legend.position = "none",
         axis.title.y = element_text(size = 7, color = "black", hjust = 0))
@@ -518,24 +520,19 @@ write_csv(brms_SummaryTable(growthD2Mod2), "output/focal_growth_biomass_model_20
 
 # legend
 leg <- get_legend(sev_fig)
-top_row <- plot_grid(sev_fig + theme(legend.position = "none"), germ_fig, 
-                     align = "h", axis = "l", ncol = 2,
-                     labels = LETTERS[1:2],
-                     label_size = 10)
-mid_row1 <- plot_grid(est_fig, bio_fig,
-                     align = "h", axis = "l", ncol = 2,
-                     labels = LETTERS[3:4],
-                     label_size = 10)
-mid_row2 <- plot_grid(seed_fig, alphaA_fig, 
-                        align = "h", axis = "l", ncol = 2,
-                        labels = LETTERS[5:6],
-                        label_size = 10)
-bot_row <- plot_grid(alphaF_fig, alphaP_fig, 
-                      align = "h", axis = "l", ncol = 2,
-                      labels = LETTERS[7:8],
-                      label_size = 10)
-comb_fig <- plot_grid(top_row, mid_row1, mid_row2, bot_row, ncol = 1)
 
-pdf("output/disease_treatment_effects_2018_2019_density_exp.pdf", width = 3.74, height = 6.29)
+comb_fig <- (sev_fig + theme(legend.position = "none")) + 
+  germ_fig +
+  est_fig +
+  bio_fig +
+  seed_fig +
+  alphaA_fig +
+  alphaF_fig +
+  alphaP_fig +
+  plot_layout(nrow = 4) +
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(size = 10, face = "bold"))
+
+pdf("output/disease_treatment_effects_2018_2019_density_exp.pdf", width = 4.13, height = 6.29)
 plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.07))
 dev.off()

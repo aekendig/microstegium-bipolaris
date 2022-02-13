@@ -12,7 +12,7 @@ library(ggbreak)
 
 # import parameters
 parms_all <- read_csv("output/model_parameters_2018_2019_density_exp.csv")
-# model_parameters_2018_2019_density_exp
+# model_parameters_2018_2019_density_exp.R
 
 # continuous models
 source("code/continuous_AFP_model.R")
@@ -38,7 +38,7 @@ fig_theme <- theme_bw() +
         legend.background = element_blank(),
         legend.margin = margin(-0.1, 0, -0.1, 0, unit = "cm"),
         plot.title = element_text(size = 10, hjust = -0.1, face = "bold"),
-        plot.subtitle = element_text(size = 8, hjust = 0, face = "bold"))
+        plot.subtitle = element_text(size = 7))
 
 col_pal = c("black", "#238A8DFF")
 
@@ -403,7 +403,8 @@ time_series_fig <- mod_inv_dis3 %>%
   geom_line(aes(color = treatment, linetype = Species)) +
   geom_text(data = phase_lab, check_overlap = T, size = 2.5,
             aes(label = lab)) +
-  scale_color_manual(values = col_pal, name = "Disease treatment") +
+  scale_color_manual(values = col_pal, name = "Disease",
+                     labels = c("present", "absent")) +
   scale_x_break(c(10, 100)) +
   labs(x = "Time (years)", y = "Relative biomass",
        title = "A") +
@@ -529,14 +530,19 @@ alpha_AA_PA_fig <- ggplot(mod_AA_PA3, aes(x = RelAnnual_biomass, y = Impact, by 
   geom_line(aes(color = alpha_PA)) +
   geom_point(data = filter(mod_AA_PA3, !is.na(Coefficient)),
              aes(shape = Coefficient), size = 2, show.legend = F) +
-  scale_color_viridis_c(name = "Invader\nper capita\neffect",
-                        direction = -1) +
+  scale_color_viridis_c(name = "Invader\neffect",
+                        direction = -1,
+                        breaks = c(min(mod_AA_PA3$alpha_PA),
+                                    max(mod_AA_PA3$alpha_PA)),
+                         labels = c("least", "most")) +
   labs(x = "Invader abundance (relative biomass)", 
        y = expression(paste("Impact (competitor relative ", biomass^-1, ")", sep = "")),
        title = "B") +
   fig_theme +
-  theme(legend.margin = margin(-0.1, 0, 0, 0, unit = "cm")) +
-  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact)))
+  theme(legend.margin = margin(-0.1, 0, 0, 0, unit = "cm"),
+        legend.justification = "bottom") +
+  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact))) +
+  guides(color = guide_colourbar(ticks = F, barheight = 6.5))
 
 
 #### invader abundance and competitor per capita effects ####
@@ -639,23 +645,28 @@ alpha_AA_PP_fig <- ggplot(mod_AA_PP3, aes(x = RelAnnual_biomass, y = Impact, by 
   geom_point(data = filter(mod_AA_PP3, !is.na(Coefficient)),
              aes(shape = Coefficient), size = 2) +
   scale_shape(name = "Disease\ntreatment") +
-  scale_color_viridis_c(name = "Competitor\nintraspecific\neffect",
-                        direction = -1) +
+  scale_color_viridis_c(name = "Competitor\neffect",
+                        direction = -1,
+                        breaks = c(min(mod_AA_PP3$alpha_PP),
+                                   max(mod_AA_PP3$alpha_PP)),
+                        labels = c("least", "most")) +
   labs(x = "Invader abundance (relative biomass)", 
        title = "C") +
   fig_theme +
   theme(axis.title.y = element_blank(),
         axis.text.y = element_blank(),
-        legend.box = "horizontal") +
-  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact)))
+        legend.box = "horizontal",
+        legend.justification = "bottom") +
+  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact))) +
+  guides(color = guide_colourbar(ticks = F, barheight = 6.5))
 
 
 #### figure ####
 
+fig_out <- time_series_fig / (alpha_AA_PA_fig + alpha_AA_PP_fig)
 ggsave("output/discrete_no_seed_infection_simulation_figure.pdf", 
+       plot = fig_out,
        device = "pdf", width = 14, height = 11, units = "cm")
-time_series_fig / (alpha_AA_PA_fig + alpha_AA_PP_fig)
-dev.off()
 
 
 #### add disease to perennial alone ####
@@ -787,3 +798,275 @@ post_dis_bio <- mod_F_dis3 %>%
 
 # disease effect
 100 * (post_dis_bio - pre_dis_bio)/pre_dis_bio
+
+
+#### sensitivity analysis functions ####
+
+sens_sim <- function(parms_vary, parms_range, parms_n, filename){
+  
+  # parameter dataframe
+  parms_df <- tibble(Parameter = parms_vary) %>%
+    expand_grid(tibble(Estimate = seq(parms_range[1], parms_range[2], 
+                                      length.out = parms_n)))
+  
+  # empty list
+  mod_out <- vector(mode = "list", length = nrow(parms_df))
+  
+  # open figure
+  pdf(paste0("output/", filename, ".pdf"))
+  
+  # cycle through alpha values
+  for(i in 1:nrow(parms_df)){
+    
+    # parameter to change and its value
+    parms_sub <- parms_df[i, ]
+    
+    # update parameters
+    parms_ctrl_temp <- parms_ctrl %>%
+      filter(!(Parameter %in% parms_sub$Parameter)) %>%
+      full_join(parms_sub)
+    
+    # add disease
+    mod_out_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "Annual")$N, 
+                                      F0 = filter(modInv_disc_fung_fin, species == "Perennial first-year")$N, 
+                                      P0 = filter(modInv_disc_fung_fin, species == "Perennial adult")$N, 
+                                      L0 = filter(modInv_disc_fung_fin, species == "Litter")$N, 
+                                      C0 = conidia_init, 
+                                      IA0 = filter(modInv_disc_fung_fin, species == "Annual infected biomass")$N, 
+                                      IF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year infected biomass")$N, 
+                                      IP0 = filter(modInv_disc_fung_fin, species == "Perennial adult infected biomass")$N, 
+                                      BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
+                                      BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
+                                      simtime = years/2, gs_time = gs_days, 
+                                      disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
+    
+    # create figure
+    print(ggplot(mod_out_disc_ctrl, aes(x = time, y = N)) +
+            geom_line() +
+            theme_classic() +
+            facet_wrap(~ species, scales = "free_y") +
+            labs(title = paste0(parms_sub$Parameter, "=", parms_sub$Estimate)))
+    
+    # save data table
+    mod_out[[i]] <- mod_out_disc_ctrl %>%
+      mutate(Parameter = parms_sub$Parameter,
+             Estimate = parms_sub$Estimate)
+  }
+  
+  # stop figure device
+  dev.off()
+  
+  # collapse list
+  mod_out2 <- mod_out %>%
+    bind_rows()
+  
+  # save file
+  write_csv(mod_out2, paste0("output/", filename, ".csv"))
+  
+}
+
+sens_sim_dat <- function(dat_in) {
+  
+  # recovered perennial biomass
+  per_bio_alone <- 719.323
+  
+  # select last date
+  # combine perennial life stages
+  dat_out <- dat_in %>%
+    filter(species %in% c("Perennial adult biomass",
+                          "Perennial first-year biomass") &
+             time == max(time)) %>%
+    mutate(species = str_replace_all(species, " ", "_"),
+           species = str_replace_all(species, "-", "_")) %>%
+    pivot_wider(names_from = "species",
+                values_from = "N") %>%
+    mutate(Perennial_biomass = Perennial_first_year_biomass + Perennial_adult_biomass,
+           Impact = per_bio_alone/Perennial_biomass)
+  
+  return(dat_out)
+  
+}
+
+
+#### sensitivity analysis: survival ####
+
+# run simulations
+sens_sim(parms_vary = c("e_A", "e_P", "l_P"),
+         parms_range = c(0.5, 1), 
+         parms_n = 10, 
+         filename = "sensitivity_analysis_e")
+
+# import simulations
+sens_e <- read_csv("output/sensitivity_analysis_e.csv")
+
+# process data
+sens_e2 <- sens_e %>%
+  sens_sim_dat() %>%
+  mutate(Plant_group = case_when(Parameter == "e_A" ~ "invader",
+                                 Parameter == "e_P" ~ "1st yr competitor",
+                                 Parameter == "l_P" ~ "adult competitor") %>%
+           fct_relevel("invader"))
+
+# figure
+sens_e_fig <- ggplot(sens_e2, aes(x = Estimate, y = Impact, color = Plant_group)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line() +
+  labs(y = expression(paste("Impact (competitor relative ", biomass^-1, ")", sep = "")),
+       title = "A",
+       x = "Establishment/survival") +
+scale_color_viridis_d(option = "A", end = 0.9, name = "Plant group") +
+  fig_theme +
+  theme(plot.title = element_text(size = 10, hjust = -0.04, face = "bold"))
+
+
+#### sensitivity analysis: growth rate ####
+
+# run simulations
+sens_sim(parms_vary = c("r_A", "r_F", "r_P"),
+         parms_range = c(0.01, 0.05), 
+         parms_n = 10, 
+         filename = "sensitivity_analysis_r")
+
+# import simulations
+sens_r <- read_csv("output/sensitivity_analysis_r.csv")
+
+# process data
+sens_r2 <- sens_r %>%
+  sens_sim_dat() %>%
+  mutate(Plant_group = case_when(Parameter == "r_A" ~ "invader",
+                                 Parameter == "r_F" ~ "1st yr competitor",
+                                 Parameter == "r_P" ~ "adult competitor") %>%
+           fct_relevel("invader"))
+
+# figure
+sens_r_fig <- ggplot(sens_r2, aes(x = Estimate, y = Impact, color = Plant_group)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line() +
+  coord_cartesian(ylim = c(0, 20)) +
+  labs(title = "B",
+       x = "Growth rate") +
+  scale_color_viridis_d(option = "A", end = 0.9) +
+  fig_theme +
+  theme(axis.title.y = element_blank(),
+        legend.position = "none",
+        plot.title = element_text(size = 10, hjust = -0.04, face = "bold"))
+
+
+#### sensitivity analysis: comp. effect A ####
+
+# run simulations
+sens_sim(parms_vary = c("alpha_AA", "alpha_FA"),
+         parms_range = c(0, 0.003), 
+         parms_n = 10, 
+         filename = "sensitivity_analysis_alphaiA")
+
+# accidentally left this out above
+sens_sim(parms_vary = c("alpha_PA"),
+         parms_range = c(0, 0.003), 
+         parms_n = 10, 
+         filename = "sensitivity_analysis_alphaPA")
+
+sens_alphaFAA <- read_csv("output/sensitivity_analysis_alphaiA.csv")
+sens_alphaPA <- read_csv("output/sensitivity_analysis_alphaPA.csv")
+sens_alphaiA <- full_join(sens_alphaFAA, sens_alphaPA)
+
+# process data
+sens_alphaiA2 <- sens_alphaiA %>%
+  sens_sim_dat() %>%
+  mutate(Plant_group = case_when(Parameter == "alpha_AA" ~ "invader",
+                                 Parameter == "alpha_FA" ~ "1st yr competitor",
+                                 Parameter == "alpha_PA" ~ "adult competitor") %>%
+           fct_relevel("invader"))
+
+# alpha_FA > 0.001 and alpha_PA = 0 causes first year susceptible biomass <0, but it's ~0 
+# alpha_AA = 0 causes annual susceptible biomass to fluctuate, but it's very small, especially relative to annual infected biomass
+
+# figure
+sens_alphaiA_fig <- ggplot(sens_alphaiA2, aes(x = Estimate, y = Impact, color = Plant_group)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line() +
+  coord_cartesian(ylim = c(0, 20)) +
+  labs(title = "C",
+       x = "Invader effects") +
+  scale_color_viridis_d(option = "A", end = 0.9) +
+  fig_theme +
+  theme(axis.title.y = element_blank(),
+        legend.position = "none",
+        plot.title = element_text(size = 10, hjust = -0.04, face = "bold"))
+
+
+#### sensitivity analysis: seed production ####
+
+# run simulations
+sens_sim(parms_vary = c("c_A", "c_F", "c_P"),
+         parms_range = c(6, 80), 
+         parms_n = 10, 
+         filename = "sensitivity_analysis_c")
+
+# import simulations
+sens_c <- read_csv("output/sensitivity_analysis_c.csv")
+
+# process data
+sens_c2 <- sens_c %>%
+  sens_sim_dat() %>%
+  mutate(Plant_group = case_when(Parameter == "c_A" ~ "invader",
+                                 Parameter == "c_F" ~ "1st yr competitor",
+                                 Parameter == "c_P" ~ "adult competitor") %>%
+           fct_relevel("invader"))
+
+# figure
+sens_c_fig <- ggplot(sens_c2, aes(x = Estimate, y = Impact, color = Plant_group)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line() +
+  labs(title = "D",
+       x = "Seed production") +
+  scale_color_viridis_d(option = "A", end = 0.9) +
+  fig_theme +
+  theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = 10, hjust = -0.04, face = "bold"))
+
+
+#### sensitivity analysis: virulence ####
+
+# run simulations
+sens_sim(parms_vary = c("v_A", "v_F", "v_P"),
+         parms_range = c(0, 0.01), 
+         parms_n = 10, 
+         filename = "sensitivity_analysis_v")
+
+# import simulations
+sens_v <- read_csv("output/sensitivity_analysis_v.csv")
+
+# process data
+sens_v2 <- sens_v %>%
+  sens_sim_dat() %>%
+  mutate(Plant_group = case_when(Parameter == "v_A" ~ "invader",
+                                 Parameter == "v_F" ~ "1st yr competitor",
+                                 Parameter == "v_P" ~ "adult competitor") %>%
+           fct_relevel("invader"))
+
+# figure
+sens_v_fig <- ggplot(sens_v2, aes(x = Estimate, y = Impact, color = Plant_group)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line() +
+  labs(title = "E",
+       x = "Virulence") +
+  scale_color_viridis_d(option = "A", end = 0.9) +
+  fig_theme +
+  theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = 10, hjust = -0.04, face = "bold"))
+
+
+#### sensitivity analysis figure ####
+pdf("output/discrete_no_seed_infection_sensitivity_analysis.pdf", width = 5.5, height = 3.5)
+sens_e_fig + theme(legend.position = "none",
+                   axis.title.y = element_blank()) + 
+  sens_r_fig + sens_alphaiA_fig +
+  sens_c_fig + sens_v_fig + 
+  get_legend(sens_e_fig) +
+  plot_layout(nrow = 2)
+grid::grid.draw(grid::textGrob(sens_e_fig$labels$y, x = 0.01, rot = 90,
+                               gp = grid::gpar(fontsize = 7)))
+dev.off()

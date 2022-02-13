@@ -17,6 +17,7 @@ library(cowplot)
 library(brms)
 library(tidybayes)
 library(lazerhawk)
+library(patchwork)
 
 # import models
 load("output/focal_seed_density_model_2018_density_exp.rda")
@@ -241,8 +242,8 @@ fig_theme <- theme_bw() +
         strip.placement = "outside",
         plot.title = element_text(size = 8, hjust = 0.5, face = "bold"))
 
-col_pal = c("black", "#238A8DFF")
-col_pal2 = c("black", "#482677FF")
+col_pal = c("black", "#238A8D")
+col_pal2 = c("black", "#FDE725")
 
 # dodge size
 dodge_width <- 3
@@ -251,20 +252,20 @@ dodge_width <- 3
 #### figure ####
 
 # labels
-plot_labels <- c(biomass = "Plot~biomass~(g~m^-2)",
-                 seeds = "Plot~seeds~(m^-2)")
+plot_labels <- c(biomass = "Biomass~(g~m^-2)",
+                 seeds = "Seed~production~(m^-2)")
 
-response_labels <- c(growth = "ln(Biomass) (g)",
-                     seeds = "ln(Seeds + 1)")
+response_labels <- c(growth = "Biomass (ln[g])",
+                     seeds = "Seed production (ln[x+1])")
 
-response_labels2 <- c(growth = "ln(Tiller growth)",
-                     seeds = "ln(Seeds + 1)")
+response_labels2 <- c(growth = "Tiller growth (ln[x])",
+                     seeds = "Seed production (ln[x+1])")
 
 focal_labels <- c("Invader (Mv)" = "Invader (Mv)",
                   "Adult competitor (Ev)" = "Adult competitor (Ev)",
                   "First-year competitor (Ev)" = "1st yr competitor (Ev)")
 
-# invader figure
+# abundance figure
 inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
@@ -283,7 +284,7 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
   theme(legend.position = "none",
         axis.title.y = element_blank())
 
-# competitor figure
+# per capita figure
 percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
@@ -304,27 +305,27 @@ percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
         axis.title.y = element_blank())
 
 # litter figure
-mvLitFig <- ggplot(mvLitDat2, aes(x = litter.g.m2, y = prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
-  geom_ribbon(data = mvEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
-  geom_line(data = mvEstPredDat, aes(y = Est)) +
+mvLitFig <- ggplot(mvLitDat2, aes(x = litter.g.m2, y = 100*prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
+  geom_ribbon(data = mvEstPredDat, aes(y = 100*Est, ymin = 100*Est_lower, ymax = 100*Est_upper), alpha = 0.3, color = NA) +
+  geom_line(data = mvEstPredDat, aes(y = 100*Est)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
   stat_summary(fun = "mean", geom = "point", size = 2, position = position_dodge(5)) +
   scale_color_manual(values = col_pal2) +
   scale_fill_manual(values = col_pal2) +
   facet_grid(cols = vars(focal)) +
-  labs(y = "Emergence",
+  labs(y = "Emergence (%)",
        title = "Invader litter effects") +
   fig_theme +
   theme(axis.title.x = element_blank(),
         legend.position = "none")
 
-evLitFig <- ggplot(evLitDat2, aes(x = litter.g.m2, y = ev_prop_germ)) +
-  geom_ribbon(data = evEstPredDat, aes(y = Est, ymin = Est_lower, ymax = Est_upper), alpha = 0.3, color = NA) +
-  geom_line(data = evEstPredDat, aes(y = Est)) +
+evLitFig <- ggplot(evLitDat2, aes(x = litter.g.m2, y = 100*ev_prop_germ)) +
+  geom_ribbon(data = evEstPredDat, aes(y = 100*Est, ymin = 100*Est_lower, ymax = 100*Est_upper), alpha = 0.3, color = NA) +
+  geom_line(data = evEstPredDat, aes(y = 100*Est)) +
   geom_point() +
   facet_grid(cols = vars(focal)) +
   labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
-       y = "Emergence") +
+       y = "Emergence (%)") +
   fig_theme
 
 # legend figure
@@ -344,19 +345,26 @@ leg_fig <- ggplot(leg_dat, aes(x = x, y = y, color = trt, fill = trt)) +
   scale_fill_manual(values = c(col_pal, col_pal2[2]), name = "Disease treatment") +
   fig_theme
 
-lit_fig <- plot_grid(mvLitFig, evLitFig,
-                    nrow = 2)
-
-comb_fig <- plot_grid(inv_fig, percap_fig,
-                      lit_fig,
-                      labels = LETTERS[1:3],
-                      label_size = 10,
-                      nrow = 1,
-                      rel_widths = c(0.45, 1, 0.4))
+# lit_fig <- plot_grid(mvLitFig, evLitFig,
+#                     nrow = 2)
+# 
+# comb_fig <- plot_grid(inv_fig, percap_fig,
+#                       lit_fig,
+#                       labels = LETTERS[1:3],
+#                       label_size = 10,
+#                       nrow = 1,
+#                       rel_widths = c(0.45, 1, 0.4))
 
 leg <- get_legend(leg_fig)
 
-pdf("output/mv_density_figure_2019_density_exp.pdf", width = 7.08, height = 3.15)
+comb_fig <- (inv_fig + percap_fig +
+               (mvLitFig + (evLitFig + plot_layout(tag_level = 'new')) 
+                + plot_layout(ncol = 1)) +
+               plot_layout(width = c(0.4, 1, 0.4)) +
+               plot_annotation(tag_levels = 'A') & 
+               theme(plot.tag = element_text(size = 10, face = "bold")))
+   
+pdf("output/mv_density_figure_2019_density_exp.pdf", width = 7.08, height = 3.54)
 plot_grid(comb_fig, leg, nrow = 2, rel_heights = c(1, 0.05))
 dev.off()
 

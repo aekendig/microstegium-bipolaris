@@ -762,7 +762,7 @@ col_pal = c("black", "#238A8DFF")
 
 textSize = 2.5
 
-box_shade = "gray92"
+# box_shade = "gray92"
 
 # yearText <- tibble(year = c("2018", "2019"),
 #                    bg_severity = c(0, 0),
@@ -793,7 +793,7 @@ leg <- get_legend(legFig)
 
 # 2018 figure
 pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = foc_healthy_change)) +
-  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  #geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_hline(yintercept = 0, size = 0.15) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
@@ -805,11 +805,12 @@ pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = bg_severity, y = f
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_linetype_manual(values = c("dotted", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  scale_fill_manual(values = col_pal) +
+  # scale_fill_manual(values = c(col_pal, "white", box_shade)) +
   xlab("Initial disease severity (%)") +
-  ylab("Change in infected tissue") +
+  ylab(expression(paste("Change in infected tissue (ln[", healthy[t], "/", healthy[t+1], "])", sep = ""))) +
   fig_theme
 
 pdf("output/plot_transmission_pairwise_figure_2018_density_exp.pdf", width = 3.94, height = 4.33)
@@ -820,7 +821,7 @@ dev.off()
 
 # 2019 figure
 pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = foc_healthy_change)) +
-  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  # geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_hline(yintercept = 0, size = 0.15) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
@@ -832,15 +833,16 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = bg_severity, y = f
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_linetype_manual(values = c("dotted", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  scale_fill_manual(values = col_pal) +
+  # scale_fill_manual(values = c(col_pal, "white", box_shade)) +
   xlab("Initial disease severity (%)") +
-  ylab("Change in infected tissue") +
+  ylab(expression(paste("Change in infected tissue (ln[", healthy[t], "/", healthy[t+1], "])", sep = ""))) +
   fig_theme
 
 edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_change)) +
-  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  # geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_hline(yintercept = 0, size = 0.15) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
@@ -858,7 +860,8 @@ edgeD2Fig <- ggplot(predD2EdgeDat2, aes(x = edge_severity, y = foc_healthy_chang
              switch = "both") +
   # scale_linetype_manual(values = c("dashed", "solid"), guide = F) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", "gray85")) +
+  scale_fill_manual(values = col_pal) +
+  # scale_fill_manual(values = c(col_pal, "white", box_shade)) +
   xlab("Disease severity\nof invader (Mv)\nsurrounding plots (%)") +
   fig_theme +
   theme(axis.text.y = element_blank(),
