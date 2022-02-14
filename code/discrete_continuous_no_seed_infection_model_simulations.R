@@ -618,6 +618,8 @@ for(i in 1:nrow(alpha_AA_PP_vals)){
 }
 dev.off()
 
+# per_bio_alone <- 719.323
+
 # select last time point
 # combine adult & first-year perennial
 mod_AA_PP3 <- mod_AA_PP2 %>%
@@ -652,12 +654,13 @@ alpha_AA_PP_fig <- ggplot(mod_AA_PP3, aes(x = RelAnnual_biomass, y = Impact, by 
                         labels = c("least", "most")) +
   labs(x = "Invader abundance (relative biomass)", 
        title = "C") +
+  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact))) +
   fig_theme +
   theme(axis.title.y = element_blank(),
         axis.text.y = element_blank(),
+        legend.margin = margin(-0.1, 0, 0, 0, unit = "cm"),
         legend.box = "horizontal",
         legend.justification = "bottom") +
-  coord_cartesian(ylim = c(0, max(mod_AA_PA3$Impact))) +
   guides(color = guide_colourbar(ticks = F, barheight = 6.5))
 
 
