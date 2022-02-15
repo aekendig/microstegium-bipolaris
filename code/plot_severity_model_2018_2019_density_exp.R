@@ -758,7 +758,7 @@ fig_theme <- theme_bw() +
         strip.text = element_text(size = 7),
         strip.placement = "outside")
 
-col_pal = c("black", "#238A8DFF")
+col_pal = c("black", "#238A8D")
 
 textSize = 2.5
 

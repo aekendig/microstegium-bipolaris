@@ -360,7 +360,7 @@ leg <- get_legend(leg_fig)
 comb_fig <- (inv_fig + percap_fig +
                (mvLitFig + (evLitFig + plot_layout(tag_level = 'new')) 
                 + plot_layout(ncol = 1)) +
-               plot_layout(width = c(0.4, 1, 0.4)) +
+               plot_layout(width = c(0.36, 1, 0.35)) +
                plot_annotation(tag_levels = 'A') & 
                theme(plot.tag = element_text(size = 10, face = "bold")))
    

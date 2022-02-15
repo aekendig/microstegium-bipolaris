@@ -141,10 +141,12 @@ ggplot(growthD2Dat, aes(density, plant_growth, color = treatment)) +
 
 # remove plot 1
 growthD1Dat2 <- growthD1Dat %>%
-  filter(plot > 1)
+  filter(plot > 1) %>%
+  mutate(background = fct_drop(background))
 
 growthD2Dat2 <- growthD2Dat %>%
-  filter(plot > 1)
+  filter(plot > 1) %>%
+  mutate(background = fct_drop(background))
 
 # biomass visualization
 ggplot(growthD2Dat2, aes(plot_biomass, plant_growth, color = treatment)) +
@@ -356,22 +358,22 @@ biomassD2bTrtEff <- hypothesis(growthD2Mod2b,
 
 # combine alphas
 alphaDat <- densityD1alphas[[1]] %>%
-  mutate(year = 2018,
+  mutate(year = "2018",
          response = "tillers",
          gradient = "density",
          data = "full") %>%
   full_join(densityD2alphas[[1]] %>%
-              mutate(year = 2019,
+              mutate(year = "2019",
                      response = "biomass",
                      gradient = "density",
                      data = "full")) %>%
   full_join(biomassD2alphas[[1]] %>%
-              mutate(year = 2019,
+              mutate(year = "2019",
                      response = "biomass",
                      gradient = "biomass",
                      data = "full")) %>%
   full_join(biomassD2balphas[[1]] %>%
-              mutate(year = 2019,
+              mutate(year = "2019",
                      response = "biomass",
                      gradient = "biomass",
                      data = "no high Ev A")) %>%
@@ -396,30 +398,41 @@ alphaDatSave <- alphaDat %>%
   left_join(growthD2Dat2 %>%
               select(foc, focal, bg, background) %>%
               unique()) %>% 
-  mutate(treatment = fct_recode(treatment, "control" = "control (water)"),
-         focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
+  mutate(focal = case_when(focal == "Mv" ~ "Invader (Mv)",
+                           focal == "Ev seedling" ~ "1st yr competitor (Ev)",
+                           focal == "Ev adult" ~ "Adult competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
+         background = case_when(background == "Mv" ~ "Invader (Mv)",
+                                background == "Ev seedling" ~ "1st yr competitor (Ev)",
+                                background == "Ev adult" ~ "Adult competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)")) %>%
   select(year, response, gradient, data, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper, sig) %>%
   arrange(year, response, gradient, data, background, focal, treatment)
 
+# report alpha withouth high Ev
+alphaDatSave %>%
+  filter(data == "no high Ev A" & 
+           focal == "Adult competitor (Ev)" & 
+           background == "Adult competitor (Ev)")
+
 # combine treatment effects
 trtEffDatSave <- densityD1TrtEff[[1]] %>%
-  mutate(Year = 2018,
+  mutate(Year = "2018",
          Data = "full",
          Response = "tillers",
          Gradient = "density") %>%
   full_join(densityD2TrtEff[[1]] %>%
-              mutate(Year = 2019,
+              mutate(Year = "2019",
                      Data = "full",
                      Response = "biomass",
                      Gradient = "density")) %>%
   full_join(biomassD2TrtEff[[1]] %>%
-              mutate(Year = 2019,
+              mutate(Year = "2019",
                      Data = "full",
                      Response = "biomass",
                      Gradient = "biomass")) %>%
   full_join(biomassD2bTrtEff[[1]] %>%
-              mutate(Year = 2019,
+              mutate(Year = "2019",
                      Data = "no high Ev A",
                      Response = "biomass",
                      Gradient = "biomass")) %>%
@@ -431,8 +444,14 @@ trtEffDatSave <- densityD1TrtEff[[1]] %>%
   left_join(growthD2Dat2 %>%
               select(foc, focal, bg, background) %>%
               unique()) %>% 
-  mutate(focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling"),
+  mutate(focal = case_when(focal == "Mv" ~ "Invader (Mv)",
+                           focal == "Ev seedling" ~ "1st yr competitor (Ev)",
+                           focal == "Ev adult" ~ "Adult competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
+         background = case_when(background == "Mv" ~ "Invader (Mv)",
+                                background == "Ev seedling" ~ "1st yr competitor (Ev)",
+                                background == "Ev adult" ~ "Adult competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
          sig = case_when((CI.Lower < 0 & CI.Upper < 0) | (CI.Lower > 0 & CI.Upper > 0) ~ "omits 0",
                          TRUE ~ "includes 0")) %>%
   select(-c(Hypothesis, Evid.Ratio, Post.Prob, Star, foc_bg, foc, bg)) %>%
@@ -517,16 +536,21 @@ predD2Dat <- tibble(foc = c("a", "s", "m")) %>%
 
 predDat <- predD1Dat %>%
   full_join(predD2Dat) %>%
-  mutate(focal = fct_recode(foc, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a") %>%
-           fct_relevel("Ev adult", "Ev first-year"),
-         background = fct_recode(bg, Mv = "m", "Ev first-year" = "s", "Ev adult" = "a") %>%
-           fct_relevel("Ev adult", "Ev first-year"),
+  mutate(focal = fct_recode(foc, "Invader (Mv)" = "m", 
+                            "1st yr competitor (Ev)" = "s", 
+                            "Adult competitor (Ev)" = "a") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
+         background = fct_recode(bg, "Invader (Mv)" = "m", 
+                                 "1st yr competitor (Ev)" = "s", 
+                                 "Adult competitor (Ev)" = "a") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
          treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_rev())
 
 # combine with preddat
 predDat2 <- predDat %>%
-  left_join(alphaDat) %>%
+  left_join(alphaDatSave %>%
+              filter(data == "full" &  (year == "2018" | gradient == "biomass"))) %>%
   mutate(intra = case_when(foc == bg ~ "yes",
                            foc %in% c("a", "s") & bg %in% c("a", "s") ~ "yes",
                            TRUE ~ "no"))
@@ -543,17 +567,23 @@ figDat <- growthD1Dat2 %>%
               unique()) %>%
   mutate(treatment = fct_recode(treatment, "control (water)" = "water") %>%
            fct_relevel("control (water)"),
-         focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling"),
+         focal = case_when(focal == "Mv" ~ "Invader (Mv)",
+                           focal == "Ev seedling" ~ "1st yr competitor (Ev)",
+                           focal == "Ev adult" ~ "Adult competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
+         background = case_when(background == "Mv" ~ "Invader (Mv)",
+                                background == "Ev seedling" ~ "1st yr competitor (Ev)",
+                                background == "Ev adult" ~ "Adult competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)", "1st yr competitor (Ev)"),
          density_level = fct_relevel(density_level, "low", "medium"),
          intra = case_when(focal ==  background ~ "yes",
-                           focal %in% c("Ev adult", "Ev first-year") &  background %in% c("Ev adult", "Ev first-year") ~ "yes",
+                           str_detect(focal, "Ev") == T &  str_detect(background, "Ev") == T ~ "yes",
                            TRUE ~ "no"))
 
 # alphas for figure
 # sig beta values
-alphaDat2 <- alphaDat %>%
-  filter(sig == "omits 0") %>%
+alphaDat2 <- alphaDatSave %>%
+  filter(data == "full" &  (year == "2018" | gradient == "biomass") & sig == "omits 0") %>%
   left_join(predDat2 %>%
               group_by(year, foc, focal, bg, background) %>%
               summarise(density = max(density, na.rm = T),
@@ -578,22 +608,24 @@ fig_theme <- theme_bw() +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 8, color = "black"),
-        axis.text.x = element_text(size = 8, color = "black"),
-        axis.title.y = element_text(size = 10),
-        axis.title.x = element_text(size = 10),
+        axis.text.y = element_text(size = 7, color = "black"),
+        axis.text.x = element_text(size = 7, color = "black"),
+        axis.title.y = element_text(size = 7),
+        axis.title.x = element_text(size = 7),
         legend.text = element_text(size = 7),
-        legend.title = element_text(size = 8),
+        legend.title = element_text(size = 7),
         legend.background = element_blank(),
         legend.position = "none",
         legend.margin = margin(-0.3, 0, -0.1, 0, unit = "cm"),
         strip.background = element_blank(),
-        strip.text = element_text(size = 8),
+        strip.text = element_text(size = 7),
         strip.placement = "outside")
 
-col_pal = c("black", "#238A8DFF")
-textSize = 3
-box_shade = "gray92"
+col_pal = c("black", "#238A8D")
+
+textSize = 2.5
+
+# box_shade = "gray92"
 
 # yearText <- tibble(year = c("2018", "2019"),
 #                    density = c(3.1, 3.1),
@@ -625,31 +657,35 @@ leg <- get_legend(legFig)
 
 # 2018
 pairD1Fig <- ggplot(filter(predDat2, year == "2018"), aes(x = density, y = plant_growth)) +
-  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+  # geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2018"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
+  geom_text(data = filter(alphaDat2, year == "2018"), 
+            aes(label = paste("alpha", "==", comp, sep = ""), 
+                color = treatment), parse = T, hjust = 1, vjust = 0.2, show.legend = F, size = textSize) +
   facet_grid(rows = vars(focal),
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_linetype_manual(values = c("dotted", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
-  xlab(expression(paste("Competitor density (", m^-2, ")", sep = ""))) +
-  ylab("Plant growth") +
+  # scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  scale_fill_manual(values = col_pal) +
+  xlab(expression(paste("Background density (", m^-2, ")", sep = ""))) +
+  ylab(expression(paste("Focal growth (ln[", tillers[July], "/", tillers[June], "])", sep = ""))) +
   fig_theme
 
 # print
-tiff("output/focal_growth_pairwise_figure_2018_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300, compression = "lzw")
+pdf("output/focal_growth_pairwise_figure_2018_density_exp.pdf", width = 3.94, height = 4.33)
 plot_grid(pairD1Fig, leg,
           nrow = 2, 
           rel_heights = c(1, 0.15))
 dev.off()
 
 # 2019
-pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = log(plot_biomass), y = plant_growth)) +
-  geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
+pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = plot_biomass, y = plant_growth)) +
+  # geom_rect(aes(fill = intra), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment, linetype = sig)) +
   geom_point(data = filter(figDat, year == "2019"), aes(color = treatment, shape = density_level), alpha = 0.5, size = 0.75) +
@@ -660,11 +696,11 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = log(plot_biomass),
              cols = vars(background),
              scales = "free",
              switch = "both") +
-  scale_linetype_manual(values = c("dashed", "solid")) +
+  scale_linetype_manual(values = c("dotted", "solid")) +
   scale_color_manual(values = col_pal) +
-  scale_fill_manual(values = c(col_pal, "white", box_shade)) +
-  scale_x_continuous(breaks = c(2, 3, 4, 5, 6)) +
-  xlab(expression(paste("Competitor biomass (ln[g/", m^2, "])", sep = ""))) +
+  # scale_fill_manual(values = c(col_pal, "white", box_shade)) +
+  scale_fill_manual(values = col_pal) +
+  xlab(expression(paste("Background biomass (g/", m^2, ")", sep = ""))) +
   ylab("Focal biomass (ln[g])") +
   fig_theme
 
@@ -687,7 +723,7 @@ pairD2Fig <- ggplot(filter(predDat2, year == "2019"), aes(x = log(plot_biomass),
 #                       rel_heights = c(1, 0.4))
 
 # combine
-tiff("output/focal_growth_pairwise_figure_2019_density_exp.tiff", width = 9, height = 10, units = "cm", res = 300, compression = "lzw")
+pdf("output/focal_growth_pairwise_figure_2019_density_exp.pdf", width = 3.94, height = 4.33)
 # plot_grid(pairD2Fig + theme(legend.position = "none"), rightFig,
 #           nrow = 1, ncol = 2,
 #           labels = c("A", NA),
