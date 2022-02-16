@@ -529,7 +529,7 @@ lit_parms <- tibble(Parameter = c("h",
                                   "s_P", "s_A",
                                   "beta_AC", "beta_FC", "beta_PC", 
                                   "v_A", "v_F", "v_P", 
-                                  "b"),
+                                  "a"),
                     Plant_group = c(NA_character_,
                                     NA_character_,
                                     "perennial",
@@ -573,7 +573,6 @@ parms <- growth_mod_parms3 %>%
   full_join(ev_lit_parms) %>%
   full_join(lit_parms)
 
-#### start here ####
 # continuous parameters
 con_parms <- growth_mod_parms3 %>%
   select(Parameter_trt, Estimate) %>%
@@ -583,9 +582,29 @@ con_parms <- growth_mod_parms3 %>%
   full_join(lit_parms %>%
               filter(Parameter %in% c("beta_AC", "beta_FC", "beta_PC",
                                       "v_A", "v_F", "v_P",
-                                      "b", "h")))
+                                      "a", "h"))) %>%
+  select(Parameter, Estimate)
+
+# discrete parameters
+disc_parms <- mv_germ_parms %>%
+  full_join(ev_germ_parms) %>%
+  full_join(mv_seed_parms) %>%
+  full_join(evS_seed_parms) %>%
+  full_join(evA_seed_parms) %>%
+  full_join(est_mod_parms) %>%
+  full_join(evA_surv_parms) %>%
+  full_join(evA_new_bio_parms) %>%
+  full_join(init_bio_parms) %>%
+  full_join(mv_lit_parms) %>%
+  full_join(ev_lit_parms) %>%
+  full_join(lit_parms %>%
+              filter(Parameter %in% c("s_P", "s_A",
+                                       "d", "h"))) %>%
+  select(Parameter, Treatment, Estimate)
 
 
 #### export ####
 write_csv(parms, "output/model_parameters_2018_2019_density_exp.csv")
 write_csv(edge_mod_samps, "output/edge_transmission_model_parameters_2019_density_exp.csv")
+write_csv(con_parms, "output/continuous_model_parameters_2018_2019_density_exp.csv")
+write_csv(disc_parms, "output/discrete_model_parameters_2018_2019_density_exp.csv")
