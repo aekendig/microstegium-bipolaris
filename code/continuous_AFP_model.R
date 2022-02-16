@@ -38,10 +38,6 @@ cont_AFP_mod <- function(t, x, params) {
   beta_PF <- as.numeric(params[params$Parameter == "beta_PF", "Estimate"])
   beta_PP <- as.numeric(params[params$Parameter == "beta_PP", "Estimate"])
   
-  # k_A <- as.numeric(params[params$Parameter == "k_A", "Estimate"])
-  # k_F <- as.numeric(params[params$Parameter == "k_F", "Estimate"])
-  # k_P <- as.numeric(params[params$Parameter == "k_P", "Estimate"])
-  
   v_A <- as.numeric(params[params$Parameter == "v_A", "Estimate"])
   v_F <- as.numeric(params[params$Parameter == "v_F", "Estimate"])
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
@@ -51,7 +47,7 @@ cont_AFP_mod <- function(t, x, params) {
   m_P <- as.numeric(params[params$Parameter == "m_P", "Estimate"])
   
   h <- as.numeric(params[params$Parameter == "h", "Estimate"])
-  b <- as.numeric(params[params$Parameter == "b", "Estimate"])
+  a <- as.numeric(params[params$Parameter == "a", "Estimate"])
   
   # derived values
   B_A <- exp(LogB_A)
@@ -65,14 +61,11 @@ cont_AFP_mod <- function(t, x, params) {
   dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AF * B_F - alpha_AP * B_P) - m_A - v_A * I_A / B_A
   dLogBFdt <- r_F * (1 - alpha_FA * B_A - alpha_FF * B_F - alpha_FP * B_P) - m_F - v_F * I_F / B_F
   dLogBPdt <- r_P * (1 - alpha_PA * B_A - alpha_PF * B_F - alpha_PP * B_P) - m_P - v_P * I_P / B_P
-  # dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F + beta_AP * S_A * I_P)/(k_A + B_A) - (m_A + v_A) * I_A
-  # dIFdt <- (beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F + beta_FP * S_F * I_P)/(k_F + B_F) - (m_F + v_F) * I_F
-  # dIPdt <- (beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PF * S_P * I_F + beta_PP * S_P * I_P)/(k_P + B_P) - (m_P + v_P) * I_P
   dIAdt <- beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AF * S_A * I_F + beta_AP * S_A * I_P - (m_A + v_A) * I_A
   dIFdt <- beta_FC * S_F * C + beta_FA * S_F * I_A + beta_FF * S_F * I_F + beta_FP * S_F * I_P - (m_F + v_F) * I_F
   dIPdt <- beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PF * S_P * I_F + beta_PP * S_P * I_P - (m_P + v_P) * I_P
   dDdt <- m_A * B_A + v_A * I_A + m_F * B_F + v_F * I_F + m_P * B_P + v_P * I_P
-  dCdt <- h * ((m_A + v_A) * I_A + (m_F + v_F) * I_F + (m_P + v_P) * I_P) - b * C
+  dCdt <- h * ((m_A + v_A) * I_A + (m_F + v_F) * I_F + (m_P + v_P) * I_P) - a * C
   
   # combine values
   dxdt <- c(dLogBAdt, dLogBFdt, dLogBPdt, dIAdt, dIFdt, dIPdt, dDdt, dCdt)

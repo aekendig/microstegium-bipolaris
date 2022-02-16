@@ -54,30 +54,30 @@ b_P0 <- init_bio_parms %>% filter(Parameter == "b_P") %>% pull(Estimate)
 growth_mod_samps <- as_draws_df(growthD2Mod2)  %>%
   rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
   rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(r_A_I = Intercept - log(b_A0),
-            r_F_I = (Intercept + focs) - log(b_F0),
-            r_P_I = (Intercept + foca) - log(b_P0),
-            r_A_S = (Intercept + fungicide) - log(b_A0),
-            r_F_S = (Intercept + focs + fungicide + focs_fungicide) - log(b_F0),
-            r_P_S = (Intercept + foca + fungicide + foca_fungicide) - log(b_P0),
-            alpha_AA_I = plot_biomass,
-            alpha_FA_I = plot_biomass + focs_plot_biomass,
-            alpha_PA_I = plot_biomass + foca_plot_biomass,
-            alpha_AF_I = plot_biomass + plot_biomass_bgs,
-            alpha_FF_I = plot_biomass + focs_plot_biomass + plot_biomass_bgs + focs_plot_biomass_bgs,
-            alpha_PF_I = plot_biomass + foca_plot_biomass + plot_biomass_bgs + foca_plot_biomass_bgs,
-            alpha_AP_I = plot_biomass + plot_biomass_bga,
-            alpha_FP_I = plot_biomass + plot_biomass_bga + focs_plot_biomass + focs_plot_biomass_bga,
-            alpha_PP_I = plot_biomass + foca_plot_biomass + plot_biomass_bga + foca_plot_biomass_bga,
-            alpha_AA_S = plot_biomass + fungicide_plot_biomass,
-            alpha_FA_S = plot_biomass + fungicide_plot_biomass + focs_plot_biomass + focs_fungicide_plot_biomass,
-            alpha_PA_S = plot_biomass + fungicide_plot_biomass + foca_plot_biomass + foca_fungicide_plot_biomass,
-            alpha_AF_S = plot_biomass + plot_biomass_bgs + fungicide_plot_biomass + fungicide_plot_biomass_bgs,
-            alpha_FF_S = plot_biomass + focs_plot_biomass + plot_biomass_bgs + focs_plot_biomass_bgs + fungicide_plot_biomass + focs_fungicide_plot_biomass + fungicide_plot_biomass_bgs + focs_fungicide_plot_biomass_bgs,
-            alpha_PF_S = plot_biomass + foca_plot_biomass + plot_biomass_bgs + foca_plot_biomass_bgs + fungicide_plot_biomass + foca_fungicide_plot_biomass + fungicide_plot_biomass_bgs + foca_fungicide_plot_biomass_bgs,
-            alpha_AP_S = plot_biomass + plot_biomass_bga + fungicide_plot_biomass + fungicide_plot_biomass_bga,
-            alpha_FP_S = plot_biomass + plot_biomass_bga + focs_plot_biomass + focs_plot_biomass_bga + fungicide_plot_biomass + fungicide_plot_biomass_bga + focs_fungicide_plot_biomass + focs_fungicide_plot_biomass_bga,
-            alpha_PP_S = plot_biomass + foca_plot_biomass + plot_biomass_bga + foca_plot_biomass_bga + fungicide_plot_biomass + foca_fungicide_plot_biomass + fungicide_plot_biomass_bga + foca_fungicide_plot_biomass_bga) %>%
+  transmute(r_A_ctrl = Intercept - log(b_A0),
+            r_F_ctrl = (Intercept + focs) - log(b_F0),
+            r_P_ctrl = (Intercept + foca) - log(b_P0),
+            r_A_fung = (Intercept + fungicide) - log(b_A0),
+            r_F_fung = (Intercept + focs + fungicide + focs_fungicide) - log(b_F0),
+            r_P_fung = (Intercept + foca + fungicide + foca_fungicide) - log(b_P0),
+            alpha_AA_ctrl = plot_biomass,
+            alpha_FA_ctrl = plot_biomass + focs_plot_biomass,
+            alpha_PA_ctrl = plot_biomass + foca_plot_biomass,
+            alpha_AF_ctrl = plot_biomass + plot_biomass_bgs,
+            alpha_FF_ctrl = plot_biomass + focs_plot_biomass + plot_biomass_bgs + focs_plot_biomass_bgs,
+            alpha_PF_ctrl = plot_biomass + foca_plot_biomass + plot_biomass_bgs + foca_plot_biomass_bgs,
+            alpha_AP_ctrl = plot_biomass + plot_biomass_bga,
+            alpha_FP_ctrl = plot_biomass + plot_biomass_bga + focs_plot_biomass + focs_plot_biomass_bga,
+            alpha_PP_ctrl = plot_biomass + foca_plot_biomass + plot_biomass_bga + foca_plot_biomass_bga,
+            alpha_AA_fung = plot_biomass + fungicide_plot_biomass,
+            alpha_FA_fung = plot_biomass + fungicide_plot_biomass + focs_plot_biomass + focs_fungicide_plot_biomass,
+            alpha_PA_fung = plot_biomass + fungicide_plot_biomass + foca_plot_biomass + foca_fungicide_plot_biomass,
+            alpha_AF_fung = plot_biomass + plot_biomass_bgs + fungicide_plot_biomass + fungicide_plot_biomass_bgs,
+            alpha_FF_fung = plot_biomass + focs_plot_biomass + plot_biomass_bgs + focs_plot_biomass_bgs + fungicide_plot_biomass + focs_fungicide_plot_biomass + fungicide_plot_biomass_bgs + focs_fungicide_plot_biomass_bgs,
+            alpha_PF_fung = plot_biomass + foca_plot_biomass + plot_biomass_bgs + foca_plot_biomass_bgs + fungicide_plot_biomass + foca_fungicide_plot_biomass + fungicide_plot_biomass_bgs + foca_fungicide_plot_biomass_bgs,
+            alpha_AP_fung = plot_biomass + plot_biomass_bga + fungicide_plot_biomass + fungicide_plot_biomass_bga,
+            alpha_FP_fung = plot_biomass + plot_biomass_bga + focs_plot_biomass + focs_plot_biomass_bga + fungicide_plot_biomass + fungicide_plot_biomass_bga + focs_fungicide_plot_biomass + focs_fungicide_plot_biomass_bga,
+            alpha_PP_fung = plot_biomass + foca_plot_biomass + plot_biomass_bga + foca_plot_biomass_bga + fungicide_plot_biomass + foca_fungicide_plot_biomass + fungicide_plot_biomass_bga + foca_fungicide_plot_biomass_bga) %>%
   pivot_longer(cols = everything(),
                names_to = "parameter",
                values_to = "estimate")
@@ -87,9 +87,8 @@ growth_mod_parms <- growth_mod_samps %>%
   group_by(parameter) %>%
   mean_hdi(estimate) %>%
   ungroup() %>%
-  transmute(Parameter_trt = parameter,
-            Parameter = str_replace(parameter, "_S", ""),
-            Parameter = str_replace(Parameter, "_I", ""),
+  transmute(Parameter = str_replace(parameter, "_fung", ""),
+            Parameter = str_replace(Parameter, "_ctrl", ""),
             Plant_group = case_when(str_detect(parameter, "_AA") == T ~ "annual/annual",
                                     str_detect(parameter, "_FA") == T ~ "annual/fy perennial",
                                     str_detect(parameter, "_PA") == T ~ "annual/adult perennial",
@@ -104,7 +103,7 @@ growth_mod_parms <- growth_mod_samps %>%
                                     str_detect(parameter, "r_P") == T ~ "perennial adult"),
             Description = case_when(str_detect(parameter, "alpha") == T ~ "interaction", 
                                     str_detect(parameter, "r") == T ~ "growth rate"),
-            Treatment = if_else(str_detect(parameter, "_S") == T, "fungicide", "control"),
+            Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
             Estimate = case_when(str_detect(parameter, "r_") == T ~ estimate/160, # r may not be sig, but we need an estimate
                                  str_detect(parameter, "alpha_") == T & estimate > 0 ~ 0,
                                  TRUE ~ estimate * -1),
@@ -548,7 +547,7 @@ lit_parms <- tibble(Parameter = c("h",
                                     "infected tissue loss",
                                     "inoculum loss from litter"),
                     Treatment = rep(NA_character_, 11),
-                    Estimate = c(5500, 0.59, 0.05, 0.15, rep(1e-4, 3), rep(1e-3, 3), 0.5),
+                    Estimate = c(5500, 0.59, 0.05, 0.15, rep(1e-5, 3), rep(1e-4, 3), 0.5),
                     Source = c("Benitez et al. 2021", "DeMeester and Richter 2010", "Garrison and Stier 2010", "Redwood et al. 2018", rep("NA", 7))) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
@@ -557,7 +556,6 @@ lit_parms <- tibble(Parameter = c("h",
 
 #### combine ####
 parms <- growth_mod_parms3 %>%
-  select(-Parameter_trt) %>%
   full_join(trans_mod_parms) %>%
   full_join(mv_germ_parms) %>%
   full_join(ev_germ_parms) %>%
@@ -574,16 +572,14 @@ parms <- growth_mod_parms3 %>%
   full_join(lit_parms)
 
 # continuous parameters
-con_parms <- growth_mod_parms3 %>%
-  select(Parameter_trt, Estimate) %>%
-  rename(Parameter = Parameter_trt) %>%
+cont_parms <- growth_mod_parms3 %>%
   full_join(trans_mod_parms) %>%
   full_join(bio_mort_parms) %>%
   full_join(lit_parms %>%
               filter(Parameter %in% c("beta_AC", "beta_FC", "beta_PC",
                                       "v_A", "v_F", "v_P",
                                       "a", "h"))) %>%
-  select(Parameter, Estimate)
+  select(Parameter, Treatment, Estimate)
 
 # discrete parameters
 disc_parms <- mv_germ_parms %>%
@@ -606,5 +602,5 @@ disc_parms <- mv_germ_parms %>%
 #### export ####
 write_csv(parms, "output/model_parameters_2018_2019_density_exp.csv")
 write_csv(edge_mod_samps, "output/edge_transmission_model_parameters_2019_density_exp.csv")
-write_csv(con_parms, "output/continuous_model_parameters_2018_2019_density_exp.csv")
+write_csv(cont_parms, "output/continuous_model_parameters_2018_2019_density_exp.csv")
 write_csv(disc_parms, "output/discrete_model_parameters_2018_2019_density_exp.csv")

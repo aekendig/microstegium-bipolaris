@@ -1,7 +1,7 @@
 Parameter,Plant_group,Description,Treatment,Estimate,Lower,Upper,Units,Source
-beta_AA,annual,transmission from edge,control,0.07980196201789846,0.024523685901463962,0.13956554900188006,day^-1^ g^-1^,experiment
-beta_AA,annual,transmission from edge,fungicide,0.09810231760894847,0.018382421271162814,0.1754800361870806,day^-1^ g^-1^,experiment
-beta_FA,fy perennial,transmission from edge,control,0.10715662851467186,0.024995901072486455,0.18748617815203572,day^-1^ g^-1^,experiment
-beta_FA,fy perennial,transmission from edge,fungicide,0.13624137499891317,0.023393222794270616,0.2451808835684065,day^-1^ g^-1^,experiment
-beta_PA,adult perennial,transmission from edge,control,0.0984384981028664,0.0202421923533081,0.18138685311762223,day^-1^ g^-1^,experiment
-beta_PA,adult perennial,transmission from edge,fungicide,0.11980743182445683,0.013118345358779072,0.231140135938592,day^-1^ g^-1^,experiment
+beta_AA,annual,transmission from edge,control,0.07980196201789846,0.024523685901463962,0.13956554900188006,m^2^ g^-1^ day^-1^,experiment
+beta_AA,annual,transmission from edge,fungicide,0.09810231760894847,0.018382421271162814,0.1754800361870806,m^2^ g^-1^ day^-1^,experiment
+beta_FA,fy perennial,transmission from edge,control,0.10715662851467186,0.024995901072486455,0.18748617815203572,m^2^ g^-1^ day^-1^,experiment
+beta_FA,fy perennial,transmission from edge,fungicide,0.13624137499891317,0.023393222794270616,0.2451808835684065,m^2^ g^-1^ day^-1^,experiment
+beta_PA,adult perennial,transmission from edge,control,0.0984384981028664,0.0202421923533081,0.18138685311762223,m^2^ g^-1^ day^-1^,experiment
+beta_PA,adult perennial,transmission from edge,fungicide,0.11980743182445683,0.013118345358779072,0.231140135938592,m^2^ g^-1^ day^-1^,experiment

@@ -11,7 +11,8 @@ library(patchwork)
 library(ggbreak)
 
 # import parameters
-parms_all <- read_csv("output/model_parameters_2018_2019_density_exp.csv")
+cont_params <- read_csv("output/continuous_model_parameters_2018_2019_density_exp.csv")
+disc_params <- read_csv("output/discrete_model_parameters_2018_2019_density_exp.csv")
 # model_parameters_2018_2019_density_exp.R
 
 # continuous models
@@ -24,7 +25,7 @@ source("code/continuous_F_model.R")
 source("code/continuous_P_model.R")
 
 # discrete model
-source("code/discrete_AFP_no_seed_infection_model.R")
+source("code/discrete_model.R")
 
 # figure settings
 fig_theme <- theme_bw() +
@@ -40,7 +41,7 @@ fig_theme <- theme_bw() +
         plot.title = element_text(size = 10, hjust = -0.1, face = "bold"),
         plot.subtitle = element_text(size = 7))
 
-col_pal = c("black", "#238A8DFF")
+col_pal = c("black", "#238A8D")
 
 
 #### parameters ####
@@ -52,32 +53,30 @@ gs_days_seq <- seq(0, gs_days, by = 1)
 # simulation years
 years <- 100
 
-# control parameters
-parms_ctrl <- parms_all %>%
-  filter(Treatment == "control" | is.na(Treatment))
-
-# fungicide parameters
-parms_fung <- parms_all %>%
-  filter(Treatment == "fungicide" | is.na(Treatment))
-
 # conidia per 1 g litter
-conidia_init <- as.numeric(parms_all[parms_all$Parameter == "h", "Estimate"])
+conidia_init <- as.numeric(disc_params[disc_params$Parameter == "h", "Estimate"])
 
 # initial plant sizes
-bio_A_init <- as.numeric(parms_all[parms_all$Parameter == "b_A", "Estimate"])
-bio_F_init <- as.numeric(parms_all[parms_all$Parameter == "b_F", "Estimate"])
-bio_P_init <- as.numeric(parms_all[parms_all$Parameter == "b_P", "Estimate"])
+bio_A_init <- as.numeric(disc_params[disc_params$Parameter == "b_A", "Estimate"])
+bio_F_init <- as.numeric(disc_params[disc_params$Parameter == "b_F", "Estimate"])
+bio_P_init <- as.numeric(disc_params[disc_params$Parameter == "b_P", "Estimate"])
+
+# control and fungicide continuous parameters
+cont_params_ctrl <- cont_params %>%
+  filter(Treatment == "control" | is.na(Treatment))
+
+cont_params_fung <- cont_params %>%
+  filter(Treatment == "fungicide" | is.na(Treatment))
 
 
 #### annual alone ####
 
 # continuous input values
-startA_cont_ctrl <- c(LogB_A = log(bio_A_init * 10), I_A = 0, D = 0, C = conidia_init)
-startA_cont_fung <- c(LogB_A = log(bio_A_init * 10), I_A = 0, D = 0, C = 0)
+startA_cont <- c(LogB_A = log(bio_A_init * 10), I_A = 0, D = 0, C = conidia_init)
 
 # apply continuous function
-modA_cont_ctrl <- ode(y = startA_cont_ctrl, times = gs_days_seq, 
-                      func = cont_A_mod, parms = parms_ctrl) %>%
+modA_cont_ctrl <- ode(y = startA_cont, times = gs_days_seq, 
+                      func = cont_A_mod, parms = cont_params_ctrl) %>%
   as.data.frame() %>%
   as_tibble() %>%
   mutate(B_A = exp(LogB_A),
@@ -89,8 +88,8 @@ modA_cont_ctrl <- ode(y = startA_cont_ctrl, times = gs_days_seq,
                names_pattern = "(.)_(.)",
                values_to = "pop")
 
-modA_cont_fung <- ode(y = startA_cont_fung, times = gs_days_seq, 
-                      func = cont_A_mod, parms = parms_fung) %>%
+modA_cont_fung <- ode(y = startA_cont, times = gs_days_seq, 
+                      func = cont_A_mod, parms = cont_params_fung) %>%
   as.data.frame() %>%
   as_tibble() %>%
   mutate(B_A = exp(LogB_A),
@@ -116,9 +115,13 @@ modA_cont_fung %>%
   facet_wrap(~ plant, scales = "free_y")
 
 # discrete input values
-modA_disc_ctrl <- disc_AFP_mod(A0 = 10, F0 = 0, P0 = 0, L0 = 0, C0 = conidia_init, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = years, gs_time = gs_days, disc_parms = parms_ctrl, con_parms = parms_ctrl)
+modA_disc_ctrl <- disc_AFP_mod(A0 = 10, F0 = 0, P0 = 0, L0 = 0, C0 = conidia_init, BP0 = 0, BF0 = 0, BA0 = 0, simtime = years, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
 
-modA_disc_fung <- disc_AFP_mod(A0 = 10, F0 = 0, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = years, gs_time = gs_days, disc_parms = parms_fung, con_parms = parms_fung)
+modA_disc_fung <- disc_AFP_mod(A0 = 10, F0 = 0, P0 = 0, L0 = 0, C0 = conidia_init, BP0 = 0, BF0 = 0, BA0 = 0, simtime = years, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
+
+# save simulations
+write_csv(modA_disc_ctrl, "output/discrete_continuous_model_A_ctrl_sim.csv")
+write_csv(modA_disc_fung, "output/discrete_continuous_model_A_fung_sim.csv")
 
 # figure of discrete results
 modA_disc_ctrl %>%
@@ -137,12 +140,11 @@ modA_disc_fung %>%
 #### perennial seedling alone ####
 
 # continuous input values
-startF_cont_ctrl <- c(LogB_F = log(bio_F_init * 10), I_F = 0, D = 0, C = conidia_init)
-startF_cont_fung <- c(LogB_F = log(bio_F_init * 10), I_F = 0, D = 0, C = 0)
+startF_cont <- c(LogB_F = log(bio_F_init * 10), I_F = 0, D = 0, C = conidia_init)
 
 # apply continuous function
-modF_cont_ctrl <- ode(y = startF_cont_ctrl, times = gs_days_seq, 
-                      func = cont_F_mod, parms = parms_ctrl) %>%
+modF_cont_ctrl <- ode(y = startF_cont, times = gs_days_seq, 
+                      func = cont_F_mod, parms = cont_params_ctrl) %>%
   as.data.frame() %>%
   as_tibble() %>%
   mutate(B_F = exp(LogB_F),
@@ -154,8 +156,8 @@ modF_cont_ctrl <- ode(y = startF_cont_ctrl, times = gs_days_seq,
                names_pattern = "(.)_(.)",
                values_to = "pop")
 
-modF_cont_fung <- ode(y = startF_cont_fung, times = gs_days_seq, 
-                      func = cont_F_mod, parms = parms_fung) %>%
+modF_cont_fung <- ode(y = startF_cont, times = gs_days_seq, 
+                      func = cont_F_mod, parms = cont_params_fung) %>%
   as.data.frame() %>%
   as_tibble() %>%
   mutate(B_F = exp(LogB_F),
@@ -181,13 +183,13 @@ modF_cont_fung %>%
   facet_wrap(~ plant, scales = "free_y")
 
 # discrete input values
-modF_disc_ctrl <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = conidia_init, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = years, gs_time = gs_days, disc_parms = parms_ctrl, con_parms = parms_ctrl)
+modF_disc_ctrl <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = conidia_init, BP0 = 0, BF0 = 0, BA0 = 0, simtime = years, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
 
-# multiply years by 2 for invasion
-# want Perennial adult to be at equilibrium
-modF_disc_fung <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, simtime = years * 2, gs_time = gs_days, disc_parms = parms_fung, con_parms = parms_fung)
-write_csv(modF_disc_fung, "output/discrete_continuous_model_no_invasion_no_disease.csv")
-modF_disc_fung <- read.csv("output/discrete_continuous_model_no_invasion_no_disease.csv")
+modF_disc_fung <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = conidia_init, BP0 = 0, BF0 = 0, BA0 = 0, simtime = years, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
+
+# save simulations
+write_csv(modF_disc_ctrl, "output/discrete_continuous_model_F_ctrl_sim.csv")
+write_csv(modF_disc_fung, "output/discrete_continuous_model_F_fung_sim.csv")
 
 # figure of discrete results
 modF_disc_ctrl %>%
@@ -203,15 +205,17 @@ modF_disc_fung %>%
   facet_wrap(~ species, scales = "free_y")
 
 
+#### left off here with last parameter set ####
+
+
 #### perennial adult alone ####
 
 # continuous input values
-startP_cont_ctrl <- c(LogB_P = log(bio_P_init * 10), I_P = 0, D = 0, C = conidia_init)
-startP_cont_fung <- c(LogB_P = log(bio_P_init * 10), I_P = 0, D = 0, C = 0)
+startP_cont <- c(LogB_P = log(bio_P_init * 10), I_P = 0, D = 0, C = conidia_init)
 
 # apply continuous function
-modP_cont_ctrl <- ode(y = startP_cont_ctrl, times = gs_days_seq, 
-                      func = cont_P_mod, parms = parms_ctrl) %>%
+modP_cont_ctrl <- ode(y = startP_cont, times = gs_days_seq, 
+                      func = cont_P_mod, parms = cont_params_ctrl) %>%
   as.data.frame() %>%
   as_tibble() %>%
   mutate(B_P = exp(LogB_P),
@@ -223,8 +227,8 @@ modP_cont_ctrl <- ode(y = startP_cont_ctrl, times = gs_days_seq,
                names_pattern = "(.)_(.)",
                values_to = "pop")
 
-modP_cont_fung <- ode(y = startP_cont_fung, times = gs_days_seq, 
-                      func = cont_P_mod, parms = parms_fung) %>%
+modP_cont_fung <- ode(y = startP_cont, times = gs_days_seq, 
+                      func = cont_P_mod, parms = cont_params_fung) %>%
   as.data.frame() %>%
   as_tibble() %>%
   mutate(B_P = exp(LogB_P),
@@ -250,9 +254,13 @@ modP_cont_fung %>%
   facet_wrap(~ plant, scales = "free_y")
 
 # discrete input values
-modP_disc_ctrl <- disc_AFP_mod(A0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = conidia_init, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = bio_P_init * 10, BF0 = 0, simtime = years, gs_time = gs_days, disc_parms = parms_ctrl, con_parms = parms_ctrl)
+modP_disc_ctrl <- disc_AFP_mod(A0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = conidia_init, BP0 = bio_P_init * 10, BF0 = 0, BA0 = 0, simtime = years, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
 
-modP_disc_fung <- disc_AFP_mod(A0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = 0, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = bio_P_init * 10, BF0 = 0, simtime = years, gs_time = gs_days, disc_parms = parms_fung, con_parms = parms_fung)
+modP_disc_fung <- disc_AFP_mod(A0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = conidia_init, BP0 = bio_P_init * 10, BF0 = 0, BA0 = 0, simtime = years, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
+
+# save simulations
+write_csv(modP_disc_ctrl, "output/discrete_continuous_model_P_ctrl_sim.csv")
+write_csv(modP_disc_fung, "output/discrete_continuous_model_P_fung_sim.csv")
 
 # figure of discrete results
 modP_disc_ctrl %>%
@@ -287,7 +295,7 @@ modInv_disc_fung <- disc_AFP_mod(A0 = 10,
                                  BP0 = filter(modF_disc_fung_fin, species == "Perennial adult biomass")$N, 
                                  BF0 = filter(modF_disc_fung_fin, species == "Perennial first-year biomass")$N, 
                                  simtime = years*2, gs_time = gs_days, 
-                                 disc_parms = parms_fung, con_parms = parms_fung)
+                                 disc_parms = disc_params, cont_parms = cont_params)
 write_csv(modInv_disc_fung, "output/discrete_continuous_model_invasion_no_disease.csv")
 modInv_disc_fung <- read.csv("output/discrete_continuous_model_invasion_no_disease.csv")
 
@@ -317,7 +325,7 @@ modDis_disc_ctrl <- disc_AFP_mod(A0 = filter(modInv_disc_fung_fin, species == "A
                                  BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
                                  BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
                                  simtime = years, gs_time = gs_days, 
-                                 disc_parms = parms_ctrl, con_parms = parms_ctrl)
+                                 disc_parms = disc_params, cont_parms = cont_params)
 
 # figure of discrete results
 modDis_disc_ctrl %>%
@@ -465,7 +473,7 @@ for(i in 1:nrow(alpha_AA_PA_vals)){
                                        BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
                                        BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
                                        simtime = years/2, gs_time = gs_days, 
-                                       disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
+                                       disc_parms = parms_ctrl_temp, cont_parms = parms_ctrl_temp)
   
   # save data table
   mod_AA_PA[[i]] <- mod_AA_PA_disc_ctrl %>%
@@ -587,7 +595,7 @@ for(i in 1:nrow(alpha_AA_PP_vals)){
                                       BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
                                       BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
                                       simtime = years/2, gs_time = gs_days, 
-                                      disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
+                                      disc_parms = parms_ctrl_temp, cont_parms = parms_ctrl_temp)
   
   # save data table
   mod_AA_PP[[i]] <- mod_AA_PP_disc_ctrl %>%
@@ -675,8 +683,8 @@ ggsave("output/discrete_no_seed_infection_simulation_figure.pdf",
 #### add disease to perennial alone ####
 
 # add 100 years for comparison to disease
-modF_disc_fung2 <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = 0, IA0 = 0, IF0 = 0, IP0 = 0, BP0 = 0, BF0 = 0, 
-                                simtime = years * 3, gs_time = gs_days, disc_parms = parms_fung, con_parms = parms_fung)
+modF_disc_fung2 <- disc_AFP_mod(A0 = 0, F0 = 10, P0 = 0, L0 = 0, C0 = conidia_init, BP0 = 0, BF0 = 0, 
+                                simtime = years * 3, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params)
 
 # established perennial
 modF_disc_fung_fin2 <- modF_disc_fung2 %>%
@@ -694,7 +702,7 @@ modDisF_disc_ctrl <- disc_AFP_mod(A0 = 0,
                                   BP0 = filter(modF_disc_fung_fin2, species == "Perennial adult biomass")$N, 
                                   BF0 = filter(modF_disc_fung_fin2, species == "Perennial first-year biomass")$N, 
                                   simtime = years, gs_time = gs_days, 
-                                  disc_parms = parms_ctrl, con_parms = parms_ctrl)
+                                  disc_parms = disc_params, cont_parms = cont_params)
 
 # combine model outputs
 mod_F_dis <- modF_disc_fung2 %>%
@@ -841,7 +849,7 @@ sens_sim <- function(parms_vary, parms_range, parms_n, filename){
                                       BP0 = filter(modInv_disc_fung_fin, species == "Perennial adult biomass")$N, 
                                       BF0 = filter(modInv_disc_fung_fin, species == "Perennial first-year biomass")$N, 
                                       simtime = years/2, gs_time = gs_days, 
-                                      disc_parms = parms_ctrl_temp, con_parms = parms_ctrl_temp)
+                                      disc_parms = parms_ctrl_temp, cont_parms = parms_ctrl_temp)
     
     # create figure
     print(ggplot(mod_out_disc_ctrl, aes(x = time, y = N)) +

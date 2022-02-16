@@ -24,9 +24,6 @@ cont_FP_mod <- function(t, x, params) {
   beta_PF <- as.numeric(params[params$Parameter == "beta_PF", "Estimate"])
   beta_PP <- as.numeric(params[params$Parameter == "beta_PP", "Estimate"])
   
-  # k_F <- as.numeric(params[params$Parameter == "k_F", "Estimate"])
-  # k_P <- as.numeric(params[params$Parameter == "k_P", "Estimate"])
-  
   v_F <- as.numeric(params[params$Parameter == "v_F", "Estimate"])
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
   
@@ -34,7 +31,7 @@ cont_FP_mod <- function(t, x, params) {
   m_P <- as.numeric(params[params$Parameter == "m_P", "Estimate"])
   
   h <- as.numeric(params[params$Parameter == "h", "Estimate"])
-  b <- as.numeric(params[params$Parameter == "b", "Estimate"])
+  a <- as.numeric(params[params$Parameter == "a", "Estimate"])
   
   # derived values
   B_F <- exp(LogB_F)
@@ -45,12 +42,10 @@ cont_FP_mod <- function(t, x, params) {
   # model with asymptotic transmission
   dLogBFdt <- r_F * (1 - alpha_FF * B_F - alpha_FP * B_P) - m_F - v_F * I_F / B_F
   dLogBPdt <- r_P * (1 - alpha_PF * B_F - alpha_PP * B_P) - m_P - v_P * I_P / B_P
-  # dIFdt <- (beta_FC * S_F * C + beta_FF * S_F * I_F + beta_FP * S_F * I_P)/(k_F + B_F) - (m_F + v_F) * I_F
-  # dIPdt <- (beta_PC * S_P * C + beta_PF * S_P * I_F + beta_PP * S_P * I_P)/(k_P + B_P) - (m_P + v_P) * I_P
   dIFdt <- beta_FC * S_F * C + beta_FF * S_F * I_F + beta_FP * S_F * I_P - (m_F + v_F) * I_F
   dIPdt <- beta_PC * S_P * C + beta_PF * S_P * I_F + beta_PP * S_P * I_P - (m_P + v_P) * I_P
   dDdt <- m_F * B_F + v_F * I_F + m_P * B_P + v_P * I_P
-  dCdt <- h * ((m_F + v_F) * I_F + (m_P + v_P) * I_P) - b * C
+  dCdt <- h * ((m_F + v_F) * I_F + (m_P + v_P) * I_P) - a * C
   
   # combine values
   dxdt <- c(dLogBFdt, dLogBPdt, dIFdt, dIPdt, dDdt, dCdt)

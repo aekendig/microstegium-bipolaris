@@ -83,6 +83,9 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, BA0, BP0, BF0, simtime, gs_time, di
       e_P <- as.numeric(ctrl_parms[ctrl_parms$Parameter == "e_P", "Estimate"])
       l_P <- as.numeric(ctrl_parms[ctrl_parms$Parameter == "l_P", "Estimate"])
       n_P <- as.numeric(ctrl_parms[ctrl_parms$Parameter == "n_P", "Estimate"])
+      
+      cont_parms_trt <- cont_parms %>%
+        filter(Treatment == "control" | is.na(Treatment))
   
     } else {
       
@@ -96,6 +99,9 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, BA0, BP0, BF0, simtime, gs_time, di
       e_P <- as.numeric(fung_parms[fung_parms$Parameter == "e_P", "Estimate"])
       l_P <- as.numeric(fung_parms[fung_parms$Parameter == "l_P", "Estimate"])
       n_P <- as.numeric(fung_parms[fung_parms$Parameter == "n_P", "Estimate"])
+      
+      cont_parms_trt <- cont_parms %>%
+        filter(Treatment == "fungicide" | is.na(Treatment))
       
     }
     
@@ -164,7 +170,7 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, BA0, BP0, BF0, simtime, gs_time, di
     out <- ode(func = cont_fun,
                y = ystart,
                times = grow_days,
-               parms = cont_parms) %>%
+               parms = cont_parms_trt) %>%
       as_tibble() %>%
       filter(time == gs_time)
     

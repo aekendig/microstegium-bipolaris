@@ -24,9 +24,6 @@ cont_AP_mod <- function(t, x, params) {
   beta_PA <- as.numeric(params[params$Parameter == "beta_PA", "Estimate"])
   beta_PP <- as.numeric(params[params$Parameter == "beta_PP", "Estimate"])
   
-  # k_A <- as.numeric(params[params$Parameter == "k_A", "Estimate"])
-  # k_P <- as.numeric(params[params$Parameter == "k_P", "Estimate"])
-  
   v_A <- as.numeric(params[params$Parameter == "v_A", "Estimate"])
   v_P <- as.numeric(params[params$Parameter == "v_P", "Estimate"])
   
@@ -34,7 +31,7 @@ cont_AP_mod <- function(t, x, params) {
   m_P <- as.numeric(params[params$Parameter == "m_P", "Estimate"])
   
   h <- as.numeric(params[params$Parameter == "h", "Estimate"])
-  b <- as.numeric(params[params$Parameter == "b", "Estimate"])
+  a <- as.numeric(params[params$Parameter == "a", "Estimate"])
   
   # derived values
   B_A <- exp(LogB_A)
@@ -45,12 +42,10 @@ cont_AP_mod <- function(t, x, params) {
   # model with asymptotic transmission
   dLogBAdt <- r_A * (1 - alpha_AA * B_A - alpha_AP * B_P) - m_A - v_A * I_A / B_A
   dLogBPdt <- r_P * (1 - alpha_PA * B_A - alpha_PP * B_P) - m_P - v_P * I_P / B_P
-  # dIAdt <- (beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AP * S_A * I_P)/(k_A + B_A) - (m_A + v_A) * I_A
-  # dIPdt <- (beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PP * S_P * I_P)/(k_P + B_P) - (m_P + v_P) * I_P
   dIAdt <- beta_AC * S_A * C + beta_AA * S_A * I_A + beta_AP * S_A * I_P - (m_A + v_A) * I_A
   dIPdt <- beta_PC * S_P * C + beta_PA * S_P * I_A + beta_PP * S_P * I_P - (m_P + v_P) * I_P
   dDdt <- m_A * B_A + v_A * I_A + m_P * B_P + v_P * I_P
-  dCdt <- h * ((m_A + v_A) * I_A + (m_P + v_P) * I_P) - b * C
+  dCdt <- h * ((m_A + v_A) * I_A + (m_P + v_P) * I_P) - a * C
   
   # combine values
   dxdt <- c(dLogBAdt, dLogBPdt, dIAdt, dIPdt, dDdt, dCdt)

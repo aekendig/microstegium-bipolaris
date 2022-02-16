@@ -71,10 +71,10 @@ h,NA,inoculum addition to litter,NA,5500,NA,NA,g^-1^,Benitez et al. 2021
 d,NA,litter decomposition fraction,NA,0.59,NA,NA,"NA",DeMeester and Richter 2010
 s_P,perennial,surviving seed fraction,NA,0.05,NA,NA,"NA",Garrison and Stier 2010
 s_A,annual,surviving seed fraction,NA,0.15,NA,NA,"NA",Redwood et al. 2018
-beta_AC,annual,litter transmission,NA,1e-4,NA,NA,day^-1^ g^-1^,"NA"
-beta_FC,fy perennial,litter transmission,NA,1e-4,NA,NA,day^-1^ g^-1^,"NA"
-beta_PC,adult perennial,litter transmission,NA,1e-4,NA,NA,day^-1^ g^-1^,"NA"
-v_A,annual,infected tissue loss,NA,0.001,NA,NA,day^-1^,"NA"
-v_F,fy perennial,infected tissue loss,NA,0.001,NA,NA,day^-1^,"NA"
-v_P,adult perennial,infected tissue loss,NA,0.001,NA,NA,day^-1^,"NA"
-b,NA,inoculum loss from litter,NA,0.5,NA,NA,day^-1^,"NA"
+beta_AC,annual,litter transmission,NA,1e-5,NA,NA,day^-1^ g^-1^,"NA"
+beta_FC,fy perennial,litter transmission,NA,1e-5,NA,NA,day^-1^ g^-1^,"NA"
+beta_PC,adult perennial,litter transmission,NA,1e-5,NA,NA,day^-1^ g^-1^,"NA"
+v_A,annual,infected tissue loss,NA,1e-4,NA,NA,day^-1^,"NA"
+v_F,fy perennial,infected tissue loss,NA,1e-4,NA,NA,day^-1^,"NA"
+v_P,adult perennial,infected tissue loss,NA,1e-4,NA,NA,day^-1^,"NA"
+a,NA,inoculum loss from litter,NA,0.5,NA,NA,day^-1^,"NA"
