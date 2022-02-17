@@ -198,7 +198,7 @@ sevD2Dat3 <- sevD2Dat2 %>%
   filter(month %in% c("jun", "jul", "early_aug")) %>% # only months we have next data for
   full_join(sevNextD2Dat) %>%
   full_join(sevBioD2Dat %>%
-              select(month, site, plot, treatment, sp, ID, Mv_sev_bio, Ev_sev_bio)) %>%
+              select(month, site, plot, treatment, sp, ID, Mv_sev_bio, Ev_sev_bio, Mv_sev, Ev_sev)) %>%
   full_join(edgeSevD2Dat2) %>%
   filter(!is.na(severity) & !is.na(next_severity) & !is.na(Mv_sev_bio) & !is.na(Ev_sev_bio) & !is.na(edge_severity)) %>%
   mutate(severity_change = log(next_severity / severity),
@@ -211,8 +211,8 @@ sevD2Dat3 <- sevD2Dat2 %>%
          plotf = paste0(site, plot, substr(treatment, 1, 1)),
          severity_c = severity - mean(severity),
          edge_severity_c = edge_severity - mean(edge_severity),
-         Mv_sev_bio_s = (Mv_sev_bio - mean(Mv_sev_bio)) / sd(Mv_sev_bio),
-         Ev_sev_bio_s = (Ev_sev_bio - mean(Ev_sev_bio)) / sd(Ev_sev_bio))
+         Mv_sev_s = (Mv_sev_bio - mean(Mv_sev_bio)) / sd(Mv_sev_bio),
+         Ev_sev_s = (Ev_sev_bio - mean(Ev_sev_bio)) / sd(Ev_sev_bio))
 
 
 #### initial visualizations ####
@@ -236,7 +236,13 @@ ggplot(sevD2Dat3, aes(x = edge_severity_c, y = severity_change, color = month)) 
 
 #### fit model ####
 
-sevD2Mod <- brm(severity_change ~ month * sp * fungicide * (severity_c + Mv_sev_bio_s + Ev_sev_bio_s + edge_severity_c) + (1|plotf),
+# previous versions
+# month interaction with all other variables: 
+# self limitation for all cases, Ev reduced Mv in June
+# month added to continuous variables:
+# self limitation for all cases, Ev reduced Mv
+
+sevD2Mod <- brm(severity_change ~ sp * fungicide * (severity_c + Mv_sev_s + Ev_sev_s + edge_severity_c) + (1|plotf),
                 data = sevD2Dat3, family = gaussian,
                 prior <- c(prior(normal(0, 1), class = "Intercept"),
                            prior(normal(0, 1), class = "b")), # use default for sigma
@@ -244,92 +250,63 @@ sevD2Mod <- brm(severity_change ~ month * sp * fungicide * (severity_c + Mv_sev_
 
 mod_check_fun(sevD2Mod)
 
-save(sevD2Mod, "output/focal_severity_model_2019_density_exp.rda")
+save(sevD2Mod, file = "output/focal_severity_model_2019_density_exp.rda")
+
+# non-biomass severity
+sevD2Dat4 <- sevD2Dat3 %>%
+  mutate(Mv_sev_s = (Mv_sev - mean(Mv_sev)) / sd(Mv_sev),
+         Ev_sev_s = (Ev_sev - mean(Ev_sev)) / sd(Ev_sev))
+
+sevD2Mod2 <- brm(severity_change ~ sp * fungicide * (severity_c + Mv_sev_s + Ev_sev_s + edge_severity_c) + (1|plotf),
+                data = sevD2Dat4, family = gaussian,
+                prior <- c(prior(normal(0, 1), class = "Intercept"),
+                           prior(normal(0, 1), class = "b")), # use default for sigma
+                iter = 6000, warmup = 1000, chains = 3, cores = 3)
+
+mod_check_fun(sevD2Mod2)
+
+save(sevD2Mod2, file = "output/focal_severity_model2_2019_density_exp.rda")
 
 
 #### transmission coefficients ####
 
-# Ev early August
-beta_Ev_ctrl_aug_self <- "severity_c = 0"
-beta_Ev_ctrl_aug_mv <- "Mv_sev_bio_s = 0"
-beta_Ev_ctrl_aug_ev <- "Ev_sev_bio_s = 0"
-beta_Ev_ctrl_aug_edge <- "edge_severity_c = 0"
-beta_Ev_fung_aug_self <- "severity_c + fungicide:severity_c = 0"
-beta_Ev_fung_aug_mv <- "Mv_sev_bio_s + fungicide:Mv_sev_bio_s = 0"
-beta_Ev_fung_aug_ev <- "Ev_sev_bio_s + fungicide:Ev_sev_bio_s = 0"
-beta_Ev_fung_aug_edge <- "edge_severity_c + fungicide:edge_severity_c = 0"
+# Ev 
+beta_Ev_ctrl_self <- "severity_c = 0"
+beta_Ev_ctrl_mv <- "Mv_sev_s = 0"
+beta_Ev_ctrl_ev <- "Ev_sev_s = 0"
+beta_Ev_ctrl_edge <- "edge_severity_c = 0"
+beta_Ev_fung_self <- "severity_c + fungicide:severity_c = 0"
+beta_Ev_fung_mv <- "Mv_sev_s + fungicide:Mv_sev_s = 0"
+beta_Ev_fung_ev <- "Ev_sev_s + fungicide:Ev_sev_s = 0"
+beta_Ev_fung_edge <- "edge_severity_c + fungicide:edge_severity_c = 0"
 
-hypothesis(sevD2Mod, c(beta_Ev_ctrl_aug_self, beta_Ev_ctrl_aug_mv, beta_Ev_ctrl_aug_ev, beta_Ev_ctrl_aug_edge,
-                       beta_Ev_fung_aug_self, beta_Ev_fung_aug_mv, beta_Ev_fung_aug_ev, beta_Ev_fung_aug_edge))
+hypothesis(sevD2Mod, c(beta_Ev_ctrl_self, beta_Ev_ctrl_mv, beta_Ev_ctrl_ev, beta_Ev_ctrl_edge,
+                       beta_Ev_fung_self, beta_Ev_fung_mv, beta_Ev_fung_ev, beta_Ev_fung_edge))
 # self-limiting
+# edge severity in fungicide plots
 
-# Ev July
-beta_Ev_ctrl_jul_self <- "severity_c + monthjul:severity_c = 0"
-beta_Ev_ctrl_jul_mv <- "Mv_sev_bio_s + monthjul:Mv_sev_bio_s = 0"
-beta_Ev_ctrl_jul_ev <- "Ev_sev_bio_s + monthjul:Ev_sev_bio_s = 0"
-beta_Ev_ctrl_jul_edge <- "edge_severity_c + monthjul:edge_severity_c = 0"
-beta_Ev_fung_jul_self <- "severity_c + monthjul:severity_c + fungicide:severity_c = 0"
-beta_Ev_fung_jul_mv <- "Mv_sev_bio_s + monthjul:Mv_sev_bio_s + fungicide:Mv_sev_bio_s = 0"
-beta_Ev_fung_jul_ev <- "Ev_sev_bio_s + monthjul:Ev_sev_bio_s + fungicide:Ev_sev_bio_s = 0"
-beta_Ev_fung_jul_edge <- "edge_severity_c + monthjul:edge_severity_c + fungicide:edge_severity_c = 0"
-
-hypothesis(sevD2Mod, c(beta_Ev_ctrl_jul_self, beta_Ev_ctrl_jul_mv, beta_Ev_ctrl_jul_ev, beta_Ev_ctrl_jul_edge,
-                       beta_Ev_fung_jul_self, beta_Ev_fung_jul_mv, beta_Ev_fung_jul_ev, beta_Ev_fung_jul_edge))
+hypothesis(sevD2Mod2, c(beta_Ev_ctrl_self, beta_Ev_ctrl_mv, beta_Ev_ctrl_ev, beta_Ev_ctrl_edge,
+                       beta_Ev_fung_self, beta_Ev_fung_mv, beta_Ev_fung_ev, beta_Ev_fung_edge))
 # self-limiting
+# edge severity in control and fungicide plots
 
-# Ev June
-beta_Ev_ctrl_jun_self <- "severity_c + monthjun:severity_c = 0"
-beta_Ev_ctrl_jun_mv <- "Mv_sev_bio_s + monthjun:Mv_sev_bio_s = 0"
-beta_Ev_ctrl_jun_ev <- "Ev_sev_bio_s + monthjun:Ev_sev_bio_s = 0"
-beta_Ev_ctrl_jun_edge <- "edge_severity_c + monthjun:edge_severity_c = 0"
-beta_Ev_fung_jun_self <- "severity_c + monthjun:severity_c + fungicide:severity_c = 0"
-beta_Ev_fung_jun_mv <- "Mv_sev_bio_s + monthjun:Mv_sev_bio_s + fungicide:Mv_sev_bio_s = 0"
-beta_Ev_fung_jun_ev <- "Ev_sev_bio_s + monthjun:Ev_sev_bio_s + fungicide:Ev_sev_bio_s = 0"
-beta_Ev_fung_jun_edge <- "edge_severity_c + monthjun:edge_severity_c + fungicide:edge_severity_c = 0"
+# Mv 
+beta_Mv_ctrl_self <- "severity_c + spMv:severity_c = 0"
+beta_Mv_ctrl_mv <- "Mv_sev_s + spMv:Mv_sev_s = 0"
+beta_Mv_ctrl_ev <- "Ev_sev_s + spMv:Ev_sev_s = 0"
+beta_Mv_ctrl_edge <- "edge_severity_c + spMv:edge_severity_c = 0"
+beta_Mv_fung_self <- "severity_c + fungicide:severity_c + spMv:severity_c + spMv:fungicide:severity_c = 0"
+beta_Mv_fung_mv <- "Mv_sev_s + fungicide:Mv_sev_s + spMv:Mv_sev_s + spMv:fungicide:Mv_sev_s = 0"
+beta_Mv_fung_ev <- "Ev_sev_s + fungicide:Ev_sev_s + spMv:Ev_sev_s + spMv:fungicide:Ev_sev_s = 0"
+beta_Mv_fung_edge <- "edge_severity_c + fungicide:edge_severity_c + spMv:edge_severity_c + spMv:fungicide:edge_severity_c = 0"
 
-hypothesis(sevD2Mod, c(beta_Ev_ctrl_jun_self, beta_Ev_ctrl_jun_mv, beta_Ev_ctrl_jun_ev, beta_Ev_ctrl_jun_edge,
-                       beta_Ev_fung_jun_self, beta_Ev_fung_jun_mv, beta_Ev_fung_jun_ev, beta_Ev_fung_jun_edge))
+hypothesis(sevD2Mod, c(beta_Mv_ctrl_self, beta_Mv_ctrl_mv, beta_Mv_ctrl_ev, beta_Mv_ctrl_edge,
+                       beta_Mv_fung_self, beta_Mv_fung_mv, beta_Mv_fung_ev, beta_Mv_fung_edge))
 # self-limiting
+# edge severity in control and fungicide
 
-# Mv early August
-beta_Mv_ctrl_aug_self <- "severity_c + spMv:severity_c = 0"
-beta_Mv_ctrl_aug_mv <- "Mv_sev_bio_s + spMv:Mv_sev_bio_s = 0"
-beta_Mv_ctrl_aug_ev <- "Ev_sev_bio_s + spMv:Ev_sev_bio_s = 0"
-beta_Mv_ctrl_aug_edge <- "edge_severity_c + spMv:edge_severity_c = 0"
-beta_Mv_fung_aug_self <- "severity_c + fungicide:severity_c + spMv:severity_c + spMv:fungicide:severity_c = 0"
-beta_Mv_fung_aug_mv <- "Mv_sev_bio_s + fungicide:Mv_sev_bio_s + spMv:Mv_sev_bio_s + spMv:fungicide:Mv_sev_bio_s = 0"
-beta_Mv_fung_aug_ev <- "Ev_sev_bio_s + fungicide:Ev_sev_bio_s + spMv:Ev_sev_bio_s + spMv:fungicide:Ev_sev_bio_s = 0"
-beta_Mv_fung_aug_edge <- "edge_severity_c + fungicide:edge_severity_c + spMv:edge_severity_c + spMv:fungicide:edge_severity_c = 0"
-
-hypothesis(sevD2Mod, c(beta_Mv_ctrl_aug_self, beta_Mv_ctrl_aug_mv, beta_Mv_ctrl_aug_ev, beta_Mv_ctrl_aug_edge,
-                       beta_Mv_fung_aug_self, beta_Mv_fung_aug_mv, beta_Mv_fung_aug_ev, beta_Mv_fung_aug_edge))
+hypothesis(sevD2Mod2, c(beta_Mv_ctrl_self, beta_Mv_ctrl_mv, beta_Mv_ctrl_ev, beta_Mv_ctrl_edge,
+                       beta_Mv_fung_self, beta_Mv_fung_mv, beta_Mv_fung_ev, beta_Mv_fung_edge))
 # self-limiting
+# edge severity in control and fungicide
 
-# Mv July
-beta_Mv_ctrl_jul_self <- "severity_c + spMv:severity_c + monthjul:severity_c + monthjul:spMv:severity_c = 0"
-beta_Mv_ctrl_jul_mv <- "Mv_sev_bio_s + spMv:Mv_sev_bio_s + monthjul:Mv_sev_bio_s + monthjul:spMv:Mv_sev_bio_s = 0"
-beta_Mv_ctrl_jul_ev <- "Ev_sev_bio_s + spMv:Ev_sev_bio_s + monthjul:Ev_sev_bio_s + monthjul:spMv:Ev_sev_bio_s = 0"
-beta_Mv_ctrl_jul_edge <- "edge_severity_c + spMv:edge_severity_c + monthjul:edge_severity_c + monthjul:spMv:edge_severity_c = 0"
-beta_Mv_fung_jul_self <- "severity_c + fungicide:severity_c + spMv:severity_c + spMv:fungicide:severity_c + monthjul:severity_c + monthjul:spMv:severity_c + monthjul:fungicide:severity_c + monthjul:spMv:fungicide:severity_c = 0"
-beta_Mv_fung_jul_mv <- "Mv_sev_bio_s + fungicide:Mv_sev_bio_s + spMv:Mv_sev_bio_s + spMv:fungicide:Mv_sev_bio_s + monthjul:Mv_sev_bio_s + monthjul:spMv:Mv_sev_bio_s + monthjul:fungicide:Mv_sev_bio_s + monthjul:spMv:fungicide:Mv_sev_bio_s = 0"
-beta_Mv_fung_jul_ev <- "Ev_sev_bio_s + fungicide:Ev_sev_bio_s + spMv:Ev_sev_bio_s + spMv:fungicide:Ev_sev_bio_s + monthjul:Ev_sev_bio_s + monthjul:spMv:Ev_sev_bio_s + monthjul:fungicide:Ev_sev_bio_s + monthjul:spMv:fungicide:Ev_sev_bio_s = 0"
-beta_Mv_fung_jul_edge <- "edge_severity_c + fungicide:edge_severity_c + spMv:edge_severity_c + spMv:fungicide:edge_severity_c + monthjul:edge_severity_c + monthjul:spMv:edge_severity_c + monthjul:fungicide:edge_severity_c + monthjul:spMv:fungicide:edge_severity_c = 0"
-
-hypothesis(sevD2Mod, c(beta_Mv_ctrl_jul_self, beta_Mv_ctrl_jul_mv, beta_Mv_ctrl_jul_ev, beta_Mv_ctrl_jul_edge,
-                       beta_Mv_fung_jul_self, beta_Mv_fung_jul_mv, beta_Mv_fung_jul_ev, beta_Mv_fung_jul_edge))
-# self-limiting
-
-# Mv June
-beta_Mv_ctrl_jun_self <- "severity_c + spMv:severity_c + monthjun:severity_c + monthjun:spMv:severity_c = 0"
-beta_Mv_ctrl_jun_mv <- "Mv_sev_bio_s + spMv:Mv_sev_bio_s + monthjun:Mv_sev_bio_s + monthjun:spMv:Mv_sev_bio_s = 0"
-beta_Mv_ctrl_jun_ev <- "Ev_sev_bio_s + spMv:Ev_sev_bio_s + monthjun:Ev_sev_bio_s + monthjun:spMv:Ev_sev_bio_s = 0"
-beta_Mv_ctrl_jun_edge <- "edge_severity_c + spMv:edge_severity_c + monthjun:edge_severity_c + monthjun:spMv:edge_severity_c = 0"
-beta_Mv_fung_jun_self <- "severity_c + fungicide:severity_c + spMv:severity_c + spMv:fungicide:severity_c + monthjun:severity_c + monthjun:spMv:severity_c + monthjun:fungicide:severity_c + monthjun:spMv:fungicide:severity_c = 0"
-beta_Mv_fung_jun_mv <- "Mv_sev_bio_s + fungicide:Mv_sev_bio_s + spMv:Mv_sev_bio_s + spMv:fungicide:Mv_sev_bio_s + monthjun:Mv_sev_bio_s + monthjun:spMv:Mv_sev_bio_s + monthjun:fungicide:Mv_sev_bio_s + monthjun:spMv:fungicide:Mv_sev_bio_s = 0"
-beta_Mv_fung_jun_ev <- "Ev_sev_bio_s + fungicide:Ev_sev_bio_s + spMv:Ev_sev_bio_s + spMv:fungicide:Ev_sev_bio_s + monthjun:Ev_sev_bio_s + monthjun:spMv:Ev_sev_bio_s + monthjun:fungicide:Ev_sev_bio_s + monthjun:spMv:fungicide:Ev_sev_bio_s = 0"
-beta_Mv_fung_jun_edge <- "edge_severity_c + fungicide:edge_severity_c + spMv:edge_severity_c + spMv:fungicide:edge_severity_c + monthjun:edge_severity_c + monthjun:spMv:edge_severity_c + monthjun:fungicide:edge_severity_c + monthjun:spMv:fungicide:edge_severity_c = 0"
-
-hypothesis(sevD2Mod, c(beta_Mv_ctrl_jun_self, beta_Mv_ctrl_jun_mv, beta_Mv_ctrl_jun_ev, beta_Mv_ctrl_jun_edge,
-                       beta_Mv_fung_jun_self, beta_Mv_fung_jun_mv, beta_Mv_fung_jun_ev, beta_Mv_fung_jun_edge))
-# self-limiting
-# decrease with Ev bio sev
