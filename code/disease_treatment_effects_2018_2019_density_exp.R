@@ -49,17 +49,23 @@ box_shade = "gray92"
 #### severity ####
 
 # load model
-load("output/severity_fungicide_model_2019_density_exp.rda")
+load("output/focal_severity_model_aug_2019_dens_exp.rda")
+load("output/focal_severity_model_jul_2019_dens_exp.rda")
 
 # draws
-sev <- as_draws_df(trtD2Mod) %>%
+sev_mv <- as_draws_df(sevD2Mod_sev_dens_aug) %>%
   rename_with(str_replace, pattern = ":", replacement = "_") %>%
-  transmute(a_W = exp(b_Intercept)/(1 +  exp(b_Intercept)),
-            a_F = exp(b_Intercept + b_fungicide)/(1 +  exp(b_Intercept + b_fungicide)),
-            s_W = exp(b_Intercept + b_plant_typeEv_seedling)/(1 +  exp(b_Intercept + b_plant_typeEv_seedling)),
-            s_F = exp(b_Intercept + b_plant_typeEv_seedling + b_fungicide + b_plant_typeEv_seedling_fungicide)/(1 +  exp(b_Intercept + b_plant_typeEv_seedling + b_fungicide + b_plant_typeEv_seedling_fungicide)),
-            m_W = exp(b_Intercept + b_plant_typeMv_seedling)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling)),
-            m_F = exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide)/(1 +  exp(b_Intercept + b_plant_typeMv_seedling + b_fungicide + b_plant_typeMv_seedling_fungicide))) 
+  transmute(m_W = inv_logit_scaled(b_Intercept),
+            m_F = inv_logit_scaled(b_Intercept + b_fungicide)) 
+
+sev_ev <- as_draws_df(sevD2Mod_sev_dens_jul) %>%
+  rename_with(str_replace, pattern = ":", replacement = "_") %>%
+  transmute(s_W = inv_logit_scaled(b_Intercept + b_plant_groupEvS),
+            s_F = inv_logit_scaled(b_Intercept + b_plant_groupEvS + b_fungicide + b_plant_groupEvS_fungicide),
+            a_W = inv_logit_scaled(b_Intercept + b_plant_groupEvA),
+            a_F = inv_logit_scaled(b_Intercept + b_plant_groupEvA + b_fungicide + b_plant_groupEvA_fungicide)) 
+
+sev <- cbind(sev_mv, sev_ev)
 
 # summarize for fig
 sev2 <- sev %>%
@@ -106,9 +112,7 @@ sev %>%
                values_to = "estimate") %>%
   group_by(parameter) %>%
   median_hdi(estimate)
-
-# table
-write_csv(brms_SummaryTable(trtD2Mod), "output/severity_fungicide_model_2019_density_exp.csv")
+# did this in focal_severity_model_2018_2019.R too
 
 
 #### germination ####
@@ -440,9 +444,9 @@ alpha2 <- alpha %>%
             Competitor = case_when(str_ends(Parameter, "A") ~ "Invader",
                                    str_ends(Parameter, "F") ~ "1st year comp.",
                                    str_ends(Parameter, "P") ~ "Adult comp."),
-            Estimate = estimate,
-            Lower = .lower,
-            Upper = .upper)
+            Estimate = -1 * estimate,
+            Lower = -1 * .lower,
+            Upper = -1 * .upper)
 
 # separate by Competitor
 alpha_A <- alpha2 %>% filter(Competitor == "Invader")

@@ -15,17 +15,15 @@ rm(list=ls())
 library(tidyverse)
 library(brms)
 library(tidybayes)
-library(cowplot)
-library(gridExtra)
 library(car)
 library(janitor)
 library(emmeans)
+library(lazerhawk)
 
 # import data
 sevD1Dat <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
 # leaf_scans_data_processing_2018_density_exp.R
 sevD2Dat <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv")
-edgeSevD1Dat <- read_csv("data/plot_edge_mv_weight_jul_2018_density_exp.csv")
 edgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv") 
 # leaf_scans_data_processing_2019_density_exp
 
@@ -46,6 +44,11 @@ fDisLAugD2Dat <- read_csv("data/focal_disease_late_aug_2019_density_exp.csv")
 
 plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 plotsDexp <- read_csv("data/plot_treatments_for_analyses_2018_2019_density_exp.csv")
+
+envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv") 
+# covariate_data_processing_2018_density_exp
+envD2Dat <- read_csv("intermediate-data/temp_humidity_monthly_2019_density_exp.csv") 
+# temp_humidity_data_processing_2019_density_exp
 
 # model functions
 source("code/brms_model_fitting_functions.R")
@@ -387,8 +390,8 @@ sevBioD2Dat <- sev_neighbor_D2_fun("Mv", "1") %>%
   full_join(sev_neighbor_D2_fun("Ev", "A"))
 
 # edge data
-edgeSevD1Dat2 <- edgeSevD1Dat %>%
-  mutate(edge_severity = 100 * (mv_inf.g / (mv.g + mv_inf.g)),
+edgeSevD1Dat2 <- envD1Dat %>%
+  mutate(edge_severity = 100 * mv_inf_jul.prop,
          edge_severity = ifelse(edge_severity > 100, 100, edge_severity),
          month = "late_aug") %>%
   select(month, site, plot, treatment, edge_severity)
@@ -398,6 +401,20 @@ edgeSevD2Dat2 <- edgeSevD2Dat %>%
   mutate(edge_severity = 100 * (lesion_area.pix / leaf_area.pix),
          edge_severity = ifelse(edge_severity > 100, 100, edge_severity)) %>%
   select(month, site, plot, treatment, edge_severity)
+
+# environmental data
+envD1Dat2 <- envD1Dat %>%
+  mutate(soil_moisture_c = soil_moisture_jun.prop*100 - mean(soil_moisture_jun.prop*100, na.rm = T),
+         canopy_cover_c = canopy_cover.prop*100 - mean(canopy_cover.prop*100, na.rm = T)) %>%
+  select(site, plot, treatment, soil_moisture_c, canopy_cover_c)
+
+envD2Dat2 <- envD2Dat %>%
+  filter(month %in% c("early_aug", "late_aug")) %>%
+  mutate(dew_c = (dew_intensity2 - mean(dew_intensity2, na.rm = T)) / sd(dew_intensity2, na.rm = T),
+         month = fct_recode(month,
+                            jul = "early_aug",
+                            early_aug = "late_aug")) %>%
+    select(month, site, plot, treatment, dew_c)
 
 # combine
 sevD1Dat3 <- sevD1Dat2 %>%
@@ -409,6 +426,7 @@ sevD1Dat3 <- sevD1Dat2 %>%
               select(month, site, plot, treatment, sp, ID, Mv_sev, Ev_sev, 
                      Mv_sev_dens, EvS_sev_dens, EvA_sev_dens)) %>%
   full_join(edgeSevD1Dat2) %>%
+  left_join(envD1Dat2) %>%
   filter(!is.na(severity) & !is.na(next_severity)) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotf = paste0(site, plot, substr(treatment, 1, 1)),
@@ -427,6 +445,7 @@ sevD2Dat3 <- sevD2Dat2 %>%
               select(month, site, plot, treatment, sp, ID, Mv_sev, Ev_sev, 
                      Mv_sev_bio, EvS_sev_bio, EvA_sev_bio, Mv_sev_dens, EvS_sev_dens, EvA_sev_dens)) %>%
   full_join(edgeSevD2Dat2) %>%
+  left_join(envD2Dat2) %>%
   filter(!is.na(severity) & !is.na(next_severity) & !is.na(edge_severity)) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          plotf = paste0(site, plot, substr(treatment, 1, 1)),
@@ -635,6 +654,25 @@ sevD2Dat3 %>%
   geom_point()
 # linear change
 
+# environmental variables
+sevD1Dat3 %>%
+  ggplot(aes(x = soil_moisture_c, y = next_severity_t, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_grid(plant_group ~ month)
+
+sevD1Dat3 %>%
+  ggplot(aes(x = canopy_cover_c, y = next_severity_t, color = treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_grid(plant_group ~ month)
+
+sevD2Dat3 %>%
+  ggplot(aes(x = dew_c, y = next_severity_t)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  facet_grid(plant_group ~ month)
+
 
 #### fit models ####
 
@@ -660,19 +698,19 @@ sevD2Dat3_jun2 <- sevD2Dat3_jun %>%
 sevD1Mod_sev_dens_jul <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens) + (1|plotf),
                              data = sevD1Dat3_jul2, family = "beta",
                              prior <- c(prior(normal(0, 1), class = "Intercept"),
-                                        prior(normal(0, 1), class = "b")), # use default for sigma
+                                        prior(normal(0, 1), class = "b")), # use default for others
                              iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
 
 sevD1Mod_sev_dens_aug <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens + edge_severity) + (1|plotf),
                              data = sevD1Dat3_aug2, family = "beta",
                              prior <- c(prior(normal(0, 1), class = "Intercept"),
-                                        prior(normal(0, 1), class = "b")), # use default for sigma
+                                        prior(normal(0, 1), class = "b")), # use default for others
                              iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
 
 sevD2Mod_sev_dens_aug <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens + edge_severity) + (1|plotf),
                          data = sevD2Dat3_aug2, family = "beta",
                          prior <- c(prior(normal(0, 1), class = "Intercept"),
-                                    prior(normal(0, 1), class = "b")), # use default for sigma
+                                    prior(normal(0, 1), class = "b")), # use default for others
                          iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
 
 sevD2Mod_sev_dens_jul <- update(sevD2Mod_sev_dens_aug, newdata = sevD2Dat3_jul2)
@@ -693,6 +731,50 @@ save(sevD1Mod_sev_dens_jul, file = "output/focal_severity_model_jul_2018_dens_ex
 save(sevD2Mod_sev_dens_aug, file = "output/focal_severity_model_aug_2019_dens_exp.rda")
 save(sevD2Mod_sev_dens_jul, file = "output/focal_severity_model_jul_2019_dens_exp.rda")
 save(sevD2Mod_sev_dens_jun, file = "output/focal_severity_model_jun_2019_dens_exp.rda")
+
+# model summary tables
+sevD1_sev_dens_sum <- brms_SummaryTable(sevD1Mod_sev_dens_jul) %>%
+  rename(Estimate_16 = Estimate,
+         Est.Error_16 = Est.Error,
+         "l-95% CI_16" = "l-95% CI",
+         "u-95% CI_16" = "u-95% CI") %>%
+  full_join(brms_SummaryTable(sevD1Mod_sev_dens_aug) %>%
+              rename(Estimate_20 = Estimate,
+                     Est.Error_20 = Est.Error,
+                     "l-95% CI_20" = "l-95% CI",
+                     "u-95% CI_20" = "u-95% CI")) %>%
+  mutate(Covariate = str_replace_all(Covariate, "plant_groupEvS", "1st yr comp"),
+         Covariate = str_replace_all(Covariate, "plant_groupEvA", "adult comp"),
+         Covariate = str_replace_all(Covariate, "Mv_sev_dens", "src invader"),
+         Covariate = str_replace_all(Covariate, "EvS_sev_dens", "src 1st yr"),
+         Covariate = str_replace_all(Covariate, "EvA_sev_dens", "src adult"),
+         Covariate = str_replace_all(Covariate, "edge_severity", "src surr"),
+         Covariate = str_replace_all(Covariate, "fungicide", "fung"))
+write_csv(sevD1_sev_dens_sum, "output/focal_severity_model_2018_dens_exp.csv")
+
+sevD2_sev_dens_sum <- brms_SummaryTable(sevD2Mod_sev_dens_jun) %>%
+  rename(Estimate_8 = Estimate,
+         Est.Error_8 = Est.Error,
+         "l-95% CI_8" = "l-95% CI",
+         "u-95% CI_8" = "u-95% CI") %>%
+  full_join(brms_SummaryTable(sevD2Mod_sev_dens_jul) %>%
+              rename(Estimate_12 = Estimate,
+                     Est.Error_12 = Est.Error,
+                     "l-95% CI_12" = "l-95% CI",
+                     "u-95% CI_12" = "u-95% CI")) %>%
+  full_join(brms_SummaryTable(sevD2Mod_sev_dens_aug) %>%
+              rename(Estimate_16 = Estimate,
+                     Est.Error_16 = Est.Error,
+                     "l-95% CI_16" = "l-95% CI",
+                     "u-95% CI_16" = "u-95% CI")) %>%
+  mutate(Covariate = str_replace_all(Covariate, "plant_groupEvS", "1st yr comp"),
+         Covariate = str_replace_all(Covariate, "plant_groupEvA", "adult comp"),
+         Covariate = str_replace_all(Covariate, "Mv_sev_dens", "src invader"),
+         Covariate = str_replace_all(Covariate, "EvS_sev_dens", "src 1st yr"),
+         Covariate = str_replace_all(Covariate, "EvA_sev_dens", "src adult"),
+         Covariate = str_replace_all(Covariate, "edge_severity", "src surr"),
+         Covariate = str_replace_all(Covariate, "fungicide", "fung"))
+write_csv(sevD2_sev_dens_sum, "output/focal_severity_model_2019_dens_exp.csv")
 
 
 #### transmission coefficients ####
@@ -722,19 +804,26 @@ Mv_sev_dens_jun <- emtrends(sevD2Mod_sev_dens_jun, c("plant_group", "fungicide")
 EvS_sev_dens_jun <- emtrends(sevD2Mod_sev_dens_jun, c("plant_group", "fungicide"), var = "EvS_sev_dens", transform = "response")
 EvA_sev_dens_jun <- emtrends(sevD2Mod_sev_dens_jun, c("plant_group", "fungicide"), var = "EvA_sev_dens", transform = "response")
 
-sev_dens_D1_coef <- as_tibble(edge_sev_dens_D1_aug) %>% mutate(source = "edge", weeks = 20) %>%
+sev_dens_D1_coef <- as_tibble(summary(edge_sev_dens_D1_aug, point.est = mean)) %>% 
+  mutate(source = "edge", weeks = 20) %>%
   rename(trend = edge_severity.trend) %>%
-  full_join(as_tibble(Mv_sev_dens_D1_aug) %>% mutate(source = "Invader (Mv)", weeks = 20) %>%
+  full_join(as_tibble(summary(Mv_sev_dens_D1_aug, point.est = mean)) %>% 
+                        mutate(source = "Invader (Mv)", weeks = 20) %>%
               rename(trend = Mv_sev_dens.trend)) %>%
-  full_join(as_tibble(EvS_sev_dens_D1_aug) %>% mutate(source = "1st yr comp. (Ev)", weeks = 20) %>%
+  full_join(as_tibble(summary(EvS_sev_dens_D1_aug, point.est = mean)) %>% 
+                        mutate(source = "1st yr comp. (Ev)", weeks = 20) %>%
               rename(trend = EvS_sev_dens.trend)) %>%
-  full_join(as_tibble(EvA_sev_dens_D1_aug) %>% mutate(source = "Adult comp. (Ev)", weeks = 20) %>%
+  full_join(as_tibble(summary(EvA_sev_dens_D1_aug, point.est = mean)) %>% 
+                        mutate(source = "Adult comp. (Ev)", weeks = 20) %>%
               rename(trend = EvA_sev_dens.trend)) %>%
-  full_join(as_tibble(Mv_sev_dens_D1_jul) %>% mutate(source = "Invader (Mv)", weeks = 16) %>%
+  full_join(as_tibble(summary(Mv_sev_dens_D1_jul, point.est = mean)) %>% 
+              mutate(source = "Invader (Mv)", weeks = 16) %>%
               rename(trend = Mv_sev_dens.trend)) %>%
-  full_join(as_tibble(EvS_sev_dens_D1_jul) %>% mutate(source = "1st yr comp. (Ev)", weeks = 16) %>%
+  full_join(as_tibble(summary(EvS_sev_dens_D1_jul, point.est = mean)) %>% 
+              mutate(source = "1st yr comp. (Ev)", weeks = 16) %>%
               rename(trend = EvS_sev_dens.trend)) %>%
-  full_join(as_tibble(EvA_sev_dens_D1_jul) %>% mutate(source = "Adult comp. (Ev)", weeks = 16) %>%
+  full_join(as_tibble(summary(EvA_sev_dens_D1_jul, point.est = mean)) %>% 
+              mutate(source = "Adult comp. (Ev)", weeks = 16) %>%
               rename(trend = EvA_sev_dens.trend)) %>%
   mutate(treatment = if_else(fungicide == 0, "control", "fungicide"),
          plant_group = fct_recode(plant_group, "Invader (Mv)" = "Mv",
@@ -746,29 +835,41 @@ sev_dens_D1_coef <- as_tibble(edge_sev_dens_D1_aug) %>% mutate(source = "edge", 
                          lower.HPD < 0 & upper.HPD < 0 ~ "yes",
                          TRUE ~ "no"))
 
-sev_dens_D2_coef <- as_tibble(edge_sev_dens_aug) %>% mutate(source = "edge", weeks = 16) %>%
+sev_dens_D2_coef <- as_tibble(summary(edge_sev_dens_aug, point.est = mean)) %>% 
+  mutate(source = "edge", weeks = 16) %>%
   rename(trend = edge_severity.trend) %>%
-  full_join(as_tibble(Mv_sev_dens_aug) %>% mutate(source = "Invader (Mv)", weeks = 16) %>%
+  full_join(as_tibble(summary(Mv_sev_dens_aug, point.est = mean)) %>% 
+              mutate(source = "Invader (Mv)", weeks = 16) %>%
               rename(trend = Mv_sev_dens.trend)) %>%
-  full_join(as_tibble(EvS_sev_dens_aug) %>% mutate(source = "1st yr comp. (Ev)", weeks = 16) %>%
+  full_join(as_tibble(summary(EvS_sev_dens_aug, point.est = mean)) %>% 
+              mutate(source = "1st yr comp. (Ev)", weeks = 16) %>%
               rename(trend = EvS_sev_dens.trend)) %>%
-  full_join(as_tibble(EvA_sev_dens_aug) %>% mutate(source = "Adult comp. (Ev)", weeks = 16) %>%
+  full_join(as_tibble(summary(EvA_sev_dens_aug, point.est = mean)) %>% 
+              mutate(source = "Adult comp. (Ev)", weeks = 16) %>%
               rename(trend = EvA_sev_dens.trend)) %>%
-  full_join(as_tibble(edge_sev_dens_jul) %>% mutate(source = "edge", weeks = 12) %>%
+  full_join(as_tibble(summary(edge_sev_dens_jul, point.est = mean)) %>% 
+              mutate(source = "edge", weeks = 12) %>%
               rename(trend = edge_severity.trend)) %>%
-  full_join(as_tibble(Mv_sev_dens_jul) %>% mutate(source = "Invader (Mv)", weeks = 12) %>%
+  full_join(as_tibble(summary(Mv_sev_dens_jul, point.est = mean)) %>% 
+              mutate(source = "Invader (Mv)", weeks = 12) %>%
               rename(trend = Mv_sev_dens.trend)) %>%
-  full_join(as_tibble(EvS_sev_dens_jul) %>% mutate(source = "1st yr comp. (Ev)", weeks = 12) %>%
+  full_join(as_tibble(summary(EvS_sev_dens_jul, point.est = mean)) %>% 
+              mutate(source = "1st yr comp. (Ev)", weeks = 12) %>%
               rename(trend = EvS_sev_dens.trend)) %>%
-  full_join(as_tibble(EvA_sev_dens_jul) %>% mutate(source = "Adult comp. (Ev)", weeks = 12) %>%
+  full_join(as_tibble(summary(EvA_sev_dens_jul, point.est = mean)) %>% 
+              mutate(source = "Adult comp. (Ev)", weeks = 12) %>%
               rename(trend = EvA_sev_dens.trend)) %>%
-  full_join(as_tibble(edge_sev_dens_jun) %>% mutate(source = "edge", weeks = 8) %>%
+  full_join(as_tibble(summary(edge_sev_dens_jun, point.est = mean)) %>% 
+              mutate(source = "edge", weeks = 8) %>%
               rename(trend = edge_severity.trend)) %>%
-  full_join(as_tibble(Mv_sev_dens_jun) %>% mutate(source = "Invader (Mv)", weeks = 8) %>%
+  full_join(as_tibble(summary(Mv_sev_dens_jun, point.est = mean)) %>% 
+              mutate(source = "Invader (Mv)", weeks = 8) %>%
               rename(trend = Mv_sev_dens.trend)) %>%
-  full_join(as_tibble(EvS_sev_dens_jun) %>% mutate(source = "1st yr comp. (Ev)", weeks = 8) %>%
+  full_join(as_tibble(summary(EvS_sev_dens_jun, point.est = mean)) %>% 
+              mutate(source = "1st yr comp. (Ev)", weeks = 8) %>%
               rename(trend = EvS_sev_dens.trend)) %>%
-  full_join(as_tibble(EvA_sev_dens_jun) %>% mutate(source = "Adult comp. (Ev)", weeks = 8) %>%
+  full_join(as_tibble(summary(EvA_sev_dens_jun, point.est = mean)) %>% 
+              mutate(source = "Adult comp. (Ev)", weeks = 8) %>%
               rename(trend = EvA_sev_dens.trend)) %>%
   mutate(treatment = if_else(fungicide == 0, "control", "fungicide"),
          plant_group = fct_recode(plant_group, "Invader (Mv)" = "Mv",
@@ -783,6 +884,18 @@ sev_dens_D2_coef <- as_tibble(edge_sev_dens_aug) %>% mutate(source = "edge", wee
 # save compiled trends
 write_csv(sev_dens_D1_coef, "output/focal_severity_model_2018_dens_exp.csv")
 write_csv(sev_dens_D2_coef, "output/focal_severity_model_2019_dens_exp.csv")
+
+
+#### fungicide effects ####
+
+# hypotheses
+mv_fung_hyp <- "inv_logit_scaled(Intercept + fungicide)*100 - inv_logit_scaled(Intercept)*100 = 0"
+evS_fung_hyp <- "inv_logit_scaled(Intercept + fungicide + plant_groupEvS + plant_groupEvS:fungicide)*100 - inv_logit_scaled(Intercept + plant_groupEvS)*100  = 0"
+evA_fung_hyp <- "inv_logit_scaled(Intercept + fungicide + plant_groupEvA + plant_groupEvA:fungicide)*100 - inv_logit_scaled(Intercept + plant_groupEvA)*100  = 0"
+
+hypothesis(sevD2Mod_sev_dens_aug, c(mv_fung_hyp, evS_fung_hyp, evA_fung_hyp)) # Mv
+hypothesis(sevD2Mod_sev_dens_jul, c(mv_fung_hyp, evS_fung_hyp, evA_fung_hyp)) # EvS and A
+hypothesis(sevD2Mod_sev_dens_jun, c(mv_fung_hyp, evS_fung_hyp, evA_fung_hyp))
 
 
 #### figures ####
@@ -839,3 +952,176 @@ ggplot(sev_dens_D2_coef, aes(x = weeks, y = trend * 100, color = source)) +
   labs(x = "Weeks post planting", y = "Change in disease severity (%)") +
   fig_theme
 dev.off()
+
+
+#### environmental models ####
+
+# remove missing data
+sevD1Dat3_aug_env <- sevD1Dat3_aug %>% 
+  filter(!is.na(Mv_sev_dens) & !is.na(EvA_sev_dens) & !is.na(EvS_sev_dens) & !is.na(edge_severity) & !is.na(soil_moisture_c) & !is.na(canopy_cover_c)) %>%
+  mutate(next_severity_t = transform01(next_severity))
+sevD1Dat3_jul_env <- sevD1Dat3_jul %>% 
+  filter(!is.na(Mv_sev_dens) & !is.na(EvA_sev_dens) & !is.na(EvS_sev_dens) & !is.na(soil_moisture_c) & !is.na(canopy_cover_c)) %>%
+  mutate(next_severity_t = transform01(next_severity))
+
+sevD2Dat3_aug_env <- sevD2Dat3_aug %>% 
+  filter(!is.na(Mv_sev_dens) & !is.na(EvA_sev_dens) & !is.na(EvS_sev_dens) & !is.na(edge_severity) & !is.na(dew_c)) %>%
+  mutate(next_severity_t = transform01(next_severity))
+sevD2Dat3_jul_env <- sevD2Dat3_jul %>% 
+  filter(!is.na(Mv_sev_dens) & !is.na(EvA_sev_dens) & !is.na(EvS_sev_dens) & !is.na(edge_severity) & !is.na(dew_c)) %>%
+  mutate(next_severity_t = transform01(next_severity))
+
+# fit models
+sevD1Mod_env_jul <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens + soil_moisture_c + canopy_cover_c) + (1|plotf),
+                             data = sevD1Dat3_jul_env, family = "beta",
+                             prior <- c(prior(normal(0, 1), class = "Intercept"),
+                                        prior(normal(0, 1), class = "b")), # use default for others
+                             iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
+
+sevD1Mod_env_aug <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens + edge_severity + soil_moisture_c + canopy_cover_c) + (1|plotf),
+                             data = sevD1Dat3_aug_env, family = "beta",
+                             prior <- c(prior(normal(0, 1), class = "Intercept"),
+                                        prior(normal(0, 1), class = "b")), # use default for others
+                             iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
+
+sevD2Mod_env_aug <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens + edge_severity + dew_c) + (1|plotf),
+                             data = sevD2Dat3_aug_env, family = "beta",
+                             prior <- c(prior(normal(0, 1), class = "Intercept"),
+                                        prior(normal(0, 1), class = "b")), # use default for others
+                             iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
+
+sevD2Mod_env_jul <- update(sevD2Mod_env_aug, newdata = sevD2Dat3_jul_env)
+
+# check models
+mod_check_fun(sevD1Mod_env_aug)
+mod_check_fun(sevD1Mod_env_jul)
+mod_check_fun(sevD2Mod_env_aug)
+mod_check_fun(sevD2Mod_env_jul)
+
+# save models
+save(sevD1Mod_env_aug, file = "output/focal_severity_model_env_aug_2018_dens_exp.rda")
+save(sevD1Mod_env_jul, file = "output/focal_severity_model_env_jul_2018_dens_exp.rda")
+save(sevD2Mod_env_aug, file = "output/focal_severity_model_env_aug_2019_dens_exp.rda")
+save(sevD2Mod_env_jul, file = "output/focal_severity_model_env_jul_2019_dens_exp.rda")
+
+# marginal trends  
+soil_env_D1_aug <- emtrends(sevD1Mod_env_aug, c("plant_group", "fungicide"), var = "soil_moisture_c", transform = "response")
+cano_env_D1_aug <- emtrends(sevD1Mod_env_aug, c("plant_group", "fungicide"), var = "canopy_cover_c", transform = "response")
+soil_env_D1_jul <- emtrends(sevD1Mod_env_jul, c("plant_group", "fungicide"), var = "soil_moisture_c", transform = "response")
+cano_env_D1_jul <- emtrends(sevD1Mod_env_jul, c("plant_group", "fungicide"), var = "canopy_cover_c", transform = "response")
+
+dew_env_D2_aug <- emtrends(sevD2Mod_env_aug, "plant_group", var = "dew_c", transform = "response")
+dew_env_D2_jul <- emtrends(sevD2Mod_env_jul, "plant_group", var = "dew_c", transform = "response")
+
+# combine
+env_D1_coef <- as_tibble(summary(soil_env_D1_aug, point.est = mean)) %>% 
+  mutate(Variable = "soil moisture", Weeks = 20) %>%
+  rename(trend = soil_moisture_c.trend) %>%
+  full_join(as_tibble(summary(cano_env_D1_aug, point.est = mean)) %>% 
+              mutate(Variable = "canopy cover", Weeks = 20) %>%
+              rename(trend = canopy_cover_c.trend)) %>%
+  full_join(as_tibble(summary(soil_env_D1_jul, point.est = mean)) %>% 
+              mutate(Variable = "soil moisture", Weeks = 16) %>%
+              rename(trend = soil_moisture_c.trend)) %>%
+  full_join(as_tibble(summary(cano_env_D1_jul, point.est = mean)) %>% 
+              mutate(Variable = "canopy cover", Weeks = 16) %>%
+              rename(trend = canopy_cover_c.trend)) %>%
+  mutate(Treatment = if_else(fungicide == 0, "control", "fungicide"),
+         Focal = fct_recode(plant_group, "invader" = "Mv",
+                                  "first-year comp." = "EvS",
+                                  "adult comp." = "EvA"),
+         Estimate = trend * 100,
+         l95 = lower.HPD * 100,
+         u95 = upper.HPD * 100) %>%
+  select(Weeks, Focal, Variable, Treatment, Estimate, l95, u95) %>%
+  arrange(Weeks, Variable, Focal, Treatment)
+
+env_D2_coef <- as_tibble(summary(dew_env_D2_aug, point.est = mean)) %>% 
+  mutate(Weeks = 16) %>%
+  full_join(as_tibble(summary(dew_env_D2_jul, point.est = mean)) %>% 
+              mutate(Weeks = 12)) %>%
+  mutate(Focal = fct_recode(plant_group, "invader" = "Mv",
+                            "first-year comp." = "EvS",
+                            "adult comp." = "EvA"),
+         Estimate = dew_c.trend * 100,
+         l95 = lower.HPD * 100,
+         u95 = upper.HPD * 100) %>%
+  select(Weeks, Focal, Estimate, l95, u95) %>%
+  arrange(Weeks, Focal)
+
+# save
+write_csv(env_D1_coef, "output/focal_severity_model_env_coefficients_2018_density_exp.csv")
+write_csv(env_D2_coef, "output/focal_severity_model_env_coefficients_2019_density_exp.csv")
+
+# check sig relationships
+sevD1Dat3_jul_env %>%
+  filter(plant_group == "EvS" & treatment == "fungicide") %>%
+  ggplot(aes(x = soil_moisture_c, y = next_severity_t)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x)
+
+sevD2Dat3_jul_env %>%
+  filter(plant_group == "EvS") %>%
+  ggplot(aes(x = dew_c, y = next_severity_t)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x)
+# neither are driven by outliers
+
+#### water effect - compare to edge ####
+
+# summarize disease severity by plot
+sevD2Dat_sum <- sevD2Dat2 %>%
+  group_by(month, site, plot, treatment, sp) %>%
+  summarize(severity = mean(severity)) %>%
+  ungroup() %>%
+  filter(sp == "Mv") %>%
+  inner_join(edgeSevD2Dat2 %>%
+               mutate(edge_severity = edge_severity / 100)) %>%
+  pivot_longer(cols = c(severity, edge_severity),
+               names_to = "plant_type",
+               values_to = "severity") %>%
+  mutate(plant_type = if_else(plant_type == "edge_severity", "surrounding", "inside") %>%
+           fct_relevel("inside"),
+         severity_t = transform01(severity),
+         month = fct_relevel(month, "jun", "jul", "early_aug"),
+         plotf = paste0(site, plot, substr(treatment, 1, 1)),
+         treatment = fct_relevel(treatment, "water"))
+
+# visualize
+ggplot(sevD2Dat_sum, aes(x = month, y = severity_t, color = plant_type)) +
+  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(1)) +
+  stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(1)) +
+  facet_wrap(~ treatment)
+
+# model
+ctrlD2Mod <- brm(severity_t ~ plant_type*treatment*month + (1|plotf),
+                 data = sevD2Dat_sum, family = Beta,
+                 prior <- c(prior(normal(0, 1), class = "Intercept"),
+                            prior(normal(0, 1), class = "b")),
+                 iter = 6000, warmup = 1000, chains = 3, cores = 3)
+
+mod_check_fun(ctrlD2Mod)
+
+# save model
+save(ctrlD2Mod, file = "output/edge_experiment_mv_model_2019_density_exp.rda")
+
+# do experimental plants have different severity than edge?
+jun_ctrl_comp = "inv_logit_scaled(Intercept + plant_typesurrounding)*100 = inv_logit_scaled(Intercept)*100"
+jun_fung_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + treatmentfungicide + plant_typesurrounding:treatmentfungicide)*100 = inv_logit_scaled(Intercept + treatmentfungicide)*100"
+jul_ctrl_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + monthjul + plant_typesurrounding:monthjul)*100 = inv_logit_scaled(Intercept + monthjul)*100"
+jul_fung_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + treatmentfungicide + monthjul + plant_typesurrounding:treatmentfungicide + plant_typesurrounding:monthjul + treatmentfungicide:monthjul + plant_typesurrounding:treatmentfungicide:monthjul)*100 = inv_logit_scaled(Intercept + treatmentfungicide + monthjul + treatmentfungicide:monthjul)*100"
+eau_ctrl_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + monthearly_aug + plant_typesurrounding:monthearly_aug)*100 = inv_logit_scaled(Intercept + monthearly_aug)*100"
+eau_fung_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + treatmentfungicide + monthearly_aug + plant_typesurrounding:treatmentfungicide + plant_typesurrounding:monthearly_aug + treatmentfungicide:monthearly_aug + plant_typesurrounding:treatmentfungicide:monthearly_aug)*100 = inv_logit_scaled(Intercept + treatmentfungicide + monthearly_aug + treatmentfungicide:monthearly_aug)*100"
+lau_ctrl_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + monthlate_aug + plant_typesurrounding:monthlate_aug)*100 = inv_logit_scaled(Intercept + monthlate_aug)*100"
+lau_fung_comp = "inv_logit_scaled(Intercept + plant_typesurrounding + treatmentfungicide + monthlate_aug + plant_typesurrounding:treatmentfungicide + plant_typesurrounding:monthlate_aug + treatmentfungicide:monthlate_aug + plant_typesurrounding:treatmentfungicide:monthlate_aug)*100 = inv_logit_scaled(Intercept + treatmentfungicide + monthlate_aug + treatmentfungicide:monthlate_aug)*100"
+
+# estimates
+ctrlD2hyps <- hypothesis(ctrlD2Mod, c(jun_ctrl_comp, jun_fung_comp, jul_ctrl_comp, jul_fung_comp,
+                                      eau_ctrl_comp, eau_fung_comp, lau_ctrl_comp, lau_fung_comp))
+
+ctrlD2hypsOut <- ctrlD2hyps[[1]] %>%
+  as_tibble() %>%
+  mutate(Weeks = rep(c(4, 8, 12, 16), each = 2),
+         Treatment = rep(c("control", "fungicide"), 4))
+
+write_csv(ctrlD2hypsOut, "output/edge_experiment_mv_2019_density_exp.csv")
