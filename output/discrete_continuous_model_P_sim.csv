@@ -1,0 +1,1401 @@
+time,species,N
+1,Annual,0
+2,Annual,0
+3,Annual,0
+4,Annual,0
+5,Annual,0
+6,Annual,0
+7,Annual,0
+8,Annual,0
+9,Annual,0
+10,Annual,0
+11,Annual,0
+12,Annual,0
+13,Annual,0
+14,Annual,0
+15,Annual,0
+16,Annual,0
+17,Annual,0
+18,Annual,0
+19,Annual,0
+20,Annual,0
+21,Annual,0
+22,Annual,0
+23,Annual,0
+24,Annual,0
+25,Annual,0
+26,Annual,0
+27,Annual,0
+28,Annual,0
+29,Annual,0
+30,Annual,0
+31,Annual,0
+32,Annual,0
+33,Annual,0
+34,Annual,0
+35,Annual,0
+36,Annual,0
+37,Annual,0
+38,Annual,0
+39,Annual,0
+40,Annual,0
+41,Annual,0
+42,Annual,0
+43,Annual,0
+44,Annual,0
+45,Annual,0
+46,Annual,0
+47,Annual,0
+48,Annual,0
+49,Annual,0
+50,Annual,0
+51,Annual,0
+52,Annual,0
+53,Annual,0
+54,Annual,0
+55,Annual,0
+56,Annual,0
+57,Annual,0
+58,Annual,0
+59,Annual,0
+60,Annual,0
+61,Annual,0
+62,Annual,0
+63,Annual,0
+64,Annual,0
+65,Annual,0
+66,Annual,0
+67,Annual,0
+68,Annual,0
+69,Annual,0
+70,Annual,0
+71,Annual,0
+72,Annual,0
+73,Annual,0
+74,Annual,0
+75,Annual,0
+76,Annual,0
+77,Annual,0
+78,Annual,0
+79,Annual,0
+80,Annual,0
+81,Annual,0
+82,Annual,0
+83,Annual,0
+84,Annual,0
+85,Annual,0
+86,Annual,0
+87,Annual,0
+88,Annual,0
+89,Annual,0
+90,Annual,0
+91,Annual,0
+92,Annual,0
+93,Annual,0
+94,Annual,0
+95,Annual,0
+96,Annual,0
+97,Annual,0
+98,Annual,0
+99,Annual,0
+100,Annual,0
+1,Perennial first-year,0
+2,Perennial first-year,190.93563982151696
+3,Perennial first-year,4347.825768674638
+4,Perennial first-year,13817.890968115962
+5,Perennial first-year,15023.579175342365
+6,Perennial first-year,15043.859413934437
+7,Perennial first-year,15017.189053467113
+8,Perennial first-year,15004.222768928681
+9,Perennial first-year,14999.006538867836
+10,Perennial first-year,14996.978933106488
+11,Perennial first-year,14996.196577043804
+12,Perennial first-year,14995.89522457823
+13,Perennial first-year,14995.779198769755
+14,Perennial first-year,14995.734532318318
+15,Perennial first-year,14995.71733771725
+16,Perennial first-year,14995.710718640694
+17,Perennial first-year,14995.708170632595
+18,Perennial first-year,14995.707189780467
+19,Perennial first-year,14995.706812203016
+20,Perennial first-year,14995.706666855269
+21,Perennial first-year,14995.706610903915
+22,Perennial first-year,14995.706589365536
+23,Perennial first-year,14995.706581074392
+24,Perennial first-year,14995.706577882716
+25,Perennial first-year,14995.706576654067
+26,Perennial first-year,14995.706576181132
+27,Perennial first-year,14995.70657599907
+28,Perennial first-year,14995.706575928956
+29,Perennial first-year,14995.706575901982
+30,Perennial first-year,14995.70657589157
+31,Perennial first-year,14995.706575887629
+32,Perennial first-year,14995.70657588606
+33,Perennial first-year,14995.706575885495
+34,Perennial first-year,14995.70657588523
+35,Perennial first-year,14995.706575885164
+36,Perennial first-year,14995.706575885137
+37,Perennial first-year,14995.706575885126
+38,Perennial first-year,14995.706575885128
+39,Perennial first-year,14995.706575885124
+40,Perennial first-year,14995.706575885126
+41,Perennial first-year,14995.706575885126
+42,Perennial first-year,14995.706575885126
+43,Perennial first-year,14995.706575885126
+44,Perennial first-year,14995.706575885126
+45,Perennial first-year,14995.706575885126
+46,Perennial first-year,14995.706575885126
+47,Perennial first-year,14995.706575885126
+48,Perennial first-year,14995.706575885126
+49,Perennial first-year,14995.706575885126
+50,Perennial first-year,14995.706575885126
+51,Perennial first-year,14995.706575885126
+52,Perennial first-year,14995.706575885126
+53,Perennial first-year,14995.706575885126
+54,Perennial first-year,14995.706575885126
+55,Perennial first-year,14995.706575885126
+56,Perennial first-year,14995.706575885126
+57,Perennial first-year,14995.706575885126
+58,Perennial first-year,14995.706575885126
+59,Perennial first-year,14995.706575885126
+60,Perennial first-year,14995.706575885126
+61,Perennial first-year,14995.706575885126
+62,Perennial first-year,14995.706575885126
+63,Perennial first-year,14995.706575885126
+64,Perennial first-year,14995.706575885126
+65,Perennial first-year,14995.706575885126
+66,Perennial first-year,14995.706575885126
+67,Perennial first-year,14995.706575885126
+68,Perennial first-year,14995.706575885126
+69,Perennial first-year,14995.706575885126
+70,Perennial first-year,14995.706575885126
+71,Perennial first-year,14995.706575885126
+72,Perennial first-year,14995.706575885126
+73,Perennial first-year,14995.706575885126
+74,Perennial first-year,14995.706575885126
+75,Perennial first-year,14995.706575885126
+76,Perennial first-year,14995.706575885126
+77,Perennial first-year,14995.706575885126
+78,Perennial first-year,14995.706575885126
+79,Perennial first-year,14995.706575885126
+80,Perennial first-year,14995.706575885126
+81,Perennial first-year,14995.706575885126
+82,Perennial first-year,14995.706575885126
+83,Perennial first-year,14995.706575885126
+84,Perennial first-year,14995.706575885126
+85,Perennial first-year,14995.706575885126
+86,Perennial first-year,14995.706575885126
+87,Perennial first-year,14995.706575885126
+88,Perennial first-year,14995.706575885126
+89,Perennial first-year,14995.706575885126
+90,Perennial first-year,14995.706575885126
+91,Perennial first-year,14995.706575885126
+92,Perennial first-year,14995.706575885126
+93,Perennial first-year,14995.706575885126
+94,Perennial first-year,14995.706575885126
+95,Perennial first-year,14995.706575885126
+96,Perennial first-year,14995.706575885126
+97,Perennial first-year,14995.706575885126
+98,Perennial first-year,14995.706575885126
+99,Perennial first-year,14995.706575885126
+100,Perennial first-year,14995.706575885126
+1,Perennial adult,10
+2,Perennial adult,9.629224455141935
+3,Perennial adult,41.551905653752975
+4,Perennial adult,696.6066544199814
+5,Perennial adult,2281.682097314858
+6,Perennial adult,3760.6464273385063
+7,Perennial adult,5122.277882562228
+8,Perennial adult,6407.161280400694
+9,Perennial adult,7634.238189396439
+10,Perennial adult,8811.914570474251
+11,Perennial adult,9944.425809799952
+12,Perennial adult,11034.369498497805
+13,Perennial adult,12083.678789212801
+14,Perennial adult,13093.996831438011
+15,Perennial adult,14066.821868874547
+16,Perennial adult,15003.564275223434
+17,Perennial adult,15905.569691427729
+18,Perennial adult,16774.12907699992
+19,Perennial adult,17610.483682596045
+20,Perennial adult,18415.82802678842
+21,Perennial adult,19191.31206518464
+22,Perennial adult,19938.04301070701
+23,Perennial adult,20657.086983055535
+24,Perennial adult,21349.470557238266
+25,Perennial adult,22016.182239374684
+26,Perennial adult,22658.17388188594
+27,Perennial adult,23276.3620439444
+28,Perennial adult,23871.62930060763
+29,Perennial adult,24444.82550307672
+30,Perennial adult,24996.768992097845
+31,Perennial adult,25528.247766324057
+32,Perennial adult,26040.020607337905
+33,Perennial adult,26532.818162953572
+34,Perennial adult,27007.343990349993
+35,Perennial adult,27464.27556052603
+36,Perennial adult,27904.26522551252
+37,Perennial adult,28327.941149722257
+38,Perennial adult,28735.90820676777
+39,Perennial adult,29128.74884302726
+40,Perennial adult,29507.0239091916
+41,Perennial adult,29871.273460979613
+42,Perennial adult,30222.017530164772
+43,Perennial adult,30559.756867014145
+44,Perennial adult,30884.973655199487
+45,Perennial adult,31198.132200201188
+46,Perennial adult,31499.67959218789
+47,Perennial adult,31790.046344318154
+48,Perennial adult,32069.647007375443
+49,Perennial adult,32338.880761613957
+50,Perennial adult,32598.13198666027
+51,Perennial adult,32847.77081028442
+52,Perennial adult,33088.15363682387
+53,Perennial adult,33319.623656014846
+54,Perennial adult,33542.511332957445
+55,Perennial adult,33757.13487991399
+56,Perennial adult,33963.80071061431
+57,Perennial adult,34162.80387771649
+58,Perennial adult,34354.42849404759
+59,Perennial adult,34538.94813822586
+60,Perennial adult,34716.6262452434
+61,Perennial adult,34887.71648256707
+62,Perennial adult,35052.463112294376
+63,Perennial adult,35211.101339881614
+64,Perennial adult,35363.85764994196
+65,Perennial adult,35510.95012959299
+66,Perennial adult,35652.588779815305
+67,Perennial adult,35788.975815266705
+68,Perennial adult,35920.30595298
+69,Perennial adult,36046.766690356606
+70,Perennial adult,36168.53857285281
+71,Perennial adult,36285.79545174092
+72,Perennial adult,36398.70473231323
+73,Perennial adult,36507.42761288316
+74,Perennial adult,36612.11931492491
+75,Perennial adult,36712.92930467999
+76,Perennial adult,36810.00150654721
+77,Perennial adult,36903.47450856065
+78,Perennial adult,36993.48176024898
+79,Perennial adult,37080.15176315872
+80,Perennial adult,37163.60825431329
+81,Perennial adult,37243.97038286988
+82,Perennial adult,37321.35288022631
+83,Perennial adult,37395.86622382077
+84,Perennial adult,37467.61679485818
+85,Perennial adult,37536.70703018856
+86,Perennial adult,37603.235568554046
+87,Perennial adult,37667.29739141343
+88,Perennial adult,37728.98395854528
+89,Perennial adult,37788.38333862326
+90,Perennial adult,37845.58033494997
+91,Perennial adult,37900.65660652895
+92,Perennial adult,37953.69078464759
+93,Perennial adult,38004.758585137424
+94,Perennial adult,38053.93291647213
+95,Perennial adult,38101.283983857466
+96,Perennial adult,38146.879389461865
+97,Perennial adult,38190.784228930665
+98,Perennial adult,38233.061184321865
+99,Perennial adult,38273.770613596054
+100,Perennial adult,38312.970636788246
+1,Litter,0
+2,Litter,9.878401827307234
+3,Litter,248.6087797059304
+4,Litter,909.314180865925
+5,Litter,1257.519030507799
+6,Litter,1397.2163226711486
+7,Litter,1451.391905949814
+8,Litter,1472.2757293112882
+9,Litter,1480.3168343071275
+10,Litter,1483.4123391091994
+11,Litter,1484.6039473237063
+12,Litter,1485.0626534567352
+13,Litter,1485.2392312724105
+14,Litter,1485.3072045366914
+15,Litter,1485.3333707153984
+16,Litter,1485.3434433379691
+17,Litter,1485.347320775878
+18,Litter,1485.348813388658
+19,Litter,1485.34938796728
+20,Litter,1485.3496091502966
+21,Litter,1485.3496942943052
+22,Litter,1485.3497270703397
+23,Litter,1485.3497396874163
+24,Litter,1485.349744544337
+25,Litter,1485.3497464139987
+26,Litter,1485.3497471337232
+27,Litter,1485.3497474107799
+28,Litter,1485.3497475174308
+29,Litter,1485.349747558486
+30,Litter,1485.3497475742888
+31,Litter,1485.3497475803747
+32,Litter,1485.3497475827166
+33,Litter,1485.3497475836193
+34,Litter,1485.3497475839647
+35,Litter,1485.3497475840986
+36,Litter,1485.349747584151
+37,Litter,1485.3497475841712
+38,Litter,1485.349747584179
+39,Litter,1485.349747584182
+40,Litter,1485.3497475841837
+41,Litter,1485.3497475841841
+42,Litter,1485.3497475841841
+43,Litter,1485.3497475841841
+44,Litter,1485.3497475841841
+45,Litter,1485.3497475841841
+46,Litter,1485.3497475841841
+47,Litter,1485.3497475841841
+48,Litter,1485.3497475841841
+49,Litter,1485.3497475841841
+50,Litter,1485.3497475841841
+51,Litter,1485.3497475841841
+52,Litter,1485.3497475841841
+53,Litter,1485.3497475841841
+54,Litter,1485.3497475841841
+55,Litter,1485.3497475841841
+56,Litter,1485.3497475841841
+57,Litter,1485.3497475841841
+58,Litter,1485.3497475841841
+59,Litter,1485.3497475841841
+60,Litter,1485.3497475841841
+61,Litter,1485.3497475841841
+62,Litter,1485.3497475841841
+63,Litter,1485.3497475841841
+64,Litter,1485.3497475841841
+65,Litter,1485.3497475841841
+66,Litter,1485.3497475841841
+67,Litter,1485.3497475841841
+68,Litter,1485.3497475841841
+69,Litter,1485.3497475841841
+70,Litter,1485.3497475841841
+71,Litter,1485.3497475841841
+72,Litter,1485.3497475841841
+73,Litter,1485.3497475841841
+74,Litter,1485.3497475841841
+75,Litter,1485.3497475841841
+76,Litter,1485.3497475841841
+77,Litter,1485.3497475841841
+78,Litter,1485.3497475841841
+79,Litter,1485.3497475841841
+80,Litter,1485.3497475841841
+81,Litter,1485.3497475841841
+82,Litter,1485.3497475841841
+83,Litter,1485.3497475841841
+84,Litter,1485.3497475841841
+85,Litter,1485.3497475841841
+86,Litter,1485.3497475841841
+87,Litter,1485.3497475841841
+88,Litter,1485.3497475841841
+89,Litter,1485.3497475841841
+90,Litter,1485.3497475841841
+91,Litter,1485.3497475841841
+92,Litter,1485.3497475841841
+93,Litter,1485.3497475841841
+94,Litter,1485.3497475841841
+95,Litter,1485.3497475841841
+96,Litter,1485.3497475841841
+97,Litter,1485.3497475841841
+98,Litter,1485.3497475841841
+99,Litter,1485.3497475841841
+100,Litter,1485.3497475841841
+1,Annual biomass,0
+2,Annual biomass,0
+3,Annual biomass,0
+4,Annual biomass,0
+5,Annual biomass,0
+6,Annual biomass,0
+7,Annual biomass,0
+8,Annual biomass,0
+9,Annual biomass,0
+10,Annual biomass,0
+11,Annual biomass,0
+12,Annual biomass,0
+13,Annual biomass,0
+14,Annual biomass,0
+15,Annual biomass,0
+16,Annual biomass,0
+17,Annual biomass,0
+18,Annual biomass,0
+19,Annual biomass,0
+20,Annual biomass,0
+21,Annual biomass,0
+22,Annual biomass,0
+23,Annual biomass,0
+24,Annual biomass,0
+25,Annual biomass,0
+26,Annual biomass,0
+27,Annual biomass,0
+28,Annual biomass,0
+29,Annual biomass,0
+30,Annual biomass,0
+31,Annual biomass,0
+32,Annual biomass,0
+33,Annual biomass,0
+34,Annual biomass,0
+35,Annual biomass,0
+36,Annual biomass,0
+37,Annual biomass,0
+38,Annual biomass,0
+39,Annual biomass,0
+40,Annual biomass,0
+41,Annual biomass,0
+42,Annual biomass,0
+43,Annual biomass,0
+44,Annual biomass,0
+45,Annual biomass,0
+46,Annual biomass,0
+47,Annual biomass,0
+48,Annual biomass,0
+49,Annual biomass,0
+50,Annual biomass,0
+51,Annual biomass,0
+52,Annual biomass,0
+53,Annual biomass,0
+54,Annual biomass,0
+55,Annual biomass,0
+56,Annual biomass,0
+57,Annual biomass,0
+58,Annual biomass,0
+59,Annual biomass,0
+60,Annual biomass,0
+61,Annual biomass,0
+62,Annual biomass,0
+63,Annual biomass,0
+64,Annual biomass,0
+65,Annual biomass,0
+66,Annual biomass,0
+67,Annual biomass,0
+68,Annual biomass,0
+69,Annual biomass,0
+70,Annual biomass,0
+71,Annual biomass,0
+72,Annual biomass,0
+73,Annual biomass,0
+74,Annual biomass,0
+75,Annual biomass,0
+76,Annual biomass,0
+77,Annual biomass,0
+78,Annual biomass,0
+79,Annual biomass,0
+80,Annual biomass,0
+81,Annual biomass,0
+82,Annual biomass,0
+83,Annual biomass,0
+84,Annual biomass,0
+85,Annual biomass,0
+86,Annual biomass,0
+87,Annual biomass,0
+88,Annual biomass,0
+89,Annual biomass,0
+90,Annual biomass,0
+91,Annual biomass,0
+92,Annual biomass,0
+93,Annual biomass,0
+94,Annual biomass,0
+95,Annual biomass,0
+96,Annual biomass,0
+97,Annual biomass,0
+98,Annual biomass,0
+99,Annual biomass,0
+100,Annual biomass,0
+1,Perennial first-year biomass,0
+2,Perennial first-year biomass,0
+3,Perennial first-year biomass,26.69218432189562
+4,Perennial first-year biomass,43.58370814663267
+5,Perennial first-year biomass,37.96620059927006
+6,Perennial first-year biomass,39.84110239183754
+7,Perennial first-year biomass,40.32772056943207
+8,Perennial first-year biomass,40.484032940869845
+9,Perennial first-year biomass,40.541963463102775
+10,Perennial first-year biomass,40.56403517857766
+11,Perennial first-year biomass,40.57250773081539
+12,Perennial first-year biomass,40.575766379345126
+13,Perennial first-year biomass,40.577020426355126
+14,Perennial first-year biomass,40.57750312009276
+15,Perennial first-year biomass,40.57768892522441
+16,Perennial first-year biomass,40.57776044957606
+17,Perennial first-year biomass,40.57778798260104
+18,Perennial first-year biomass,40.57779858136837
+19,Perennial first-year biomass,40.57780266134213
+20,Perennial first-year biomass,40.577804231920325
+21,Perennial first-year biomass,40.57780483651139
+22,Perennial first-year biomass,40.57780506924755
+23,Perennial first-year biomass,40.577805158838736
+24,Perennial first-year biomass,40.57780519332692
+25,Perennial first-year biomass,40.57780520660306
+26,Perennial first-year biomass,40.577805211713795
+27,Perennial first-year biomass,40.57780521368093
+28,Perennial first-year biomass,40.57780521443877
+29,Perennial first-year biomass,40.577805214729885
+30,Perennial first-year biomass,40.57780521484231
+31,Perennial first-year biomass,40.57780521488543
+32,Perennial first-year biomass,40.57780521490212
+33,Perennial first-year biomass,40.57780521490832
+34,Perennial first-year biomass,40.57780521491095
+35,Perennial first-year biomass,40.577805214911834
+36,Perennial first-year biomass,40.577805214912104
+37,Perennial first-year biomass,40.57780521491223
+38,Perennial first-year biomass,40.57780521491241
+39,Perennial first-year biomass,40.57780521491215
+40,Perennial first-year biomass,40.57780521491221
+41,Perennial first-year biomass,40.577805214912196
+42,Perennial first-year biomass,40.577805214912175
+43,Perennial first-year biomass,40.577805214912175
+44,Perennial first-year biomass,40.577805214912175
+45,Perennial first-year biomass,40.577805214912175
+46,Perennial first-year biomass,40.577805214912175
+47,Perennial first-year biomass,40.577805214912175
+48,Perennial first-year biomass,40.577805214912175
+49,Perennial first-year biomass,40.577805214912175
+50,Perennial first-year biomass,40.577805214912175
+51,Perennial first-year biomass,40.577805214912175
+52,Perennial first-year biomass,40.577805214912175
+53,Perennial first-year biomass,40.577805214912175
+54,Perennial first-year biomass,40.577805214912175
+55,Perennial first-year biomass,40.577805214912175
+56,Perennial first-year biomass,40.577805214912175
+57,Perennial first-year biomass,40.577805214912175
+58,Perennial first-year biomass,40.577805214912175
+59,Perennial first-year biomass,40.577805214912175
+60,Perennial first-year biomass,40.577805214912175
+61,Perennial first-year biomass,40.577805214912175
+62,Perennial first-year biomass,40.577805214912175
+63,Perennial first-year biomass,40.577805214912175
+64,Perennial first-year biomass,40.577805214912175
+65,Perennial first-year biomass,40.577805214912175
+66,Perennial first-year biomass,40.577805214912175
+67,Perennial first-year biomass,40.577805214912175
+68,Perennial first-year biomass,40.577805214912175
+69,Perennial first-year biomass,40.577805214912175
+70,Perennial first-year biomass,40.577805214912175
+71,Perennial first-year biomass,40.577805214912175
+72,Perennial first-year biomass,40.577805214912175
+73,Perennial first-year biomass,40.577805214912175
+74,Perennial first-year biomass,40.577805214912175
+75,Perennial first-year biomass,40.577805214912175
+76,Perennial first-year biomass,40.577805214912175
+77,Perennial first-year biomass,40.577805214912175
+78,Perennial first-year biomass,40.577805214912175
+79,Perennial first-year biomass,40.577805214912175
+80,Perennial first-year biomass,40.577805214912175
+81,Perennial first-year biomass,40.577805214912175
+82,Perennial first-year biomass,40.577805214912175
+83,Perennial first-year biomass,40.577805214912175
+84,Perennial first-year biomass,40.577805214912175
+85,Perennial first-year biomass,40.577805214912175
+86,Perennial first-year biomass,40.577805214912175
+87,Perennial first-year biomass,40.577805214912175
+88,Perennial first-year biomass,40.577805214912175
+89,Perennial first-year biomass,40.577805214912175
+90,Perennial first-year biomass,40.577805214912175
+91,Perennial first-year biomass,40.577805214912175
+92,Perennial first-year biomass,40.577805214912175
+93,Perennial first-year biomass,40.577805214912175
+94,Perennial first-year biomass,40.577805214912175
+95,Perennial first-year biomass,40.577805214912175
+96,Perennial first-year biomass,40.577805214912175
+97,Perennial first-year biomass,40.577805214912175
+98,Perennial first-year biomass,40.577805214912175
+99,Perennial first-year biomass,40.577805214912175
+100,Perennial first-year biomass,40.577805214912175
+1,Perennial adult biomass,0.31
+2,Perennial adult biomass,9.215287987750811
+3,Perennial adult biomass,199.4364278758796
+4,Perennial adult biomass,641.9025389004538
+5,Perennial adult biomass,683.4091193752597
+6,Perennial adult biomass,681.2906951142542
+7,Perennial adult biomass,679.7804243881843
+8,Perennial adult biomass,679.1488316822436
+9,Perennial adult biomass,678.9010473955041
+10,Perennial adult biomass,678.8052481557733
+11,Perennial adult biomass,678.7683298871375
+12,Perennial adult biomass,678.7541139999612
+13,Perennial adult biomass,678.7486411254492
+14,Perennial adult biomass,678.7465342900554
+15,Perennial adult biomass,678.7457232592122
+16,Perennial adult biomass,678.7454110531697
+17,Perennial adult biomass,678.7452908698478
+18,Perennial adult biomass,678.7452446054671
+19,Perennial adult biomass,678.7452267960707
+20,Perennial adult biomass,678.7452199403768
+21,Perennial adult biomass,678.7452173012899
+22,Perennial adult biomass,678.7452162853779
+23,Perennial adult biomass,678.7452158943051
+24,Perennial adult biomass,678.7452157437616
+25,Perennial adult biomass,678.7452156858093
+26,Perennial adult biomass,678.7452156635021
+27,Perennial adult biomass,678.7452156549147
+28,Perennial adult biomass,678.7452156516074
+29,Perennial adult biomass,678.7452156503354
+30,Perennial adult biomass,678.7452156498441
+31,Perennial adult biomass,678.7452156496583
+32,Perennial adult biomass,678.7452156495842
+33,Perennial adult biomass,678.7452156495577
+34,Perennial adult biomass,678.745215649545
+35,Perennial adult biomass,678.745215649542
+36,Perennial adult biomass,678.7452156495408
+37,Perennial adult biomass,678.7452156495402
+38,Perennial adult biomass,678.7452156495402
+39,Perennial adult biomass,678.7452156495402
+40,Perennial adult biomass,678.7452156495402
+41,Perennial adult biomass,678.7452156495402
+42,Perennial adult biomass,678.7452156495402
+43,Perennial adult biomass,678.7452156495402
+44,Perennial adult biomass,678.7452156495402
+45,Perennial adult biomass,678.7452156495402
+46,Perennial adult biomass,678.7452156495402
+47,Perennial adult biomass,678.7452156495402
+48,Perennial adult biomass,678.7452156495402
+49,Perennial adult biomass,678.7452156495402
+50,Perennial adult biomass,678.7452156495402
+51,Perennial adult biomass,678.7452156495402
+52,Perennial adult biomass,678.7452156495402
+53,Perennial adult biomass,678.7452156495402
+54,Perennial adult biomass,678.7452156495402
+55,Perennial adult biomass,678.7452156495402
+56,Perennial adult biomass,678.7452156495402
+57,Perennial adult biomass,678.7452156495402
+58,Perennial adult biomass,678.7452156495402
+59,Perennial adult biomass,678.7452156495402
+60,Perennial adult biomass,678.7452156495402
+61,Perennial adult biomass,678.7452156495402
+62,Perennial adult biomass,678.7452156495402
+63,Perennial adult biomass,678.7452156495402
+64,Perennial adult biomass,678.7452156495402
+65,Perennial adult biomass,678.7452156495402
+66,Perennial adult biomass,678.7452156495402
+67,Perennial adult biomass,678.7452156495402
+68,Perennial adult biomass,678.7452156495402
+69,Perennial adult biomass,678.7452156495402
+70,Perennial adult biomass,678.7452156495402
+71,Perennial adult biomass,678.7452156495402
+72,Perennial adult biomass,678.7452156495402
+73,Perennial adult biomass,678.7452156495402
+74,Perennial adult biomass,678.7452156495402
+75,Perennial adult biomass,678.7452156495402
+76,Perennial adult biomass,678.7452156495402
+77,Perennial adult biomass,678.7452156495402
+78,Perennial adult biomass,678.7452156495402
+79,Perennial adult biomass,678.7452156495402
+80,Perennial adult biomass,678.7452156495402
+81,Perennial adult biomass,678.7452156495402
+82,Perennial adult biomass,678.7452156495402
+83,Perennial adult biomass,678.7452156495402
+84,Perennial adult biomass,678.7452156495402
+85,Perennial adult biomass,678.7452156495402
+86,Perennial adult biomass,678.7452156495402
+87,Perennial adult biomass,678.7452156495402
+88,Perennial adult biomass,678.7452156495402
+89,Perennial adult biomass,678.7452156495402
+90,Perennial adult biomass,678.7452156495402
+91,Perennial adult biomass,678.7452156495402
+92,Perennial adult biomass,678.7452156495402
+93,Perennial adult biomass,678.7452156495402
+94,Perennial adult biomass,678.7452156495402
+95,Perennial adult biomass,678.7452156495402
+96,Perennial adult biomass,678.7452156495402
+97,Perennial adult biomass,678.7452156495402
+98,Perennial adult biomass,678.7452156495402
+99,Perennial adult biomass,678.7452156495402
+100,Perennial adult biomass,678.7452156495402
+1,Annual susceptible biomass,0
+2,Annual susceptible biomass,0
+3,Annual susceptible biomass,0
+4,Annual susceptible biomass,0
+5,Annual susceptible biomass,0
+6,Annual susceptible biomass,0
+7,Annual susceptible biomass,0
+8,Annual susceptible biomass,0
+9,Annual susceptible biomass,0
+10,Annual susceptible biomass,0
+11,Annual susceptible biomass,0
+12,Annual susceptible biomass,0
+13,Annual susceptible biomass,0
+14,Annual susceptible biomass,0
+15,Annual susceptible biomass,0
+16,Annual susceptible biomass,0
+17,Annual susceptible biomass,0
+18,Annual susceptible biomass,0
+19,Annual susceptible biomass,0
+20,Annual susceptible biomass,0
+21,Annual susceptible biomass,0
+22,Annual susceptible biomass,0
+23,Annual susceptible biomass,0
+24,Annual susceptible biomass,0
+25,Annual susceptible biomass,0
+26,Annual susceptible biomass,0
+27,Annual susceptible biomass,0
+28,Annual susceptible biomass,0
+29,Annual susceptible biomass,0
+30,Annual susceptible biomass,0
+31,Annual susceptible biomass,0
+32,Annual susceptible biomass,0
+33,Annual susceptible biomass,0
+34,Annual susceptible biomass,0
+35,Annual susceptible biomass,0
+36,Annual susceptible biomass,0
+37,Annual susceptible biomass,0
+38,Annual susceptible biomass,0
+39,Annual susceptible biomass,0
+40,Annual susceptible biomass,0
+41,Annual susceptible biomass,0
+42,Annual susceptible biomass,0
+43,Annual susceptible biomass,0
+44,Annual susceptible biomass,0
+45,Annual susceptible biomass,0
+46,Annual susceptible biomass,0
+47,Annual susceptible biomass,0
+48,Annual susceptible biomass,0
+49,Annual susceptible biomass,0
+50,Annual susceptible biomass,0
+51,Annual susceptible biomass,0
+52,Annual susceptible biomass,0
+53,Annual susceptible biomass,0
+54,Annual susceptible biomass,0
+55,Annual susceptible biomass,0
+56,Annual susceptible biomass,0
+57,Annual susceptible biomass,0
+58,Annual susceptible biomass,0
+59,Annual susceptible biomass,0
+60,Annual susceptible biomass,0
+61,Annual susceptible biomass,0
+62,Annual susceptible biomass,0
+63,Annual susceptible biomass,0
+64,Annual susceptible biomass,0
+65,Annual susceptible biomass,0
+66,Annual susceptible biomass,0
+67,Annual susceptible biomass,0
+68,Annual susceptible biomass,0
+69,Annual susceptible biomass,0
+70,Annual susceptible biomass,0
+71,Annual susceptible biomass,0
+72,Annual susceptible biomass,0
+73,Annual susceptible biomass,0
+74,Annual susceptible biomass,0
+75,Annual susceptible biomass,0
+76,Annual susceptible biomass,0
+77,Annual susceptible biomass,0
+78,Annual susceptible biomass,0
+79,Annual susceptible biomass,0
+80,Annual susceptible biomass,0
+81,Annual susceptible biomass,0
+82,Annual susceptible biomass,0
+83,Annual susceptible biomass,0
+84,Annual susceptible biomass,0
+85,Annual susceptible biomass,0
+86,Annual susceptible biomass,0
+87,Annual susceptible biomass,0
+88,Annual susceptible biomass,0
+89,Annual susceptible biomass,0
+90,Annual susceptible biomass,0
+91,Annual susceptible biomass,0
+92,Annual susceptible biomass,0
+93,Annual susceptible biomass,0
+94,Annual susceptible biomass,0
+95,Annual susceptible biomass,0
+96,Annual susceptible biomass,0
+97,Annual susceptible biomass,0
+98,Annual susceptible biomass,0
+99,Annual susceptible biomass,0
+100,Annual susceptible biomass,0
+1,Perennial first-year susceptible biomass,0
+2,Perennial first-year susceptible biomass,0
+3,Perennial first-year susceptible biomass,0
+4,Perennial first-year susceptible biomass,26.692184314641892
+5,Perennial first-year susceptible biomass,43.583708145785515
+6,Perennial first-year susceptible biomass,37.96620059913977
+7,Perennial first-year susceptible biomass,39.84110239183754
+8,Perennial first-year susceptible biomass,40.32772056943207
+9,Perennial first-year susceptible biomass,40.484032940869845
+10,Perennial first-year susceptible biomass,40.541963463102775
+11,Perennial first-year susceptible biomass,40.56403517857766
+12,Perennial first-year susceptible biomass,40.57250773081539
+13,Perennial first-year susceptible biomass,40.575766379345126
+14,Perennial first-year susceptible biomass,40.577020426355126
+15,Perennial first-year susceptible biomass,40.57750312009276
+16,Perennial first-year susceptible biomass,40.57768892522441
+17,Perennial first-year susceptible biomass,40.57776044957606
+18,Perennial first-year susceptible biomass,40.57778798260104
+19,Perennial first-year susceptible biomass,40.57779858136837
+20,Perennial first-year susceptible biomass,40.57780266134213
+21,Perennial first-year susceptible biomass,40.577804231920325
+22,Perennial first-year susceptible biomass,40.57780483651139
+23,Perennial first-year susceptible biomass,40.57780506924755
+24,Perennial first-year susceptible biomass,40.577805158838736
+25,Perennial first-year susceptible biomass,40.57780519332692
+26,Perennial first-year susceptible biomass,40.57780520660306
+27,Perennial first-year susceptible biomass,40.577805211713795
+28,Perennial first-year susceptible biomass,40.57780521368093
+29,Perennial first-year susceptible biomass,40.57780521443877
+30,Perennial first-year susceptible biomass,40.577805214729885
+31,Perennial first-year susceptible biomass,40.57780521484231
+32,Perennial first-year susceptible biomass,40.57780521488543
+33,Perennial first-year susceptible biomass,40.57780521490212
+34,Perennial first-year susceptible biomass,40.57780521490832
+35,Perennial first-year susceptible biomass,40.57780521491095
+36,Perennial first-year susceptible biomass,40.577805214911834
+37,Perennial first-year susceptible biomass,40.577805214912104
+38,Perennial first-year susceptible biomass,40.57780521491223
+39,Perennial first-year susceptible biomass,40.57780521491241
+40,Perennial first-year susceptible biomass,40.57780521491215
+41,Perennial first-year susceptible biomass,40.57780521491221
+42,Perennial first-year susceptible biomass,40.577805214912196
+43,Perennial first-year susceptible biomass,40.577805214912175
+44,Perennial first-year susceptible biomass,40.577805214912175
+45,Perennial first-year susceptible biomass,40.577805214912175
+46,Perennial first-year susceptible biomass,40.577805214912175
+47,Perennial first-year susceptible biomass,40.577805214912175
+48,Perennial first-year susceptible biomass,40.577805214912175
+49,Perennial first-year susceptible biomass,40.577805214912175
+50,Perennial first-year susceptible biomass,40.577805214912175
+51,Perennial first-year susceptible biomass,40.577805214912175
+52,Perennial first-year susceptible biomass,40.577805214912175
+53,Perennial first-year susceptible biomass,40.577805214912175
+54,Perennial first-year susceptible biomass,40.577805214912175
+55,Perennial first-year susceptible biomass,40.577805214912175
+56,Perennial first-year susceptible biomass,40.577805214912175
+57,Perennial first-year susceptible biomass,40.577805214912175
+58,Perennial first-year susceptible biomass,40.577805214912175
+59,Perennial first-year susceptible biomass,40.577805214912175
+60,Perennial first-year susceptible biomass,40.577805214912175
+61,Perennial first-year susceptible biomass,40.577805214912175
+62,Perennial first-year susceptible biomass,40.577805214912175
+63,Perennial first-year susceptible biomass,40.577805214912175
+64,Perennial first-year susceptible biomass,40.577805214912175
+65,Perennial first-year susceptible biomass,40.577805214912175
+66,Perennial first-year susceptible biomass,40.577805214912175
+67,Perennial first-year susceptible biomass,40.577805214912175
+68,Perennial first-year susceptible biomass,40.577805214912175
+69,Perennial first-year susceptible biomass,40.577805214912175
+70,Perennial first-year susceptible biomass,40.577805214912175
+71,Perennial first-year susceptible biomass,40.577805214912175
+72,Perennial first-year susceptible biomass,40.577805214912175
+73,Perennial first-year susceptible biomass,40.577805214912175
+74,Perennial first-year susceptible biomass,40.577805214912175
+75,Perennial first-year susceptible biomass,40.577805214912175
+76,Perennial first-year susceptible biomass,40.577805214912175
+77,Perennial first-year susceptible biomass,40.577805214912175
+78,Perennial first-year susceptible biomass,40.577805214912175
+79,Perennial first-year susceptible biomass,40.577805214912175
+80,Perennial first-year susceptible biomass,40.577805214912175
+81,Perennial first-year susceptible biomass,40.577805214912175
+82,Perennial first-year susceptible biomass,40.577805214912175
+83,Perennial first-year susceptible biomass,40.577805214912175
+84,Perennial first-year susceptible biomass,40.577805214912175
+85,Perennial first-year susceptible biomass,40.577805214912175
+86,Perennial first-year susceptible biomass,40.577805214912175
+87,Perennial first-year susceptible biomass,40.577805214912175
+88,Perennial first-year susceptible biomass,40.577805214912175
+89,Perennial first-year susceptible biomass,40.577805214912175
+90,Perennial first-year susceptible biomass,40.577805214912175
+91,Perennial first-year susceptible biomass,40.577805214912175
+92,Perennial first-year susceptible biomass,40.577805214912175
+93,Perennial first-year susceptible biomass,40.577805214912175
+94,Perennial first-year susceptible biomass,40.577805214912175
+95,Perennial first-year susceptible biomass,40.577805214912175
+96,Perennial first-year susceptible biomass,40.577805214912175
+97,Perennial first-year susceptible biomass,40.577805214912175
+98,Perennial first-year susceptible biomass,40.577805214912175
+99,Perennial first-year susceptible biomass,40.577805214912175
+100,Perennial first-year susceptible biomass,40.577805214912175
+1,Perennial adult susceptible biomass,0.31
+2,Perennial adult susceptible biomass,0.31
+3,Perennial adult susceptible biomass,9.215232091054622
+4,Perennial adult susceptible biomass,199.4364277797087
+5,Perennial adult susceptible biomass,641.9025388955471
+6,Perennial adult susceptible biomass,683.40911937456
+7,Perennial adult susceptible biomass,681.2906951142542
+8,Perennial adult susceptible biomass,679.7804243881843
+9,Perennial adult susceptible biomass,679.1488316822436
+10,Perennial adult susceptible biomass,678.9010473955041
+11,Perennial adult susceptible biomass,678.8052481557733
+12,Perennial adult susceptible biomass,678.7683298871375
+13,Perennial adult susceptible biomass,678.7541139999612
+14,Perennial adult susceptible biomass,678.7486411254492
+15,Perennial adult susceptible biomass,678.7465342900554
+16,Perennial adult susceptible biomass,678.7457232592122
+17,Perennial adult susceptible biomass,678.7454110531697
+18,Perennial adult susceptible biomass,678.7452908698478
+19,Perennial adult susceptible biomass,678.7452446054671
+20,Perennial adult susceptible biomass,678.7452267960707
+21,Perennial adult susceptible biomass,678.7452199403768
+22,Perennial adult susceptible biomass,678.7452173012899
+23,Perennial adult susceptible biomass,678.7452162853779
+24,Perennial adult susceptible biomass,678.7452158943051
+25,Perennial adult susceptible biomass,678.7452157437616
+26,Perennial adult susceptible biomass,678.7452156858093
+27,Perennial adult susceptible biomass,678.7452156635021
+28,Perennial adult susceptible biomass,678.7452156549147
+29,Perennial adult susceptible biomass,678.7452156516074
+30,Perennial adult susceptible biomass,678.7452156503354
+31,Perennial adult susceptible biomass,678.7452156498441
+32,Perennial adult susceptible biomass,678.7452156496583
+33,Perennial adult susceptible biomass,678.7452156495842
+34,Perennial adult susceptible biomass,678.7452156495577
+35,Perennial adult susceptible biomass,678.745215649545
+36,Perennial adult susceptible biomass,678.745215649542
+37,Perennial adult susceptible biomass,678.7452156495408
+38,Perennial adult susceptible biomass,678.7452156495402
+39,Perennial adult susceptible biomass,678.7452156495402
+40,Perennial adult susceptible biomass,678.7452156495402
+41,Perennial adult susceptible biomass,678.7452156495402
+42,Perennial adult susceptible biomass,678.7452156495402
+43,Perennial adult susceptible biomass,678.7452156495402
+44,Perennial adult susceptible biomass,678.7452156495402
+45,Perennial adult susceptible biomass,678.7452156495402
+46,Perennial adult susceptible biomass,678.7452156495402
+47,Perennial adult susceptible biomass,678.7452156495402
+48,Perennial adult susceptible biomass,678.7452156495402
+49,Perennial adult susceptible biomass,678.7452156495402
+50,Perennial adult susceptible biomass,678.7452156495402
+51,Perennial adult susceptible biomass,678.7452156495402
+52,Perennial adult susceptible biomass,678.7452156495402
+53,Perennial adult susceptible biomass,678.7452156495402
+54,Perennial adult susceptible biomass,678.7452156495402
+55,Perennial adult susceptible biomass,678.7452156495402
+56,Perennial adult susceptible biomass,678.7452156495402
+57,Perennial adult susceptible biomass,678.7452156495402
+58,Perennial adult susceptible biomass,678.7452156495402
+59,Perennial adult susceptible biomass,678.7452156495402
+60,Perennial adult susceptible biomass,678.7452156495402
+61,Perennial adult susceptible biomass,678.7452156495402
+62,Perennial adult susceptible biomass,678.7452156495402
+63,Perennial adult susceptible biomass,678.7452156495402
+64,Perennial adult susceptible biomass,678.7452156495402
+65,Perennial adult susceptible biomass,678.7452156495402
+66,Perennial adult susceptible biomass,678.7452156495402
+67,Perennial adult susceptible biomass,678.7452156495402
+68,Perennial adult susceptible biomass,678.7452156495402
+69,Perennial adult susceptible biomass,678.7452156495402
+70,Perennial adult susceptible biomass,678.7452156495402
+71,Perennial adult susceptible biomass,678.7452156495402
+72,Perennial adult susceptible biomass,678.7452156495402
+73,Perennial adult susceptible biomass,678.7452156495402
+74,Perennial adult susceptible biomass,678.7452156495402
+75,Perennial adult susceptible biomass,678.7452156495402
+76,Perennial adult susceptible biomass,678.7452156495402
+77,Perennial adult susceptible biomass,678.7452156495402
+78,Perennial adult susceptible biomass,678.7452156495402
+79,Perennial adult susceptible biomass,678.7452156495402
+80,Perennial adult susceptible biomass,678.7452156495402
+81,Perennial adult susceptible biomass,678.7452156495402
+82,Perennial adult susceptible biomass,678.7452156495402
+83,Perennial adult susceptible biomass,678.7452156495402
+84,Perennial adult susceptible biomass,678.7452156495402
+85,Perennial adult susceptible biomass,678.7452156495402
+86,Perennial adult susceptible biomass,678.7452156495402
+87,Perennial adult susceptible biomass,678.7452156495402
+88,Perennial adult susceptible biomass,678.7452156495402
+89,Perennial adult susceptible biomass,678.7452156495402
+90,Perennial adult susceptible biomass,678.7452156495402
+91,Perennial adult susceptible biomass,678.7452156495402
+92,Perennial adult susceptible biomass,678.7452156495402
+93,Perennial adult susceptible biomass,678.7452156495402
+94,Perennial adult susceptible biomass,678.7452156495402
+95,Perennial adult susceptible biomass,678.7452156495402
+96,Perennial adult susceptible biomass,678.7452156495402
+97,Perennial adult susceptible biomass,678.7452156495402
+98,Perennial adult susceptible biomass,678.7452156495402
+99,Perennial adult susceptible biomass,678.7452156495402
+100,Perennial adult susceptible biomass,678.7452156495402
+1,Annual infected biomass,0
+2,Annual infected biomass,0
+3,Annual infected biomass,0
+4,Annual infected biomass,0
+5,Annual infected biomass,0
+6,Annual infected biomass,0
+7,Annual infected biomass,0
+8,Annual infected biomass,0
+9,Annual infected biomass,0
+10,Annual infected biomass,0
+11,Annual infected biomass,0
+12,Annual infected biomass,0
+13,Annual infected biomass,0
+14,Annual infected biomass,0
+15,Annual infected biomass,0
+16,Annual infected biomass,0
+17,Annual infected biomass,0
+18,Annual infected biomass,0
+19,Annual infected biomass,0
+20,Annual infected biomass,0
+21,Annual infected biomass,0
+22,Annual infected biomass,0
+23,Annual infected biomass,0
+24,Annual infected biomass,0
+25,Annual infected biomass,0
+26,Annual infected biomass,0
+27,Annual infected biomass,0
+28,Annual infected biomass,0
+29,Annual infected biomass,0
+30,Annual infected biomass,0
+31,Annual infected biomass,0
+32,Annual infected biomass,0
+33,Annual infected biomass,0
+34,Annual infected biomass,0
+35,Annual infected biomass,0
+36,Annual infected biomass,0
+37,Annual infected biomass,0
+38,Annual infected biomass,0
+39,Annual infected biomass,0
+40,Annual infected biomass,0
+41,Annual infected biomass,0
+42,Annual infected biomass,0
+43,Annual infected biomass,0
+44,Annual infected biomass,0
+45,Annual infected biomass,0
+46,Annual infected biomass,0
+47,Annual infected biomass,0
+48,Annual infected biomass,0
+49,Annual infected biomass,0
+50,Annual infected biomass,0
+51,Annual infected biomass,0
+52,Annual infected biomass,0
+53,Annual infected biomass,0
+54,Annual infected biomass,0
+55,Annual infected biomass,0
+56,Annual infected biomass,0
+57,Annual infected biomass,0
+58,Annual infected biomass,0
+59,Annual infected biomass,0
+60,Annual infected biomass,0
+61,Annual infected biomass,0
+62,Annual infected biomass,0
+63,Annual infected biomass,0
+64,Annual infected biomass,0
+65,Annual infected biomass,0
+66,Annual infected biomass,0
+67,Annual infected biomass,0
+68,Annual infected biomass,0
+69,Annual infected biomass,0
+70,Annual infected biomass,0
+71,Annual infected biomass,0
+72,Annual infected biomass,0
+73,Annual infected biomass,0
+74,Annual infected biomass,0
+75,Annual infected biomass,0
+76,Annual infected biomass,0
+77,Annual infected biomass,0
+78,Annual infected biomass,0
+79,Annual infected biomass,0
+80,Annual infected biomass,0
+81,Annual infected biomass,0
+82,Annual infected biomass,0
+83,Annual infected biomass,0
+84,Annual infected biomass,0
+85,Annual infected biomass,0
+86,Annual infected biomass,0
+87,Annual infected biomass,0
+88,Annual infected biomass,0
+89,Annual infected biomass,0
+90,Annual infected biomass,0
+91,Annual infected biomass,0
+92,Annual infected biomass,0
+93,Annual infected biomass,0
+94,Annual infected biomass,0
+95,Annual infected biomass,0
+96,Annual infected biomass,0
+97,Annual infected biomass,0
+98,Annual infected biomass,0
+99,Annual infected biomass,0
+100,Annual infected biomass,0
+1,Perennial first-year infected biomass,0
+2,Perennial first-year infected biomass,0
+3,Perennial first-year infected biomass,7.253728157983731e-9
+4,Perennial first-year infected biomass,8.471542047037764e-10
+5,Perennial first-year infected biomass,1.302899057749846e-10
+6,Perennial first-year infected biomass,0
+7,Perennial first-year infected biomass,0
+8,Perennial first-year infected biomass,0
+9,Perennial first-year infected biomass,0
+10,Perennial first-year infected biomass,0
+11,Perennial first-year infected biomass,0
+12,Perennial first-year infected biomass,0
+13,Perennial first-year infected biomass,0
+14,Perennial first-year infected biomass,0
+15,Perennial first-year infected biomass,0
+16,Perennial first-year infected biomass,0
+17,Perennial first-year infected biomass,0
+18,Perennial first-year infected biomass,0
+19,Perennial first-year infected biomass,0
+20,Perennial first-year infected biomass,0
+21,Perennial first-year infected biomass,0
+22,Perennial first-year infected biomass,0
+23,Perennial first-year infected biomass,0
+24,Perennial first-year infected biomass,0
+25,Perennial first-year infected biomass,0
+26,Perennial first-year infected biomass,0
+27,Perennial first-year infected biomass,0
+28,Perennial first-year infected biomass,0
+29,Perennial first-year infected biomass,0
+30,Perennial first-year infected biomass,0
+31,Perennial first-year infected biomass,0
+32,Perennial first-year infected biomass,0
+33,Perennial first-year infected biomass,0
+34,Perennial first-year infected biomass,0
+35,Perennial first-year infected biomass,0
+36,Perennial first-year infected biomass,0
+37,Perennial first-year infected biomass,0
+38,Perennial first-year infected biomass,0
+39,Perennial first-year infected biomass,0
+40,Perennial first-year infected biomass,0
+41,Perennial first-year infected biomass,0
+42,Perennial first-year infected biomass,0
+43,Perennial first-year infected biomass,0
+44,Perennial first-year infected biomass,0
+45,Perennial first-year infected biomass,0
+46,Perennial first-year infected biomass,0
+47,Perennial first-year infected biomass,0
+48,Perennial first-year infected biomass,0
+49,Perennial first-year infected biomass,0
+50,Perennial first-year infected biomass,0
+51,Perennial first-year infected biomass,0
+52,Perennial first-year infected biomass,0
+53,Perennial first-year infected biomass,0
+54,Perennial first-year infected biomass,0
+55,Perennial first-year infected biomass,0
+56,Perennial first-year infected biomass,0
+57,Perennial first-year infected biomass,0
+58,Perennial first-year infected biomass,0
+59,Perennial first-year infected biomass,0
+60,Perennial first-year infected biomass,0
+61,Perennial first-year infected biomass,0
+62,Perennial first-year infected biomass,0
+63,Perennial first-year infected biomass,0
+64,Perennial first-year infected biomass,0
+65,Perennial first-year infected biomass,0
+66,Perennial first-year infected biomass,0
+67,Perennial first-year infected biomass,0
+68,Perennial first-year infected biomass,0
+69,Perennial first-year infected biomass,0
+70,Perennial first-year infected biomass,0
+71,Perennial first-year infected biomass,0
+72,Perennial first-year infected biomass,0
+73,Perennial first-year infected biomass,0
+74,Perennial first-year infected biomass,0
+75,Perennial first-year infected biomass,0
+76,Perennial first-year infected biomass,0
+77,Perennial first-year infected biomass,0
+78,Perennial first-year infected biomass,0
+79,Perennial first-year infected biomass,0
+80,Perennial first-year infected biomass,0
+81,Perennial first-year infected biomass,0
+82,Perennial first-year infected biomass,0
+83,Perennial first-year infected biomass,0
+84,Perennial first-year infected biomass,0
+85,Perennial first-year infected biomass,0
+86,Perennial first-year infected biomass,0
+87,Perennial first-year infected biomass,0
+88,Perennial first-year infected biomass,0
+89,Perennial first-year infected biomass,0
+90,Perennial first-year infected biomass,0
+91,Perennial first-year infected biomass,0
+92,Perennial first-year infected biomass,0
+93,Perennial first-year infected biomass,0
+94,Perennial first-year infected biomass,0
+95,Perennial first-year infected biomass,0
+96,Perennial first-year infected biomass,0
+97,Perennial first-year infected biomass,0
+98,Perennial first-year infected biomass,0
+99,Perennial first-year infected biomass,0
+100,Perennial first-year infected biomass,0
+1,Perennial adult infected biomass,0
+2,Perennial adult infected biomass,5.589669618908676e-5
+3,Perennial adult infected biomass,9.617088860864929e-8
+4,Perennial adult infected biomass,4.906775431312879e-9
+5,Perennial adult infected biomass,6.997384199413962e-10
+6,Perennial adult infected biomass,0
+7,Perennial adult infected biomass,0
+8,Perennial adult infected biomass,0
+9,Perennial adult infected biomass,0
+10,Perennial adult infected biomass,0
+11,Perennial adult infected biomass,0
+12,Perennial adult infected biomass,0
+13,Perennial adult infected biomass,0
+14,Perennial adult infected biomass,0
+15,Perennial adult infected biomass,0
+16,Perennial adult infected biomass,0
+17,Perennial adult infected biomass,0
+18,Perennial adult infected biomass,0
+19,Perennial adult infected biomass,0
+20,Perennial adult infected biomass,0
+21,Perennial adult infected biomass,0
+22,Perennial adult infected biomass,0
+23,Perennial adult infected biomass,0
+24,Perennial adult infected biomass,0
+25,Perennial adult infected biomass,0
+26,Perennial adult infected biomass,0
+27,Perennial adult infected biomass,0
+28,Perennial adult infected biomass,0
+29,Perennial adult infected biomass,0
+30,Perennial adult infected biomass,0
+31,Perennial adult infected biomass,0
+32,Perennial adult infected biomass,0
+33,Perennial adult infected biomass,0
+34,Perennial adult infected biomass,0
+35,Perennial adult infected biomass,0
+36,Perennial adult infected biomass,0
+37,Perennial adult infected biomass,0
+38,Perennial adult infected biomass,0
+39,Perennial adult infected biomass,0
+40,Perennial adult infected biomass,0
+41,Perennial adult infected biomass,0
+42,Perennial adult infected biomass,0
+43,Perennial adult infected biomass,0
+44,Perennial adult infected biomass,0
+45,Perennial adult infected biomass,0
+46,Perennial adult infected biomass,0
+47,Perennial adult infected biomass,0
+48,Perennial adult infected biomass,0
+49,Perennial adult infected biomass,0
+50,Perennial adult infected biomass,0
+51,Perennial adult infected biomass,0
+52,Perennial adult infected biomass,0
+53,Perennial adult infected biomass,0
+54,Perennial adult infected biomass,0
+55,Perennial adult infected biomass,0
+56,Perennial adult infected biomass,0
+57,Perennial adult infected biomass,0
+58,Perennial adult infected biomass,0
+59,Perennial adult infected biomass,0
+60,Perennial adult infected biomass,0
+61,Perennial adult infected biomass,0
+62,Perennial adult infected biomass,0
+63,Perennial adult infected biomass,0
+64,Perennial adult infected biomass,0
+65,Perennial adult infected biomass,0
+66,Perennial adult infected biomass,0
+67,Perennial adult infected biomass,0
+68,Perennial adult infected biomass,0
+69,Perennial adult infected biomass,0
+70,Perennial adult infected biomass,0
+71,Perennial adult infected biomass,0
+72,Perennial adult infected biomass,0
+73,Perennial adult infected biomass,0
+74,Perennial adult infected biomass,0
+75,Perennial adult infected biomass,0
+76,Perennial adult infected biomass,0
+77,Perennial adult infected biomass,0
+78,Perennial adult infected biomass,0
+79,Perennial adult infected biomass,0
+80,Perennial adult infected biomass,0
+81,Perennial adult infected biomass,0
+82,Perennial adult infected biomass,0
+83,Perennial adult infected biomass,0
+84,Perennial adult infected biomass,0
+85,Perennial adult infected biomass,0
+86,Perennial adult infected biomass,0
+87,Perennial adult infected biomass,0
+88,Perennial adult infected biomass,0
+89,Perennial adult infected biomass,0
+90,Perennial adult infected biomass,0
+91,Perennial adult infected biomass,0
+92,Perennial adult infected biomass,0
+93,Perennial adult infected biomass,0
+94,Perennial adult infected biomass,0
+95,Perennial adult infected biomass,0
+96,Perennial adult infected biomass,0
+97,Perennial adult infected biomass,0
+98,Perennial adult infected biomass,0
+99,Perennial adult infected biomass,0
+100,Perennial adult infected biomass,0
+1,Conidia,5500
+2,Conidia,6.60983238870939e-4
+3,Conidia,1.2205042432931814e-6
+4,Conidia,6.773022748450216e-8
+5,Conidia,9.771355732764703e-9
+6,Conidia,1.321733740611245e-9
+7,Conidia,0
+8,Conidia,0
+9,Conidia,0
+10,Conidia,0
+11,Conidia,0
+12,Conidia,0
+13,Conidia,0
+14,Conidia,0
+15,Conidia,0
+16,Conidia,0
+17,Conidia,0
+18,Conidia,0
+19,Conidia,0
+20,Conidia,0
+21,Conidia,0
+22,Conidia,0
+23,Conidia,0
+24,Conidia,0
+25,Conidia,0
+26,Conidia,0
+27,Conidia,0
+28,Conidia,0
+29,Conidia,0
+30,Conidia,0
+31,Conidia,0
+32,Conidia,0
+33,Conidia,0
+34,Conidia,0
+35,Conidia,0
+36,Conidia,0
+37,Conidia,0
+38,Conidia,0
+39,Conidia,0
+40,Conidia,0
+41,Conidia,0
+42,Conidia,0
+43,Conidia,0
+44,Conidia,0
+45,Conidia,0
+46,Conidia,0
+47,Conidia,0
+48,Conidia,0
+49,Conidia,0
+50,Conidia,0
+51,Conidia,0
+52,Conidia,0
+53,Conidia,0
+54,Conidia,0
+55,Conidia,0
+56,Conidia,0
+57,Conidia,0
+58,Conidia,0
+59,Conidia,0
+60,Conidia,0
+61,Conidia,0
+62,Conidia,0
+63,Conidia,0
+64,Conidia,0
+65,Conidia,0
+66,Conidia,0
+67,Conidia,0
+68,Conidia,0
+69,Conidia,0
+70,Conidia,0
+71,Conidia,0
+72,Conidia,0
+73,Conidia,0
+74,Conidia,0
+75,Conidia,0
+76,Conidia,0
+77,Conidia,0
+78,Conidia,0
+79,Conidia,0
+80,Conidia,0
+81,Conidia,0
+82,Conidia,0
+83,Conidia,0
+84,Conidia,0
+85,Conidia,0
+86,Conidia,0
+87,Conidia,0
+88,Conidia,0
+89,Conidia,0
+90,Conidia,0
+91,Conidia,0
+92,Conidia,0
+93,Conidia,0
+94,Conidia,0
+95,Conidia,0
+96,Conidia,0
+97,Conidia,0
+98,Conidia,0
+99,Conidia,0
+100,Conidia,0

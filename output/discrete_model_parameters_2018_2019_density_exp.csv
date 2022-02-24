@@ -26,3 +26,4 @@ h,NA,5500
 d,NA,0.59
 s_P,NA,0.05
 s_A,NA,0.15
+dis_thresh,NA,0.15

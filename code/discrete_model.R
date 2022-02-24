@@ -54,6 +54,8 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, BA0, BP0, BF0, simtime, gs_time, di
   d <- as.numeric(disc_parms[disc_parms$Parameter == "d", "Estimate"])
   h <- as.numeric(disc_parms[disc_parms$Parameter == "h", "Estimate"])
   
+  dis_thresh <- as.numeric(disc_parms[disc_parms$Parameter == "dis_thresh", "Estimate"])
+  
   # simulate population dynamics
   for(t in 1:(simtime - 1)){	
     
@@ -71,7 +73,7 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, BA0, BP0, BF0, simtime, gs_time, di
     }
     
     # change parameters with disease
-    if(comm_dis > 0.15) {
+    if(comm_dis > dis_thresh) {
 
       g_A <- as.numeric(ctrl_parms[ctrl_parms$Parameter == "g_A", "Estimate"])
       c_A <- as.numeric(ctrl_parms[ctrl_parms$Parameter == "c_A", "Estimate"])

@@ -23,24 +23,24 @@ r_F,perennial fy,growth rate,control,0.03573106284217064,0.033468349510802804,0.
 r_F,perennial fy,growth rate,fungicide,0.03769703257500638,0.035588330667544195,0.039771910410468854,day^-1^,experiment
 r_P,perennial adult,growth rate,control,0.03134498422257651,0.028495490173120797,0.03417804660531415,day^-1^,experiment
 r_P,perennial adult,growth rate,fungicide,0.02867175833578186,0.026016496497575696,0.03128796212589833,day^-1^,experiment
-beta_AA,annual/annual,transmission,control,0.03821817221375853,0.011980078852740902,0.06704606456224907,m^2^ g^-1^ day^-1^,experiment
-beta_AA,annual/annual,transmission,fungicide,0.04836055962787851,-2.489830722317047e-4,0.098730186746748,m^2^ g^-1^ day^-1^,experiment
-beta_AF,fy perennial/annual,transmission,control,8.141589121252519e-4,-0.028002076677739005,0.030315106223198843,m^2^ g^-1^ day^-1^,experiment
-beta_AF,fy perennial/annual,transmission,fungicide,0.0234124792007014,-0.023009540379698643,0.06932761400595401,m^2^ g^-1^ day^-1^,experiment
-beta_AP,adult perennial/annual,transmission,control,0.0043963797395309085,-0.025790993184967987,0.03425356575787169,m^2^ g^-1^ day^-1^,experiment
-beta_AP,adult perennial/annual,transmission,fungicide,0.008807268511475234,-0.015987749065778326,0.03437245042741131,m^2^ g^-1^ day^-1^,experiment
-beta_FA,annual/fy perennial,transmission,control,0.03153577326383831,-0.004690442469688934,0.06671454099318029,m^2^ g^-1^ day^-1^,experiment
-beta_FA,annual/fy perennial,transmission,fungicide,0.06813475856152575,3.7412431082678443e-4,0.13527588708840377,m^2^ g^-1^ day^-1^,experiment
-beta_FF,fy perennial/fy perennial,transmission,control,0,0,0,m^2^ g^-1^ day^-1^,experiment
-beta_FF,fy perennial/fy perennial,transmission,fungicide,0.041828448220097916,-0.012576437085629878,0.09415119703027056,m^2^ g^-1^ day^-1^,experiment
-beta_FP,adult perennial/fy perennial,transmission,control,0,0,0,m^2^ g^-1^ day^-1^,experiment
-beta_FP,adult perennial/fy perennial,transmission,fungicide,0.03431439567737486,0.00509978555267915,0.06331095491436185,m^2^ g^-1^ day^-1^,experiment
-beta_PA,annual/adult perennial,transmission,control,0.0709431825219581,0.034294279737049474,0.10785633858426362,m^2^ g^-1^ day^-1^,experiment
-beta_PA,annual/adult perennial,transmission,fungicide,0.06651735579814763,-6.11997034285459e-4,0.13630549586167057,m^2^ g^-1^ day^-1^,experiment
-beta_PF,fy perennial/adult perennial,transmission,control,0.012434150958125206,-0.0321369827459844,0.05824786725396128,m^2^ g^-1^ day^-1^,experiment
-beta_PF,fy perennial/adult perennial,transmission,fungicide,0.016239650540168557,-0.04141458573340504,0.0744785952338242,m^2^ g^-1^ day^-1^,experiment
-beta_PP,adult perennial/adult perennial,transmission,control,0.0032776787758466075,-0.03225510597089171,0.04233231882625417,m^2^ g^-1^ day^-1^,experiment
-beta_PP,adult perennial/adult perennial,transmission,fungicide,0,0,0,m^2^ g^-1^ day^-1^,experiment
+beta_AA,annual/annual,transmission,control,2.97216284913427e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_AA,annual/annual,transmission,fungicide,2.2797033424799633e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_AF,fy perennial/annual,transmission,control,1.3419980005753596e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_AF,fy perennial/annual,transmission,fungicide,1.531912661572078e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_AP,adult perennial/annual,transmission,control,1.836716218330134e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_AP,adult perennial/annual,transmission,fungicide,6.784541686261435e-6,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_FA,annual/fy perennial,transmission,control,2.75759447519131e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_FA,annual/fy perennial,transmission,fungicide,3.510198301546311e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_FF,fy perennial/fy perennial,transmission,control,6.354786256844295e-6,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_FF,fy perennial/fy perennial,transmission,fungicide,1.7437730372848172e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_FP,adult perennial/fy perennial,transmission,control,2.0424210108179867e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_FP,adult perennial/fy perennial,transmission,fungicide,4.513472086325896e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_PA,annual/adult perennial,transmission,control,3.5335530185320397e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_PA,annual/adult perennial,transmission,fungicide,7.612147009200521e-5,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_PF,fy perennial/adult perennial,transmission,control,8.637111146116945e-6,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_PF,fy perennial/adult perennial,transmission,fungicide,0,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_PP,adult perennial/adult perennial,transmission,control,1.17257860570122e-6,NA,NA,m^2^ g^-1^ day^-1^,experiment
+beta_PP,adult perennial/adult perennial,transmission,fungicide,3.28818573644093e-6,NA,NA,m^2^ g^-1^ day^-1^,experiment
 g_A,annual,germination fraction,fungicide,0.7794264932635581,0.7455394723126566,0.8127138023023993,"NA",experiment
 g_A,annual,germination fraction,control,0.7614408239721909,0.7270171246855069,0.7954815113455365,"NA",experiment
 g_P,perennial,germination fraction,fungicide,0.1775777157626572,1.2900840000439615e-5,0.5565477123739282,"NA",experiment
@@ -71,10 +71,11 @@ h,NA,inoculum addition to litter,NA,5500,NA,NA,g^-1^,Benitez et al. 2021
 d,NA,litter decomposition fraction,NA,0.59,NA,NA,"NA",DeMeester and Richter 2010
 s_P,perennial,surviving seed fraction,NA,0.05,NA,NA,"NA",Garrison and Stier 2010
 s_A,annual,surviving seed fraction,NA,0.15,NA,NA,"NA",Redwood et al. 2018
-beta_AC,annual,litter transmission,NA,1e-5,NA,NA,day^-1^ g^-1^,"NA"
-beta_FC,fy perennial,litter transmission,NA,1e-5,NA,NA,day^-1^ g^-1^,"NA"
-beta_PC,adult perennial,litter transmission,NA,1e-5,NA,NA,day^-1^ g^-1^,"NA"
+beta_AC,annual,litter transmission,NA,1e-7,NA,NA,day^-1^ g^-1^,"NA"
+beta_FC,fy perennial,litter transmission,NA,1e-7,NA,NA,day^-1^ g^-1^,"NA"
+beta_PC,adult perennial,litter transmission,NA,1e-7,NA,NA,day^-1^ g^-1^,"NA"
 v_A,annual,infected tissue loss,NA,1e-4,NA,NA,day^-1^,"NA"
 v_F,fy perennial,infected tissue loss,NA,1e-4,NA,NA,day^-1^,"NA"
 v_P,adult perennial,infected tissue loss,NA,1e-4,NA,NA,day^-1^,"NA"
-a,NA,inoculum loss from litter,NA,0.5,NA,NA,day^-1^,"NA"
+a,NA,inoculum loss from litter,NA,0.95,NA,NA,day^-1^,"NA"
+dis_thresh,NA,disease threshold,NA,0.15,NA,NA,"NA","NA"

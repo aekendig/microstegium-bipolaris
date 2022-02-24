@@ -178,96 +178,38 @@ growth_mod_parms3 <- growth_mod_parms2 %>%
 #### transmission ####
 
 # load model
-load("output/plot_transmission_model_2019_density_exp.rda")
+trans_mod_coef <- read_csv("output/focal_severity_model_2019_dens_exp.csv")
 
-# sample model
-trans_mod_samps <- as_draws_df(sevD2Mod)  %>%
-  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
-  rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(beta_AA = bg_severity,
-            beta_AA_fung = bg_severity + bg_severity_fungicide,
-            beta_FA = bg_severity + bg_severity_focs,
-            beta_FA_fung = bg_severity + bg_severity_focs + bg_severity_fungicide + bg_severity_focs_fungicide,
-            beta_PA = bg_severity + bg_severity_foca,
-            beta_PA_fung = bg_severity + bg_severity_foca + bg_severity_fungicide + bg_severity_foca_fungicide,
-            beta_AF = bg_severity + bg_severity_bgs,
-            beta_AF_fung = bg_severity + bg_severity_bgs + bg_severity_fungicide + bg_severity_bgs_fungicide,
-            beta_FF = bg_severity + bg_severity_focs + bg_severity_bgs + bg_severity_focs_bgs,
-            beta_FF_fung = bg_severity + bg_severity_focs + bg_severity_bgs + bg_severity_focs_bgs + bg_severity_fungicide + bg_severity_bgs_fungicide + bg_severity_focs_fungicide + bg_severity_focs_bgs_fungicide,
-            beta_PF = bg_severity + bg_severity_foca + bg_severity_bgs + bg_severity_foca_bgs,
-            beta_PF_fung = bg_severity + bg_severity_foca + bg_severity_bgs + bg_severity_foca_bgs + bg_severity_fungicide + bg_severity_bgs_fungicide + bg_severity_foca_fungicide + bg_severity_foca_bgs_fungicide,
-            beta_AP = bg_severity + bg_severity_bga,
-            beta_AP_fung = bg_severity + bg_severity_bga + bg_severity_fungicide + bg_severity_bga_fungicide,
-            beta_FP = bg_severity + bg_severity_bga + bg_severity_focs + bg_severity_focs_bga,
-            beta_FP_fung = bg_severity + bg_severity_bga + bg_severity_focs + bg_severity_focs_bga + bg_severity_fungicide + bg_severity_bga_fungicide + bg_severity_focs_fungicide + bg_severity_focs_bga_fungicide,
-            beta_PP = bg_severity + bg_severity_foca + bg_severity_bga + bg_severity_foca_bga,
-            beta_PP_fung = bg_severity + bg_severity_foca + bg_severity_bga + bg_severity_foca_bga + bg_severity_fungicide + bg_severity_bga_fungicide + bg_severity_foca_fungicide + bg_severity_foca_bga_fungicide) %>%
-  pivot_longer(cols = everything(),
-               names_to = "parameter",
-               values_to = "estimate")
-
-# transmission rates
-trans_mod_parms <- trans_mod_samps %>%
-  group_by(parameter) %>%
-  mean_hdi(estimate) %>%
+# make negative values zero
+# multiply all by constant
+trans_mod_parms <- trans_mod_coef %>%
+  mutate(source = fct_recode(source,
+                             "A" = "Surrounding invader",
+                             "A" = "Invader (Mv)",
+                             "F" = "1st yr comp. (Ev)",
+                             "P" = "Adult comp. (Ev)"),
+         plant_group = fct_recode(plant_group,
+                                  "beta_A" = "Invader (Mv)",
+                                  "beta_F" = "1st yr comp. (Ev)",
+                                  "beta_P" = "Adult comp. (Ev)"),
+         Parameter = paste0(plant_group, source),
+         Treatment = if_else(fungicide == 1, "fungicide", "control"),
+         Estimate = if_else(trend < 0, 0, trend * 5e-4)) %>%
+  group_by(Parameter, Treatment) %>%
+  summarize(Estimate = max(Estimate)) %>%
   ungroup() %>%
-  transmute(Parameter = str_replace(parameter, "_fung", ""),
-            Plant_group = case_when(str_detect(parameter, "_AA") == T ~ "annual/annual",
-                                    str_detect(parameter, "_FA") == T ~ "annual/fy perennial",
-                                    str_detect(parameter, "_PA") == T ~ "annual/adult perennial",
-                                    str_detect(parameter, "_AF") == T ~ "fy perennial/annual",
-                                    str_detect(parameter, "_FF") == T ~ "fy perennial/fy perennial",
-                                    str_detect(parameter, "_PF") == T ~ "fy perennial/adult perennial",
-                                    str_detect(parameter, "_AP") == T ~ "adult perennial/annual",
-                                    str_detect(parameter, "_FP") == T ~ "adult perennial/fy perennial",
-                                    str_detect(parameter, "_PP") == T ~ "adult perennial/adult perennial"),
-            Description = "transmission",
-            Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
-            Estimate = case_when(estimate < 0 ~ 0,
-                                 TRUE ~ estimate/30), # days between censuses
-            Lower = case_when(estimate < 0 ~ 0,
-                              TRUE ~ .lower/30),
-            Upper = case_when(estimate < 0 ~ 0,
-                              TRUE ~ .upper/30),
-            Units = "m^2^ g^-1^ day^-1^",
-            Source = "experiment")
-
-
-#### transmission edge Mv ####
-
-# load model
-load("output/plot_transmission_model_2019_density_exp.rda")
-
-# sample model
-edge_mod_samps <- as_draws_df(sevD2Mod)  %>%
-  rename_with(str_replace_all, pattern = ":", replacement = "_") %>%
-  rename_with(str_replace, pattern = "b_", replacement = "") %>%
-  transmute(beta_AA = edge_severity,
-            beta_AA_fung = edge_severity + fungicide_edge_severity,
-            beta_FA = edge_severity + focs_edge_severity,
-            beta_FA_fung = edge_severity + focs_edge_severity + fungicide_edge_severity + focs_fungicide_edge_severity,
-            beta_PA = edge_severity + foca_edge_severity,
-            beta_PA_fung = edge_severity + foca_edge_severity + fungicide_edge_severity + foca_fungicide_edge_severity) %>%
-  pivot_longer(cols = everything(),
-               names_to = "parameter",
-               values_to = "estimate") %>%
-  group_by(parameter) %>%
-  mean_hdi(estimate) %>%
-  ungroup() %>%
-  transmute(Parameter = str_replace(parameter, "_fung", ""),
-            Plant_group = case_when(str_starts(parameter, "beta_A") == T ~ "annual",
-                                    str_starts(parameter, "beta_F") == T ~ "fy perennial",
-                                    str_starts(parameter, "beta_P") == T ~ "adult perennial"),
-            Description = "transmission from edge",
-            Treatment = if_else(str_detect(parameter, "_fung") == T, "fungicide", "control"),
-            Estimate = case_when(estimate < 0 ~ 0,
-                                 TRUE ~ estimate/30), # days between censuses
-            Lower = case_when(estimate < 0 ~ 0,
-                              TRUE ~ .lower/30),
-            Upper = case_when(estimate < 0 ~ 0,
-                              TRUE ~ .upper/30),
-            Units = "m^2^ g^-1^ day^-1^",
-            Source = "experiment")
+  mutate(Plant_group = case_when(str_detect(Parameter, "_AA") == T ~ "annual/annual",
+                                 str_detect(Parameter, "_FA") == T ~ "annual/fy perennial",
+                                 str_detect(Parameter, "_PA") == T ~ "annual/adult perennial",
+                                 str_detect(Parameter, "_AF") == T ~ "fy perennial/annual",
+                                 str_detect(Parameter, "_FF") == T ~ "fy perennial/fy perennial",
+                                 str_detect(Parameter, "_PF") == T ~ "fy perennial/adult perennial",
+                                 str_detect(Parameter, "_AP") == T ~ "adult perennial/annual",
+                                 str_detect(Parameter, "_FP") == T ~ "adult perennial/fy perennial",
+                                 str_detect(Parameter, "_PP") == T ~ "adult perennial/adult perennial"),
+         Description = "transmission",
+         Units = "m^2^ g^-1^ day^-1^",
+         Source = "experiment")
 
 
 #### germination ####
@@ -528,12 +470,14 @@ lit_parms <- tibble(Parameter = c("h",
                                   "s_P", "s_A",
                                   "beta_AC", "beta_FC", "beta_PC", 
                                   "v_A", "v_F", "v_P", 
-                                  "a"),
+                                  "a",
+                                  "dis_thresh"),
                     Plant_group = c(NA_character_,
                                     NA_character_,
                                     "perennial",
                                     "annual",
                                     rep(c("annual", "fy perennial", "adult perennial"), 2),
+                                    NA_character_,
                                     NA_character_),
                     Description = c("inoculum addition to litter",
                                     "litter decomposition fraction",
@@ -545,13 +489,14 @@ lit_parms <- tibble(Parameter = c("h",
                                     "infected tissue loss",
                                     "infected tissue loss",
                                     "infected tissue loss",
-                                    "inoculum loss from litter"),
-                    Treatment = rep(NA_character_, 11),
-                    Estimate = c(5500, 0.59, 0.05, 0.15, rep(1e-5, 3), rep(1e-4, 3), 0.5),
-                    Source = c("Benitez et al. 2021", "DeMeester and Richter 2010", "Garrison and Stier 2010", "Redwood et al. 2018", rep("NA", 7))) %>%
+                                    "inoculum loss from litter",
+                                    "disease threshold"),
+                    Treatment = rep(NA_character_, 12),
+                    Estimate = c(5500, 0.59, 0.05, 0.15, rep(1e-7, 3), rep(1e-4, 3), 0.95, 0.15),
+                    Source = c("Benitez et al. 2021", "DeMeester and Richter 2010", "Garrison and Stier 2010", "Redwood et al. 2018", rep("NA", 8))) %>%
   mutate(Lower = NA_real_,
          Upper = NA_real_,
-         Units = c("g^-1^", rep("NA", 3), rep ("day^-1^ g^-1^", 3), rep("day^-1^", 3), "day^-1^"))
+         Units = c("g^-1^", rep("NA", 3), rep ("day^-1^ g^-1^", 3), rep("day^-1^", 3), "day^-1^", "NA"))
 
 
 #### combine ####
@@ -595,12 +540,11 @@ disc_parms <- mv_germ_parms %>%
   full_join(ev_lit_parms) %>%
   full_join(lit_parms %>%
               filter(Parameter %in% c("s_P", "s_A",
-                                       "d", "h"))) %>%
+                                       "d", "h", "dis_thresh"))) %>%
   select(Parameter, Treatment, Estimate)
 
 
 #### export ####
 write_csv(parms, "output/model_parameters_2018_2019_density_exp.csv")
-write_csv(edge_mod_samps, "output/edge_transmission_model_parameters_2019_density_exp.csv")
 write_csv(cont_parms, "output/continuous_model_parameters_2018_2019_density_exp.csv")
 write_csv(disc_parms, "output/discrete_model_parameters_2018_2019_density_exp.csv")
