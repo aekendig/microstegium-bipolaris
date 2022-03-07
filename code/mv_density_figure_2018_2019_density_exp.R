@@ -243,7 +243,7 @@ fig_theme <- theme_bw() +
         plot.title = element_text(size = 8, hjust = 0.5, face = "bold"))
 
 col_pal = c("black", "#238A8D")
-col_pal2 = c("black", "#FDE725")
+col_pal2 = c("black", "#8F4BED")
 
 # dodge size
 dodge_width <- 3
