@@ -122,8 +122,8 @@ load("output/mv_germination_fungicide_model_2018_density_exp.rda")
 
 # draws and summarize
 mv_germ <- as_draws_df(mvGermD1Mod3)  %>%
-  transmute(g_W = exp(b_Intercept)/(1 +  exp(b_Intercept)),
-            g_F = exp(b_Intercept + b_fungicide)/(1 +  exp(b_Intercept + b_fungicide))) 
+  transmute(g_W = inv_logit_scaled(b_Intercept),
+            g_F = inv_logit_scaled(b_Intercept + b_fungicide)) 
 
 mv_germ2 <- mv_germ %>%
   pivot_longer(cols = everything(),
@@ -142,8 +142,8 @@ load("output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
 
 # draws and summarize
 ev_germ <- as_draws_df(evGermMod2)  %>%
-  transmute(g_W = exp(b_Intercept)/(1 +  exp(b_Intercept)),
-            g_F = exp(b_Intercept + b_fungicide)/(1 +  exp(b_Intercept + b_fungicide))) 
+  transmute(g_W = inv_logit_scaled(b_Intercept),
+            g_F = inv_logit_scaled(b_Intercept + b_fungicide)) 
 
 ev_germ2 <- ev_germ %>%
   pivot_longer(cols = everything(),
@@ -182,11 +182,11 @@ germ_fig <- ggplot(germ, aes(x = SpeciesN, y = Estimate)) +
 
 # values for text
 mv_germ %>%
-  transmute(eff = (g_F - g_W) / g_W) %>%
+  transmute(eff = 100 * (g_F - g_W) / g_W) %>%
   mean_hdci(eff)
 
 ev_germ %>%
-  transmute(eff = (g_F - g_W) / g_W) %>%
+  transmute(eff = 100 * (g_F - g_W) / g_W) %>%
   mean_hdci(eff)
 
 # tables
@@ -202,10 +202,10 @@ load("output/survival_fungicide_model_2019_density_exp.rda")
 # draws
 est <- as_draws_df(survFungD2Mod)  %>%
   rename_with(str_replace, pattern = ":", replacement = "_") %>%
-  transmute(e_A_W = exp(b_Intercept)/(1 + exp(b_Intercept)),
-            e_A_F = exp(b_Intercept + b_fungicide)/(1 + exp(b_Intercept + b_fungicide)),
-            e_P_W = exp(b_Intercept + b_focs)/(1 + exp(b_Intercept + b_focs)),
-            e_P_F = exp(b_Intercept + b_focs + b_fungicide)/(1 + exp(b_Intercept + b_focs + b_fungicide)))
+  transmute(e_A_W = inv_logit_scaled(b_Intercept),
+            e_A_F = inv_logit_scaled(b_Intercept + b_fungicide),
+            e_P_W = inv_logit_scaled(b_Intercept + b_focs),
+            e_P_F = inv_logit_scaled(b_Intercept + b_focs + b_fungicide))
 
 # summarize for fig
 est2 <- est %>%

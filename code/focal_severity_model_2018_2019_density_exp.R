@@ -194,7 +194,7 @@ sevNextD1Dat <- sevD1Dat2 %>%
   rename(next_severity = severity)
 
 sevNextD2Dat <- sevD2Dat2 %>%
-  filter(!(month %in% c("may", "june"))) %>%
+  filter(!(month %in% c("may", "jun"))) %>%
   mutate(month = fct_recode(month,  # match prior month
                             "jun" = "jul",
                             "jul" = "early_aug",
@@ -887,6 +887,9 @@ write_csv(sev_dens_D2_coef, "output/focal_severity_model_2019_dens_exp.csv")
 
 
 #### fungicide effects ####
+
+# absolute difference
+# see disease_treatment_effects_2018_2019_density_exp.R for % change
 
 # hypotheses
 mv_fung_hyp <- "inv_logit_scaled(Intercept + fungicide)*100 - inv_logit_scaled(Intercept)*100 = 0"
