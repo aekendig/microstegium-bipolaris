@@ -411,10 +411,12 @@ envD1Dat2 <- envD1Dat %>%
 envD2Dat2 <- envD2Dat %>%
   filter(month %in% c("early_aug", "late_aug")) %>%
   mutate(dew_c = (dew_intensity2 - mean(dew_intensity2, na.rm = T)) / sd(dew_intensity2, na.rm = T),
+         temp_avg_s = (temp_avg - mean(temp_avg, na.rm = T)) / sd(temp_avg, na.rm = T),
+         hum_avg_s = (hum_avg - mean(hum_avg, na.rm = T)) / sd(hum_avg, na.rm = T),
          month = fct_recode(month,
                             jul = "early_aug",
                             early_aug = "late_aug")) %>%
-    select(month, site, plot, treatment, dew_c)
+    select(month, site, plot, treatment, dew_c, temp_avg_s, hum_avg_s)
 
 # combine
 sevD1Dat3 <- sevD1Dat2 %>%
@@ -672,6 +674,23 @@ sevD2Dat3 %>%
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x) +
   facet_grid(plant_group ~ month)
+
+# temperature/humidity
+sevD2Dat3 %>%
+  filter(treatment == "water") %>%
+  select(site, plot, Mv_bio, temp_avg_s) %>%
+  unique() %>%
+  ggplot(aes(x = Mv_bio, y = temp_avg_s)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+sevD2Dat3 %>%
+  filter(treatment == "water") %>%
+  select(site, plot, Mv_bio, hum_avg_s) %>%
+  unique() %>%
+  ggplot(aes(x = Mv_bio, y = hum_avg_s)) +
+  geom_point() +
+  geom_smooth(method = "lm")
 
 
 #### fit models ####
@@ -1069,6 +1088,19 @@ sevD2Dat3_jul_env %>%
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x)
 # neither are driven by outliers
+
+# check models with temp and humidity separate
+sevD2Mod_temp_hum_aug <- brm(next_severity_t ~ plant_group * fungicide * (Mv_sev_dens + EvS_sev_dens + EvA_sev_dens + edge_severity + temp_avg_s + hum_avg_s) + (1|plotf),
+                        data = sevD2Dat3_aug_env, family = "beta",
+                        prior <- c(prior(normal(0, 1), class = "Intercept"),
+                                   prior(normal(0, 1), class = "b")), # use default for others
+                        iter = 6000, warmup = 1000, chains = 3, cores = 3, init_r = 0.1)
+sevD2Mod_temp_hum_jul <- update(sevD2Mod_temp_hum_aug, newdata = sevD2Dat3_jul_env)
+
+summary(sevD2Mod_temp_hum_aug)
+summary(sevD2Mod_temp_hum_jul)
+# neither have statistically significant effects
+
 
 #### water effect - compare to edge ####
 
