@@ -5,6 +5,8 @@
 # date last edited: 2/16/22
 # goal: severity model based on focals
 
+### NOTE: this code left non-focal plants in dataset for year 1
+
 
 #### set up ####
 
