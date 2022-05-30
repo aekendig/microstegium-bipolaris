@@ -465,7 +465,7 @@ perCapD1Table <- growthD1Table %>%
 
 #### tables ####
 
-write_csv(tidy(mvBioDensMod), "output/mv_plot_biomass_density_model_2019_dens_exp2.csv")
+write_csv(tidy(mvBioDensMod), "output/mv_plot_biomass_density_model_2019_dens_exp.csv")
 write_csv(tidy(mvSeedDensMod), "output/mv_plot_seed_density_model_2019_dens_exp.csv")
 write_csv(tidy(mvEstL1Mod2), "output/microstegium_litter_establishment_model_2018_litter_exp.csv")
 write_csv(tidy(evEstL2BhMod2), "output/elymus_litter_establishment_bh_model_2019_litter_exp.csv")
