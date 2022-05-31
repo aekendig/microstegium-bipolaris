@@ -18,7 +18,6 @@ library(car)
 library(janitor)
 library(emmeans)
 library(broom.mixed)
-library(patchwork)
 
 
 # import data
@@ -786,6 +785,7 @@ plot_names <- tibble(plot = 1:10,
 
 # edit raw data
 sevD1Dat4 <- sevD1Dat2 %>%
+  mutate(severity = severity * 100) %>%
   mutate(weeks = case_when(month == "jul" ~ 8,
                            month == "late_aug" ~ 16,
                            month == "sep" ~ 20),
@@ -816,6 +816,7 @@ sevD1Dat4 <- sevD1Dat2 %>%
                                  "High adult comp."))
 
 sevD2Dat4 <- sevD2Dat2 %>%
+  mutate(severity = severity * 100) %>%
   full_join(edgeSevD2Dat2 %>%
               mutate(severity = edge_severity,
                      plant_group = "surr",
@@ -845,35 +846,22 @@ sevD2Dat4 <- sevD2Dat2 %>%
                                  "Med adult comp.",
                                  "High adult comp."))
 
-# figure
-focalD1fig <- ggplot(filter(sevD1Dat4, plant_group2 != "Surrounding invader"), aes(x = weeks, y = severity, color = treatment)) +
+# figures
+pdf("output/focal_severity_raw_data_figure_2018_density_exp.pdf", width = 6, height = 8)
+ggplot(sevD1Dat4, aes(x = weeks, y = severity, color = treatment)) +
   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
   stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
   stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
   facet_grid(plot_type ~ plant_group2, scales = "free") +
-  scale_color_manual(values = col_pal2, name = "Disease treatment") +
+  scale_color_manual(values = col_pal2, "Disease treatment") +
   labs(x = "Weeks post planting", y = "Disease severity (%)") +
   fig_theme +
   theme(legend.margin = margin(-0.3, 0, -0.3, 0, unit = "cm"),
-        strip.text.y = element_blank())
-
-surD1Fig <- ggplot(filter(sevD1Dat4, plant_group2 == "Surrounding invader"), aes(x = weeks, y = severity, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
-  stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
-  stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
-  facet_grid(plot_type ~ plant_group2, scales = "free") +
-  scale_color_manual(values = col_pal2) +
-  labs(x = "", y = "") +
-  fig_theme +
-  theme(legend.position = "none",
         strip.text.y = element_text(angle = 0))
-
-pdf("output/focal_severity_raw_data_figure_2018_density_exp.pdf", width = 6, height = 8)
-focalD1fig + surD1Fig+ 
-  plot_layout(widths = c(1, 1/3))
 dev.off()
 
-focalD2fig <- ggplot(filter(sevD2Dat4, plant_group2 != "Surrounding invader"), aes(x = weeks, y = severity, color = treatment)) +
+pdf("output/focal_severity_raw_data_figure_2019_density_exp.pdf", width = 6, height = 8)
+ggplot(sevD2Dat4, aes(x = weeks, y = severity, color = treatment)) +
   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
   stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
   stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
@@ -882,22 +870,7 @@ focalD2fig <- ggplot(filter(sevD2Dat4, plant_group2 != "Surrounding invader"), a
   labs(x = "Weeks post planting", y = "Disease severity (%)") +
   fig_theme +
   theme(legend.margin = margin(-0.3, 0, -0.3, 0, unit = "cm"),
-        strip.text.y = element_blank())
-
-surD2Fig <- ggplot(filter(sevD2Dat4, plant_group2 == "Surrounding invader"), aes(x = weeks, y = severity, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
-  stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
-  stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
-  facet_grid(plot_type ~ plant_group2, scales = "free") +
-  scale_color_manual(values = col_pal2) +
-  labs(x = "", y = "") +
-  fig_theme +
-  theme(legend.position = "none",
         strip.text.y = element_text(angle = 0))
-
-pdf("output/focal_severity_raw_data_figure_2019_density_exp.pdf", width = 6, height = 8)
-focalD2fig + surD2Fig+ 
-  plot_layout(widths = c(1, 1/3))
 dev.off()
 
 
