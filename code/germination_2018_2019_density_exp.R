@@ -252,6 +252,9 @@ save(mvPropLightMod2, file = "output/mv_seed_infection_light_fungicide_model_201
 write_csv(brms_SummaryTable(mvGermD1Mod), "output/mv_germination_infection_model_2018_density_exp.csv")
 write_csv(brms_SummaryTable(mvPropDarkMod2), "output/mv_seed_infection_dark_fungicide_model_2018_density_exp.csv")
 
+# save corresponding data
+write_csv(mvGermD1Dat, "output/mv_germination_fungicide_model_data_2018_density_exp.csv")
+
 
 #### Ev models ####
 
@@ -296,6 +299,9 @@ mod_check_fun(evGermMod2)
 # save
 save(evGermMod, file = "output/ev_germination_severity_model_2018_2019_density_exp.rda")
 save(evGermMod2, file = "output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
+
+# save corresponding data
+write_csv(evGermDat2, "output/ev_germination_fungicide_model_data_2018_2019_density_exp.rda")
 
 
 #### figure ####

@@ -49,6 +49,10 @@ box_shade = "gray92"
 load("output/focal_severity_model_aug_2019_dens_exp.rda")
 load("output/focal_severity_model_jul_2019_dens_exp.rda")
 
+# load data
+sevD2Dat3_aug2 <- read_csv("output/focal_severity_model_data_aug_2019_dens_exp.csv")
+sevD2Dat3_jul2 <- read_csv("output/focal_severity_model_data_jul_2019_dens_exp.csv")
+
 # draws
 sev_mv <- as_draws_df(sevD2Mod_sev_dens_aug) %>%
   rename_with(str_replace, pattern = ":", replacement = "_") %>%
@@ -81,7 +85,7 @@ sev2 <- sev %>%
             Estimate = estimate * 100,
             Lower = .lower * 100,
             Upper = .upper * 100)
-
+  
 # fig
 sev_fig <- ggplot(sev2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
@@ -114,8 +118,9 @@ sev %>%
 
 #### germination ####
 
-# load model
+# load model and data
 load("output/mv_germination_fungicide_model_2018_density_exp.rda")
+mvGermD1Dat <- read_csv("output/mv_germination_fungicide_model_data_2018_density_exp.csv")
 
 # draws and summarize
 mv_germ <- as_draws_df(mvGermD1Mod3)  %>%
@@ -136,6 +141,7 @@ mv_germ2 <- mv_germ %>%
 
 # load model
 load("output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
+evGermDat2 <- read_csv("output/ev_germination_fungicide_model_data_2018_2019_density_exp.rda")
 
 # draws and summarize
 ev_germ <- as_draws_df(evGermMod2)  %>%
@@ -195,6 +201,7 @@ write_csv(brms_SummaryTable(evGermMod2), "output/ev_germination_fungicide_model_
 
 # load model
 load("output/survival_fungicide_model_2019_density_exp.rda")
+survD2Dat2 <- read_csv("output/survival_fungicide_model_data_2019_density_exp.csv")
 
 # draws
 est <- as_draws_df(survFungD2Mod)  %>%
@@ -257,6 +264,7 @@ write_csv(brms_SummaryTable(survFungD2Mod),
 
 # load model
 load("output/focal_growth_density_model_2019_density_exp.rda")
+growthD2Dat2 <- read_csv("intermediate-data/focal_growth_density_data_2019_density_exp.csv")
 
 # draws
 bio <- as_draws_df(growthD2Mod)  %>%
@@ -328,6 +336,7 @@ write_csv(brms_SummaryTable(growthD2Mod),
 
 # load model
 load("output/focal_seed_density_model_2019_density_exp.rda")
+seedD2Dat3 <- read_csv("intermediate-data/focal_seed_density_data_2019_density_exp.csv")
 
 # draws
 seed <- as_draws_df(seedD2Mod)  %>%

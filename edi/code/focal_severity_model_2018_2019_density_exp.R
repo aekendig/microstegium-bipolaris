@@ -510,6 +510,10 @@ save(sevD2Mod_sev_dens_aug, file = "output/focal_severity_model_aug_2019_dens_ex
 save(sevD2Mod_sev_dens_jul, file = "output/focal_severity_model_jul_2019_dens_exp.rda")
 save(sevD2Mod_sev_dens_jun, file = "output/focal_severity_model_jun_2019_dens_exp.rda")
 
+# save corresponding raw data
+write_csv(sevD2Dat3_aug2, "output/focal_severity_model_data_aug_2019_dens_exp.csv")
+write_csv(sevD2Dat3_jul2, "output/focal_severity_model_data_jul_2019_dens_exp.csv")
+
 # load models
 load("output/focal_severity_model_aug_2018_dens_exp.rda")
 load("output/focal_severity_model_jul_2018_dens_exp.rda")

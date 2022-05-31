@@ -197,6 +197,9 @@ save(survFungD1Mod, file = "output/survival_fungicide_model_2018_density_exp.rda
 save(survFungD2Mod, file = "output/survival_fungicide_model_2019_density_exp.rda")
 save(winSurvFungD1Mod, file = "output/winter_survival_fungicide_model_2018_density_exp.rda")
 
+# save corresponding data
+write_csv(survD2Dat2, "output/survival_fungicide_model_data_2019_density_exp.csv")
+
 
 #### adult survival ####
 
