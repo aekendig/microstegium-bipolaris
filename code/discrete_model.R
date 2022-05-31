@@ -62,7 +62,7 @@ disc_AFP_mod <- function(A0, F0, P0, L0, C0, BA0, BP0, BF0, simtime, gs_time, di
     # community disease severity
     comm_bio <- B_A[t] + B_F[t] + B_P[t]
     
-    if(comm_bio > 0) {
+    if(!is.na(comm_bio) & comm_bio > 0) {
       
       comm_dis <- (I_A[t] + I_F[t] + I_P[t])/comm_bio
     

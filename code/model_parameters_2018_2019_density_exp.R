@@ -154,31 +154,25 @@ growth_mod_parms2 <- growth_mod_parms %>%
 #### alternative Ev comp coefs ####
 
 # because intraspecific adult Ev competition coefficient is non-existent with fungicide
-# because adult regulation of Ev first-years is non-existent with control
 
 # use other intraspecific coefficients
 ev_PP_fung <- growth_mod_parms2 %>%
   filter(Parameter == "alpha_FP" & Treatment == "fungicide")
-ev_FP_ctrl <- growth_mod_parms2 %>%
-  filter(Parameter == "alpha_PP" & Treatment == "control")
 
 # replace comp. coeff
 growth_mod_parms3 <- growth_mod_parms2 %>%
   mutate(Estimate = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ ev_PP_fung$Estimate,
-                              Parameter == "alpha_FP" & Treatment == "control" ~ ev_FP_ctrl$Estimate,
                               TRUE ~ Estimate),
          Lower = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ ev_PP_fung$Lower,
-                              Parameter == "alpha_FP" & Treatment == "control" ~ ev_FP_ctrl$Lower,
                               TRUE ~ Lower),
          Upper = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ ev_PP_fung$Upper,
-                              Parameter == "alpha_FP" & Treatment == "control" ~ ev_FP_ctrl$Upper,
                               TRUE ~ Upper))
 
 
 #### transmission ####
 
 # load model
-trans_mod_coef <- read_csv("output/focal_severity_model_2019_dens_exp.csv")
+trans_mod_coef <- read_csv("output/focal_severity_model_coefficients_2019_dens_exp.csv")
 
 # make negative values zero
 # multiply all by constant

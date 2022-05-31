@@ -731,7 +731,9 @@ mod_AA_PA2 <- mod_AA_PA %>%
 
 # save file
 write_csv(mod_AA_PA2, "output/discrete_continuous_model_alphaAA_alphaPA_sim.csv")
-mod_AA_PA2 <- read_csv("output/discrete_continuous_model_alphaAA_alphaPA_sim.csv")
+# mod_AA_PA2 <- read_csv("output/discrete_continuous_model_alphaAA_alphaPA_sim.csv")
+# re-importing affects rounding, cannot filter using alpha_AA_PA_vals
+# as done below
 
 # check that each simulation looks reasonable and that biomass stabilizes
 pdf("output/discrete_continuous_model_alphaAA_alphaPA_sim.pdf")
@@ -847,7 +849,9 @@ mod_AA_PP2 <- mod_AA_PP %>%
 
 # save file
 write_csv(mod_AA_PP2, "output/discrete_continuous_model_alphaAA_alphaPP_sim.csv")
-mod_AA_PP2 <- read_csv("output/discrete_continuous_model_alphaAA_alphaPP_sim.csv")
+# mod_AA_PP2 <- read_csv("output/discrete_continuous_model_alphaAA_alphaPP_sim.csv")
+# re-importing affects rounding, cannot filter using alpha_AA_PP_vals
+# as done below
 
 # check that each simulation looks reasonable and that biomass stabilizes
 pdf("output/discrete_continuous_model_alphaAA_alphaPP_sim.pdf")
@@ -958,12 +962,12 @@ mod_inv_dis2 %>%
 
 # extract perennial biomass values from perennial alone simulation
 pre_dis_bio <- mod_F_dis2 %>%
-  filter(time == 199) %>%
-  pull(Perennial_biomass)
+  filter(time == 199 & species == "Perennial_biomass") %>%
+  pull(N)
 
 post_dis_bio <- mod_F_dis2 %>%
-  filter(time == 300 & disease == "present") %>%
-  pull(Perennial_biomass)
+  filter(time == 300 & Disease == "present" & species == "Perennial_biomass") %>%
+  pull(N)
 
 # disease effect
 100 * (post_dis_bio - pre_dis_bio)/pre_dis_bio
@@ -1154,9 +1158,7 @@ sens_sim(parms_vary = c("alpha_AA", "alpha_FA", "alpha_PA"),
          parms_type = "continuous",
          filename = "sensitivity_analysis_alphaiA")
 
-sens_alphaFAA <- read_csv("output/sensitivity_analysis_alphaiA.csv")
-sens_alphaPA <- read_csv("output/sensitivity_analysis_alphaPA.csv")
-sens_alphaiA <- full_join(sens_alphaFAA, sens_alphaPA)
+sens_alphaiA <- read_csv("output/sensitivity_analysis_alphaiA.csv")
 
 # process data
 sens_alphaiA2 <- sens_alphaiA %>%
@@ -1220,7 +1222,7 @@ sens_c_fig <- ggplot(sens_c2, aes(x = Estimate, y = Impact, color = Plant_group)
 
 # run simulations
 sens_sim(parms_vary = c("v_A", "v_F", "v_P"),
-         parms_range = c(0, 0.01), 
+         parms_range = c(0, 0.006), 
          parms_n = 5, 
          parms_type = "continuous",
          filename = "sensitivity_analysis_v")
@@ -1260,3 +1262,51 @@ sens_e_fig + theme(legend.position = "none",
 grid::grid.draw(grid::textGrob(sens_e_fig$labels$y, x = 0.01, rot = 90,
                                gp = grid::gpar(fontsize = 7)))
 dev.off()
+
+
+#### perennial alphas set to zero ####
+
+cont_params_zero_PP <- cont_params %>%
+  mutate(Estimate = case_when(Parameter == "alpha_PP" & Treatment == "fungicide" ~ 0,
+                              TRUE ~ Estimate))
+
+# discrete input values
+modP_disc_zero_PP <- disc_AFP_mod(A0 = 0, F0 = 0, P0 = 10, L0 = 0, C0 = conidia_init, BP0 = bio_P_init * 10, BF0 = 0, BA0 = 0, simtime = 4, gs_time = gs_days, disc_parms = disc_params, cont_parms = cont_params_zero_PP)
+# changed simtime because the population values became NA
+
+# import simulation with altered parameters
+modP_disc <- read_csv("output/discrete_continuous_model_P_sim.csv")
+
+# figure of discrete results
+modP_disc %>%
+  ggplot(aes(x = time, y = N)) +
+  geom_line() +
+  theme_classic() +
+  facet_wrap(~ species, scales = "free_y")
+
+modP_disc_zero_PP %>%
+  ggplot(aes(x = time, y = N)) +
+  geom_line() +
+  theme_classic() +
+  facet_wrap(~ species, scales = "free_y")
+
+# combine data
+per_bio_PP <- modP_disc %>%
+  filter(species %in% c("Perennial adult biomass", "Perennial first-year biomass")) %>%
+  mutate(alpha_PP = "0.001") %>%
+  full_join(modP_disc_zero_PP %>%
+              filter(species %in% c("Perennial adult biomass", "Perennial first-year biomass")) %>%
+              mutate(alpha_PP = "0")) %>%
+  group_by(alpha_PP, time) %>%
+  summarize(N = sum(N)) %>%
+  ungroup()
+
+# figure
+per_bio_PP_fig <- ggplot(per_bio_PP, aes(x = time, y = N, color = alpha_PP)) +
+  geom_line() +
+  scale_color_manual(values = col_pal2, name = "Parameter\nvalue") +
+  labs(x = "Time (years)", y = "Competitor biomass (g)") +
+  fig_theme
+  
+ggsave("output/discrete_continuous_model_perennial_exponential.pdf",
+       plot = per_bio_PP_fig, device = "pdf", width = 8, height = 5.5, units = "cm")
