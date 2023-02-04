@@ -749,7 +749,7 @@ ggplot(sev_dens_D1_coef, aes(x = weeks, y = trend*100, color = source)) +
   scale_color_manual(values = col_pal, name = "Disease source") +
   scale_fill_manual(values = col_pal, name = "Disease source") +
   scale_x_continuous(breaks = c(16, 20)) +
-  labs(x = "Weeks post planting", y = "Additive increase in disease severity (%)") +
+  labs(x = "Weeks post planting", y = "Percentage point difference in disease severity") +
   fig_theme
 dev.off()
 
@@ -764,7 +764,7 @@ ggplot(sev_dens_D2_coef, aes(x = weeks, y = trend * 100, color = source)) +
   scale_color_manual(values = col_pal, name = "Disease source") +
   scale_fill_manual(values = col_pal, name = "Disease source") +
   scale_x_continuous(breaks = c(8, 12, 16)) +
-  labs(x = "Weeks post planting", y = "Additive increase in disease severity (%)") +
+  labs(x = "Weeks post planting", y = "Percentage point difference in disease severity") +
   fig_theme
 dev.off()
 
@@ -856,7 +856,7 @@ ggplot(sevD1Dat4, aes(x = weeks, y = severity, color = treatment)) +
   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
   stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
   stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
-  facet_grid(plot_type ~ plant_group2, scales = "free") +
+  facet_grid(plot_type ~ plant_group2) +
   scale_color_manual(values = col_pal2, "Disease treatment") +
   labs(x = "Weeks post planting", y = "Disease severity (%)") +
   fig_theme +
@@ -869,7 +869,7 @@ ggplot(sevD2Dat4, aes(x = weeks, y = severity, color = treatment)) +
   stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
   stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
   stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
-  facet_grid(plot_type ~ plant_group2, scales = "free") +
+  facet_grid(plot_type ~ plant_group2) +
   scale_color_manual(values = col_pal2, name = "Disease treatment") +
   labs(x = "Weeks post planting", y = "Disease severity (%)") +
   fig_theme +

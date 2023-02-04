@@ -956,6 +956,9 @@ dis_inv_bio2 <- mod_inv_dis2 %>%
 100 * (dis_inv_bio - inv_bio)/inv_bio
 100 * (dis_inv_bio2 - inv_bio2)/inv_bio2
 
+# combined invasion/disease effect
+100 * (dis_inv_bio - pre_inv_bio)/pre_inv_bio
+
 # final disease severity
 mod_inv_dis2 %>%
   filter(time == max(time))

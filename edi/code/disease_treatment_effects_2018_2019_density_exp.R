@@ -522,6 +522,18 @@ alpha %>%
   group_by(parameter) %>%
   median_hdi(estimate)
 
+# find CI width that leads to sig competitive tolerance of Ev adult
+alpha %>%
+  transmute(PP_eff = 100 * (alpha_PP_fung - alpha_PP) / alpha_PP,
+            PF_eff = 100 * (alpha_FP_fung - alpha_FP) / alpha_FP,
+            PA_eff = 100 * (alpha_FA_fung - alpha_FA) / alpha_FA) %>%
+  pivot_longer(cols = everything(),
+               names_to = "parameter",
+               values_to = "estimate") %>%
+  group_by(parameter) %>%
+  median_hdi(estimate, .width = 0.29)
+
+
 # table
 write_csv(brms_SummaryTable(growthD2Mod2), "output/focal_growth_biomass_model_2019_density_exp.csv")
 
