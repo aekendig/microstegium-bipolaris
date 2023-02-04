@@ -853,8 +853,9 @@ sevD2Dat4 <- sevD2Dat2 %>%
 # figures
 pdf("output/focal_severity_raw_data_figure_2018_density_exp.pdf", width = 6, height = 8)
 ggplot(sevD1Dat4, aes(x = weeks, y = severity, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
-  stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = 0.5), 
+             size = 0.5) +
   stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
   facet_grid(plot_type ~ plant_group2) +
   scale_color_manual(values = col_pal2, "Disease treatment") +
@@ -866,8 +867,9 @@ dev.off()
 
 pdf("output/focal_severity_raw_data_figure_2019_density_exp.pdf", width = 6, height = 8)
 ggplot(sevD2Dat4, aes(x = weeks, y = severity, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_cl_boot", position = position_dodge(0.5)) +
-  stat_summary(geom = "point", size = 2, fun = "mean", position = position_dodge(0.5)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = 0.5), 
+             size = 0.5) +
   stat_summary(geom = "line", fun = "mean", position = position_dodge(0.5)) +
   facet_grid(plot_type ~ plant_group2) +
   scale_color_manual(values = col_pal2, name = "Disease treatment") +

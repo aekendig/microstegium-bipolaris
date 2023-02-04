@@ -39,8 +39,11 @@ fig_theme <- theme_bw() +
         plot.title = element_text(size = 7, hjust = 0.5))
 
 col_pal = c("black", "#238A8D")
+shape_vals <- c(1, 2)
 
 box_shade = "gray92"
+
+dodge_width = 0.5
 
 
 #### severity ####
@@ -68,6 +71,28 @@ sev_ev <- as_draws_df(sevD2Mod_sev_dens_jul) %>%
 
 sev <- cbind(sev_mv, sev_ev)
 
+# raw data
+sev_raw_mv <- sevD2Dat3_aug2 %>%
+  filter(plant_group == "Mv") %>%
+  select(sp, age, site, treatment, next_severity_t)
+
+sev_raw_ev <- sevD2Dat3_jul2 %>%
+  filter(sp == "Ev") %>%
+  select(sp, age, site, treatment, next_severity_t)
+
+sev_raw <- sev_raw_mv %>%
+  full_join(sev_raw_ev) %>%
+  mutate(Species = if_else(sp == "Mv", "Invader (Mv)", "Competitor (Ev)") %>%
+           fct_relevel("Invader (Mv)"),
+         Age = fct_recode(age, 
+                          "1st year" = "seedling") %>%
+           fct_relevel("1st year"),
+         Treatment = fct_recode(treatment,
+                                "control" = "water") %>%
+           fct_relevel("control"),
+         SpeciesN = as.numeric(Species),
+         Estimate = next_severity_t * 100)
+
 # summarize for fig
 sev2 <- sev %>%
   pivot_longer(cols = everything(),
@@ -90,13 +115,17 @@ sev2 <- sev %>%
 sev_fig <- ggplot(sev2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
                 fill = Species), alpha = 0.5) +
+  geom_point(data = sev_raw, size = 0.25, alpha = 0.1,
+             aes(color = Treatment), 
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = dodge_width)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment, shape = Age), size = 2, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment, shape = Age), size = 2, stroke = 0.75, 
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal, name = "Disease treatment") +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
-  scale_shape_manual(values = c(19, 17)) +
+  scale_shape_manual(values = shape_vals) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
   labs(y = "Disease severity (%)") +
@@ -139,6 +168,11 @@ mv_germ2 <- mv_germ %>%
             Lower = 100 * .lower,
             Upper = 100 * .upper)
 
+mv_germ_raw <- mvGermD1Dat %>%
+  mutate(Estimate = 100 * (germination_final / seeds),
+         Species = "Invader (Mv)",
+         Treatment = treatment)
+
 # load model
 load("output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
 evGermDat2 <- read_csv("output/ev_germination_fungicide_model_data_2018_2019_density_exp.rda")
@@ -160,6 +194,20 @@ ev_germ2 <- ev_germ %>%
             Lower = 100 * .lower,
             Upper = 100 * .upper)
 
+ev_germ_raw <- evGermDat2 %>%
+  mutate(Estimate = 100 * (germinants / seeds_planted),
+         Species = "Competitor (Ev)",
+         Treatment = treatment)
+
+germ_raw <- mv_germ_raw %>%
+  select(Estimate, Species, Treatment) %>%
+  mutate(ID = 1:n()) %>%
+  full_join(ev_germ_raw%>%
+              select(Estimate, Species, Treatment) %>%
+              mutate(ID = 1:n())) %>%
+  mutate(Species = fct_relevel(Species, "Invader (Mv)"),
+         SpeciesN = as.numeric(Species))
+
 # combine
 germ <- mv_germ2 %>%
   full_join(ev_germ2) %>%
@@ -170,10 +218,14 @@ germ <- mv_germ2 %>%
 germ_fig <- ggplot(germ, aes(x = SpeciesN, y = Estimate)) +
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
                 fill = Species), alpha = 0.5) +
+  geom_point(data = germ_raw, size = 0.25, alpha = 0.1,
+             aes(color = Treatment), 
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = dodge_width)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment), size = 2, shape = 19, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment), size = 2, shape = shape_vals[1], stroke = 0.75, 
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
@@ -193,8 +245,8 @@ ev_germ %>%
   mean_hdci(eff)
 
 # tables
-write_csv(brms_SummaryTable(mvGermD1Mod3), "output/mv_germination_fungicide_model_2018_density_exp.csv")
-write_csv(brms_SummaryTable(evGermMod2), "output/ev_germination_fungicide_model_2018_2019_density_exp.csv")
+write_csv(tidy(mvGermD1Mod3), "output/mv_germination_fungicide_model_2018_density_exp.csv")
+write_csv(tidy(evGermMod2), "output/ev_germination_fungicide_model_2018_2019_density_exp.csv")
 
 
 #### establishment ####
@@ -227,19 +279,35 @@ est2 <- est %>%
   mutate(Species = fct_relevel(Species, "Invader (Mv)"),
          SpeciesN = as.numeric(Species))
 
+# raw data
+est_raw <- survD2Dat2 %>%
+  select(site, plot, treatment, sp, age, survival) %>%
+  mutate(Estimate = 100 * survival,
+         Species = fct_recode(sp,
+                              "Invader (Mv)" = "Mv",
+                              "Competitor (Ev)" = "Ev") %>%
+           fct_relevel("Invader (Mv)"),
+         Treatment = fct_recode(treatment, 
+                                "control" = "water") %>%
+           fct_relevel("control"),
+         SpeciesN = as.numeric(Species))
+
 # fig
 est_fig <- ggplot(est2, aes(x = SpeciesN, y = Estimate)) +
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
                 fill = Species), alpha = 0.5) +
+  geom_point(data = est_raw, size = 0.25, alpha = 0.1,
+             aes(color = Treatment), 
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = dodge_width)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment), size = 2, shape = 19, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment), size = 2, shape = shape_vals[1], stroke = 0.75, 
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) +
-  scale_y_continuous(breaks = c(90, 95, 100)) +
   labs(y = "Establishment (%)") +
   fig_theme +
   theme(legend.position = "none",
@@ -256,7 +324,7 @@ est %>%
   median_hdi(estimate)
 
 # table
-write_csv(brms_SummaryTable(survFungD2Mod), 
+write_csv(tidy(survFungD2Mod), 
           "output/survival_fungicide_model_2019_density_exp.csv")
 
 
@@ -298,17 +366,36 @@ bio2 <- bio %>%
          SpeciesN = as.numeric(Species),
          Age = fct_relevel(Age, "1st year"))
 
+# raw data
+bio_raw <- growthD2Dat2 %>%
+  mutate(Estimate = plant_growth,
+         Species = fct_recode(sp,
+                              "Invader (Mv)" = "Mv",
+                              "Competitor (Ev)" = "Ev") %>%
+           fct_relevel("Invader (Mv)"),
+         Treatment = fct_recode(treatment, 
+                                "control" = "water") %>%
+           fct_relevel("control"),
+         SpeciesN = as.numeric(Species),
+         Age = fct_recode(age, 
+                          "1st year" = "seedling") %>%
+           fct_relevel("1st year"))
+
 # fig
 bio_fig <- ggplot(bio2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
                 fill = Species), alpha = 0.5) +
+  geom_point(data = bio_raw, size = 0.25, alpha = 0.1,
+             aes(color = Treatment), 
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = dodge_width)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment, shape = Age), size = 2, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment, shape = Age), size = 2, stroke = 0.75, 
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
-  scale_shape_manual(values = c(19, 17)) +
+  scale_shape_manual(values = shape_vals) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
   labs(y = "Biomass (ln[g])") +
@@ -328,7 +415,7 @@ bio %>%
   median_hdi(estimate)
 
 # table
-write_csv(brms_SummaryTable(growthD2Mod), 
+write_csv(tidy(growthD2Mod), 
           "output/focal_growth_density_model_2019_density_exp.csv")
 
 
@@ -370,16 +457,35 @@ seed2 <- seed %>%
          SpeciesN = as.numeric(Species),
          Age = fct_relevel(Age, "1st year"))
 
+# raw data
+seed_raw <- seedD2Dat3 %>%
+  mutate(Estimate = log_seeds,
+         Species = fct_recode(sp,
+                              "Invader (Mv)" = "Mv",
+                              "Competitor (Ev)" = "Ev") %>%
+           fct_relevel("Invader (Mv)"),
+         Treatment = fct_recode(treatment, 
+                                "control" = "water") %>%
+           fct_relevel("control"),
+         SpeciesN = as.numeric(Species),
+         Age = fct_recode(age, 
+                          "1st year" = "seedling") %>%
+           fct_relevel("1st year"))
+
 seed_fig <- ggplot(seed2, aes(x = SpeciesN, y = Estimate, group = interaction(Treatment, Age))) +
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = SpeciesN-0.5, xmax = Inf,
                 fill = Species), alpha = 0.5) +
+  geom_point(data = seed_raw, size = 0.25, alpha = 0.1,
+             aes(color = Treatment), 
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             dodge.width = dodge_width)) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment, shape = Age), size = 2, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment, shape = Age), size = 2, stroke = 0.75,
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
-  scale_shape_manual(values = c(19, 17)) +
+  scale_shape_manual(values = shape_vals) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
   labs(y = "Seed production (ln[x+1])") +
@@ -399,7 +505,7 @@ seed %>%
   median_hdi(estimate)
 
 # table
-write_csv(brms_SummaryTable(seedD2Mod), 
+write_csv(tidy(seedD2Mod), 
           "output/focal_seed_density_model_2019_density_exp.csv")
 
 
@@ -464,12 +570,12 @@ alphaA_fig <- ggplot(alpha_A, aes(x = FocalN, y = Estimate, group = interaction(
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = FocalN-0.5, xmax = Inf,
                 fill = Focal), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment, shape = Age), size = 2, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment, shape = Age), size = 2, stroke = 0.75,
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
-  scale_shape_manual(values = c(19, 17)) +
+  scale_shape_manual(values = shape_vals) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
   labs(y = "Invader (Mv) effect") +
@@ -481,12 +587,12 @@ alphaF_fig <- ggplot(alpha_F, aes(x = FocalN, y = Estimate, group = interaction(
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = FocalN-0.5, xmax = Inf,
                 fill = Focal), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment, shape = Age), size = 2, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment, shape = Age), size = 2, stroke = 0.75,
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
-  scale_shape_manual(values = c(19, 17)) +
+  scale_shape_manual(values = shape_vals) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
   labs(y = "1st yr comp. (Ev) effect") +
@@ -498,12 +604,12 @@ alphaP_fig <- ggplot(alpha_P, aes(x = FocalN, y = Estimate, group = interaction(
   geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = FocalN-0.5, xmax = Inf,
                 fill = Focal), alpha = 0.5) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = Treatment),
-                width = 0, size = 0.3, position = position_dodge(0.5)) +
-  geom_point(aes(color = Treatment, shape = Age), size = 2, 
-             position = position_dodge(0.5)) +
+                width = 0, size = 0.5, position = position_dodge(dodge_width)) +
+  geom_point(aes(color = Treatment, shape = Age), size = 2, stroke = 0.75,
+             position = position_dodge(dodge_width)) +
   scale_color_manual(values = col_pal) +
   scale_fill_manual(values = c("transparent", box_shade), guide = "none") +
-  scale_shape_manual(values = c(19, 17)) +
+  scale_shape_manual(values = shape_vals) +
   scale_x_continuous(breaks = c(1, 2), labels = levels(sev2$Species),
                      limits = c(0.6, 2.4)) + 
   labs(y = "Adult comp. (Ev) effect") +
@@ -535,7 +641,7 @@ alpha %>%
 
 
 # table
-write_csv(brms_SummaryTable(growthD2Mod2), "output/focal_growth_biomass_model_2019_density_exp.csv")
+write_csv(tidy(growthD2Mod2), "output/focal_growth_biomass_model_2019_density_exp.csv")
 
 
 #### combine ####

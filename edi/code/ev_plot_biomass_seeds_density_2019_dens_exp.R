@@ -1,9 +1,6 @@
-##### info ####
+##### outputs ####
 
-# file: ev_plot_biomass_seeds_density_2019_density_exp
-# author: Amy Kendig
-# date last edited: 5/30/22
-# goal: ev plot-scale biomass and seeds (i.e., abundance) vs. density
+# Figure S6
 
 #### set up ####
 
@@ -359,15 +356,3 @@ write_csv(tidy(evSBioDensMod), "output/evS_plot_biomass_density_model_2019_dens_
 write_csv(tidy(evSSeedDensMod), "output/evS_plot_seed_density_model_2019_dens_exp.csv")
 write_csv(tidy(evABioDensMod), "output/evA_plot_biomass_density_model_2019_dens_exp.csv")
 write_csv(tidy(evASeedDensMod), "output/evA_plot_seed_density_model_2019_dens_exp.csv")
-
-
-#### values for text ####
-
-# Ev adult biomass
-set.seed(184)
-posterior_predict(evABioDensMod,
-                  newdata = filter(plotPredDatTemplate, density == 9),
-                  allow_new_levels = T) %>%
-  as_tibble(.name_repair = ~ c("control", "fungicide")) %>%
-  mutate(fung_eff = 100 * (fungicide - control) / control) %>%
-  median_hdi(fung_eff)

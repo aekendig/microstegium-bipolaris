@@ -266,8 +266,11 @@ focal_labels <- c("Invader (Mv)" = "Invader (Mv)",
 inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
-  stat_summary(data = plotD2Dat2, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
-  stat_summary(data = plotD2Dat2, geom = "point", fun = "mean", size = 2, position = position_dodge(dodge_width), aes(color = treatment)) +
+  geom_point(data = plotD2Dat2, aes(color = treatment), 
+             position = position_jitterdodge(jitter.width = 0.1, 
+                                             jitter.height = 0,
+                                             dodge.width = dodge_width),
+             size = 0.5) +
   facet_grid(rows = vars(response),
              cols = vars(focal),
              scales = "free",
@@ -285,8 +288,11 @@ inv_fig <- ggplot(plotPredD2Dat, aes(x = density, y = value)) +
 percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
-  stat_summary(data = rawD2Dat, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
-  stat_summary(data = rawD2Dat, geom = "point", fun = "mean", size = 2, position = position_dodge(dodge_width), aes(color = treatment)) +
+  geom_point(data = rawD2Dat, aes(color = treatment), 
+             position = position_jitterdodge(jitter.width = 0.1, 
+                                             jitter.height = 0,
+                                             dodge.width = dodge_width),
+             size = 0.5) +
   facet_grid(rows = vars(response),
              cols = vars(focal),
              switch = "y",
@@ -305,8 +311,10 @@ percap_fig <- ggplot(predD2Dat, aes(x = density, y = log_fitness)) +
 mvLitFig <- ggplot(mvLitDat2, aes(x = litter.g.m2, y = 100*prop_germ_den_cor, fill = sterilizedF, color = sterilizedF)) +
   geom_ribbon(data = mvEstPredDat, aes(y = 100*Est, ymin = 100*Est_lower, ymax = 100*Est_upper), alpha = 0.3, color = NA) +
   geom_line(data = mvEstPredDat, aes(y = 100*Est)) +
-  stat_summary(fun.data = "mean_cl_boot", geom = "errorbar", width = 0, position = position_dodge(5)) +
-  stat_summary(fun = "mean", geom = "point", size = 2, position = position_dodge(5)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1, 
+                                             jitter.height = 0,
+                                             dodge.width = dodge_width),
+             size = 0.5) +
   scale_color_manual(values = col_pal2) +
   scale_fill_manual(values = col_pal2) +
   facet_grid(cols = vars(focal)) +
@@ -319,7 +327,7 @@ mvLitFig <- ggplot(mvLitDat2, aes(x = litter.g.m2, y = 100*prop_germ_den_cor, fi
 evLitFig <- ggplot(evLitDat2, aes(x = litter.g.m2, y = 100*ev_prop_germ)) +
   geom_ribbon(data = evEstPredDat, aes(y = 100*Est, ymin = 100*Est_lower, ymax = 100*Est_upper), alpha = 0.3, color = NA) +
   geom_line(data = evEstPredDat, aes(y = 100*Est)) +
-  geom_point() +
+  geom_point(size = 0.5) +
   facet_grid(cols = vars(focal)) +
   labs(x = expression(paste("Invader litter (g ", m^-2, ")", sep = "")),
        y = "Seedling emergence (%)") +
@@ -363,8 +371,11 @@ pdf("output/mv_per_capita_effects_figure_2018_density_exp.pdf", width = 4, heigh
 ggplot(predD1Dat, aes(x = density, y = log_fitness)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = treatment), alpha = 0.3) +
   geom_line(aes(color = treatment)) +
-  stat_summary(data = rawD1Dat, geom = "errorbar", fun.data = "mean_cl_boot", width = 0, position = position_dodge(dodge_width), aes(color = treatment)) +
-  stat_summary(data = rawD1Dat, geom = "point", fun = "mean", size = 2, position = position_dodge(dodge_width), aes(color = treatment)) +
+  geom_point(data = rawD1Dat, aes(color = treatment), 
+             position = position_jitterdodge(jitter.width = 0.1, 
+                                             jitter.height = 0,
+                                             dodge.width = dodge_width),
+             size = 0.5) +
   facet_grid(rows = vars(response),
              cols = vars(focal),
              switch = "y",
