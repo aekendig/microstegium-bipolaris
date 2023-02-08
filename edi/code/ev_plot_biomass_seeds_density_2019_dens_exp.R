@@ -15,14 +15,19 @@ library(tidybayes)
 
 # import data
 bgBioD2Dat <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv") 
-# bg_biomass_data_processing_2019_density_exp.R
 evBioD2Dat <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
 evSeedD2Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv") 
-# ev_seeds_data_processing_2019.R and ev_seeds_data_processing_2018.R
 plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
-# model functions
-source("code/brms_model_fitting_functions.R")
+# model function
+mod_check_fun <- function(mod){
+  
+  print(prior_summary(mod))
+  print(summary(mod))
+  print(pp_check(mod, nsamples = 100))
+  print(plot(mod))
+  
+}
 
 
 #### seeds ####
@@ -207,6 +212,12 @@ load("output/evS_plot_seed_density_model_2019_density_exp.rda")
 load("output/evA_plot_biomass_density_model_2019_density_exp.rda")
 load("output/evA_plot_seed_density_model_2019_density_exp.rda")
 
+# output tables
+write_csv(tidy(evSBioDensMod), "output/evS_plot_biomass_density_model_2019_dens_exp.csv")
+write_csv(tidy(evSSeedDensMod), "output/evS_plot_seed_density_model_2019_dens_exp.csv")
+write_csv(tidy(evABioDensMod), "output/evA_plot_biomass_density_model_2019_dens_exp.csv")
+write_csv(tidy(evASeedDensMod), "output/evA_plot_seed_density_model_2019_dens_exp.csv")
+
 
 #### predicted values ####
 
@@ -321,7 +332,7 @@ ggplot(evPredD2Dat, aes(x = density, y = value)) +
 dev.off()
 
 
-#### tables ####
+#### treatment effects ####
 
 # treatment effects
 b0_eff = "b0_treatmentfungicide - b0_treatmentcontrol = 0"
@@ -333,7 +344,7 @@ evABioEff <- hypothesis(evABioDensMod, c(b0_eff, alpha_eff))
 evASeedEff <- hypothesis(evASeedDensMod, c(b0_eff, alpha_eff))
 
 # combine treatment effects
-evEff <- evSBioEff[[1]] %>%
+evSBioEff[[1]] %>%
   mutate(response = "biomass",
          age = "seedling") %>%
   full_join(evSSeedEff[[1]] %>%
@@ -349,10 +360,5 @@ evEff <- evSBioEff[[1]] %>%
   select(-c(Hypothesis, Evid.Ratio, Post.Prob)) %>%
   relocate(age, response, parameter)
 
-# save outputs
-write_csv(evEff, "output/ev_plot_biomass_seeds_density_treatment_effect_2019_dens_exp.csv")
 
-write_csv(tidy(evSBioDensMod), "output/evS_plot_biomass_density_model_2019_dens_exp.csv")
-write_csv(tidy(evSSeedDensMod), "output/evS_plot_seed_density_model_2019_dens_exp.csv")
-write_csv(tidy(evABioDensMod), "output/evA_plot_biomass_density_model_2019_dens_exp.csv")
-write_csv(tidy(evASeedDensMod), "output/evA_plot_seed_density_model_2019_dens_exp.csv")
+

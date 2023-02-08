@@ -22,17 +22,13 @@ library(broom.mixed)
 
 # import data
 sevD1Dat <- read_csv("intermediate-data/focal_leaf_scans_2018_density_exp.csv")
-# leaf_scans_data_processing_2018_density_exp.R
 sevD2Dat <- read_csv("intermediate-data/all_leaf_scans_2019_density_exp.csv")
 edgeSevD2Dat <- read_csv("intermediate-data/mv_edge_leaf_scans_2019_density_exp.csv") 
-# leaf_scans_data_processing_2019_density_exp.R
 
 plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 envD1Dat <- read_csv("intermediate-data/covariates_2018_density_exp.csv") 
-# covariate_data_processing_2018_density_exp.R
 envD2Dat <- read_csv("intermediate-data/temp_humidity_monthly_2019_density_exp.csv") 
-# temp_humidity_data_processing_2019_density_exp.R
 
 # model function
 mod_check_fun <- function(mod){

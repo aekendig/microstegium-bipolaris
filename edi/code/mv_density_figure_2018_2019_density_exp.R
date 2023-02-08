@@ -34,14 +34,11 @@ plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 seedD1Dat <- read_csv("intermediate-data/focal_seed_density_data_2018_density_exp.csv")
 seedD2Dat <- read_csv("intermediate-data/focal_seed_density_data_2019_density_exp.csv")
-# focal_seed_2018_2019_density_exp.R
 
 growthD1Dat <- read_csv("intermediate-data/focal_growth_density_data_2018_density_exp.csv")
 growthD2Dat <- read_csv("intermediate-data/focal_growth_density_data_2019_density_exp.csv")
-# focal_growth_2018_2019_density_exp.R
 
 plotD2Dat <- read_csv("intermediate-data/mv_plot_biomass_seeds_2019_density_exp.csv")
-# mv_plot_biomass_seeds_density_2019_density_exp.R
 
 mvLitDat <- read_csv("intermediate-data/microstegium_litter_establishment_data_2018_litter_exp.csv")
 evLitDat <- read_csv("intermediate-data/elymus_litter_establishment_data_2018_litter_exp.csv")

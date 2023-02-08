@@ -1,0 +1,19 @@
+year,response,gradient,data,focal,background,treatment,Estimate,Est.Error,CI.Lower,CI.Upper,sig
+2019,biomass,density,full,Invader (Mv),Invader (Mv),control (water),-0.012081949096007188,0.005352327677168667,-0.022703824476192323,-0.0017140278302763493,omits 0
+2019,biomass,density,full,Invader (Mv),Invader (Mv),fungicide,-0.01478601764063837,0.005316882260498902,-0.02532077412807492,-0.0043636876628821665,omits 0
+2019,biomass,density,full,1st yr competitor (Ev),Invader (Mv),control (water),-0.008410459761779626,0.005326841395851474,-0.01879974384931838,0.001969514242126457,includes 0
+2019,biomass,density,full,1st yr competitor (Ev),Invader (Mv),fungicide,-0.012228279646695405,0.005348730494252453,-0.022609584335745902,-0.0017490683244942445,omits 0
+2019,biomass,density,full,Adult competitor (Ev),Invader (Mv),control (water),-0.011029816822645477,0.006956325218449599,-0.024761015860363098,0.002633061727975173,includes 0
+2019,biomass,density,full,Adult competitor (Ev),Invader (Mv),fungicide,-0.0026351704856518404,0.007076367694284575,-0.01665200325059648,0.011307913982043229,includes 0
+2019,biomass,density,full,Invader (Mv),1st yr competitor (Ev),control (water),0.008463283072991198,0.01767229640523873,-0.026824066413163976,0.04285440463096185,includes 0
+2019,biomass,density,full,Invader (Mv),1st yr competitor (Ev),fungicide,-0.024748432466701276,0.017777075575776607,-0.060063825900360086,0.010573229067866582,includes 0
+2019,biomass,density,full,1st yr competitor (Ev),1st yr competitor (Ev),control (water),0.0053144599184311875,0.01762291161857904,-0.029818508947176643,0.039235187517983335,includes 0
+2019,biomass,density,full,1st yr competitor (Ev),1st yr competitor (Ev),fungicide,-0.0136402291203084,0.017681907105562132,-0.048685321753672045,0.02069416955994269,includes 0
+2019,biomass,density,full,Adult competitor (Ev),1st yr competitor (Ev),control (water),-0.015188873846534652,0.023228544639339994,-0.06082448812284302,0.030453506145474114,includes 0
+2019,biomass,density,full,Adult competitor (Ev),1st yr competitor (Ev),fungicide,0.023491337630204563,0.02321475809104828,-0.021958139052459087,0.06881595537759437,includes 0
+2019,biomass,density,full,Invader (Mv),Adult competitor (Ev),control (water),-0.012149966156279219,0.038008880992235615,-0.086788608118294,0.06239232592739322,includes 0
+2019,biomass,density,full,Invader (Mv),Adult competitor (Ev),fungicide,-0.02726608010348126,0.038021019221730616,-0.10230864418369602,0.047307228529592696,includes 0
+2019,biomass,density,full,1st yr competitor (Ev),Adult competitor (Ev),control (water),-0.030488231544157907,0.037684357570832064,-0.10367142594529755,0.04402534039847379,includes 0
+2019,biomass,density,full,1st yr competitor (Ev),Adult competitor (Ev),fungicide,-0.044972969071082364,0.03825522427260117,-0.11992032647055093,0.031341140646778995,includes 0
+2019,biomass,density,full,Adult competitor (Ev),Adult competitor (Ev),control (water),-0.11559103271707194,0.04931714928757109,-0.21370130096090934,-0.02037513445310035,omits 0
+2019,biomass,density,full,Adult competitor (Ev),Adult competitor (Ev),fungicide,0.06873479343636048,0.05020035114637454,-0.03048443521202123,0.16600120783670416,includes 0
