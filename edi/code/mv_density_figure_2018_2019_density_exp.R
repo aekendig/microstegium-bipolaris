@@ -26,8 +26,8 @@ load("output/focal_growth_density_model_2018_density_exp.rda")
 load("output/focal_growth_density_model_2019_density_exp.rda")
 load("output/mv_plot_biomass_density_model_2019_dens_exp.rda")
 load("output/mv_plot_seed_density_model_2019_dens_exp.rda")
-load("output/microstegium_litter_establishment_model_2018_litter_exp.rda")
-load("output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
+load("output/mv_litter_establishment_model_2018_litter_exp.rda")
+load("output/ev_litter_establishment_bh_model_2019_litter_exp.rda")
 
 # import data
 plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
@@ -40,8 +40,8 @@ growthD2Dat <- read_csv("intermediate-data/focal_growth_density_data_2019_densit
 
 plotD2Dat <- read_csv("intermediate-data/mv_plot_biomass_seeds_2019_density_exp.csv")
 
-mvLitDat <- read_csv("intermediate-data/microstegium_litter_establishment_data_2018_litter_exp.csv")
-evLitDat <- read_csv("intermediate-data/elymus_litter_establishment_data_2018_litter_exp.csv")
+mvLitDat <- read_csv("intermediate-data/mv_litter_establishment_data_2018_litter_exp.csv")
+evLitDat <- read_csv("intermediate-data/ev_litter_establishment_data_2018_litter_exp.csv")
 
 # density gradient function
 dens_fun <- function(min_dens, max_dens){

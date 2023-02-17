@@ -1,11 +1,7 @@
-##### info ####
+##### outputs ####
 
-# file: mv_plot_biomass_seeds_density_2019_density_exp
-# author: Amy Kendig
-# date last edited: 11/24/21
-# goal: mv plot-scale biomass and seeds (i.e., abundance) vs. density
-# model code from plot_biomass_density_2019_dens_exp.R
-
+# mv_plot_biomass_density_model_2019_dens_exp.rda
+# mv_plot_seed_density_model_2019_dens_exp.rda
 
 #### set up ####
 
@@ -21,10 +17,16 @@ plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 # import plot biomass and seed data
 plotD2Dat <- read_csv("intermediate-data/mv_plot_biomass_seeds_2019_density_exp.csv")
-# plot_data_processing_2019_density_exp
 
 # model functions
-source("code/brms_model_fitting_functions.R")
+mod_check_fun <- function(mod){
+  
+  print(prior_summary(mod))
+  print(summary(mod))
+  print(pp_check(mod, nsamples = 100))
+  print(plot(mod))
+  
+}
 
 
 #### edit data ####
@@ -95,8 +97,12 @@ mvSeedDensMod <- brm(data = plotD2Dat2, family = gaussian,
                     control = list(adapt_delta = 0.99)) 
 mod_check_fun(mvSeedDensMod)
 
+# save outputs
+save(mvBioDensMod, file = "output/mv_plot_biomass_density_model_2019_dens_exp.rda")
+save(mvSeedDensMod, file = "output/mv_plot_seed_density_model_2019_dens_exp.rda")
 
-#### treatment effects
+
+#### treatment effects ####
 
 b0_eff = "b0_treatmentfungicide - b0_treatmentwater = 0"
 alpha_eff = "alpha_treatmentfungicide - alpha_treatmentwater = 0"
@@ -104,7 +110,7 @@ alpha_eff = "alpha_treatmentfungicide - alpha_treatmentwater = 0"
 mvBioEff <- hypothesis(mvBioDensMod, c(b0_eff, alpha_eff))
 mvSeedEff <- hypothesis(mvSeedDensMod, c(b0_eff, alpha_eff))
 
-mvEff <- mvBioEff[[1]] %>%
+mvBioEff[[1]] %>%
   mutate(response = "biomass") %>%
   full_join(mvSeedEff[[1]] %>%
               mutate(response = "seeds")) %>%
@@ -112,7 +118,4 @@ mvEff <- mvBioEff[[1]] %>%
   select(-c(Hypothesis, Evid.Ratio, Post.Prob)) %>%
   relocate(response, parameter)
 
-# save outputs
-save(mvBioDensMod, file = "output/mv_plot_biomass_density_model_2019_dens_exp.rda")
-save(mvSeedDensMod, file = "output/mv_plot_seed_density_model_2019_dens_exp.rda")
-write_csv(mvEff, "output/mv_plot_biomass_seeds_density_treatment_effect_2019_dens_exp.csv")
+

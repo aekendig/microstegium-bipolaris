@@ -14,7 +14,7 @@ library(broom.mixed)
 library(tidybayes)
 
 # import data
-bgBioD2Dat <- read_csv("intermediate-data/bg_processed_biomass_2019_density_exp.csv") 
+bgBioD2Dat <- read_csv("data/bg_biomass_2019_density_exp.csv") 
 evBioD2Dat <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
 evSeedD2Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv") 
 plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
@@ -71,9 +71,21 @@ ggplot(evSeedD2Dat2, aes(x = plot, y = seeds)) +
 
 ##### biomass ####
 
+# zero background biomass
+bgZero <- tibble(site = rep(c("D1", "D2", "D3", "D4"), each = 2),
+               treatment = rep(c("water", "fungicide"), 4)) %>%
+  mutate(plot = 1,
+         biomass_bg = 0)
+
+# background biomass: combine plots
+bgBioD2Dat2 <- bgBioD2Dat %>%
+  group_by(site, plot, treatment) %>%
+  summarise(biomass_bg = sum(biomass.g)) %>%
+  ungroup() %>%
+  full_join(bgZero)
+
 # use average of others in plot if plant is missing biomass
-evBioD2Dat2 <- bgBioD2Dat %>%
-  rename(biomass_bg = biomass.g) %>%
+evBioD2Dat2 <- bgBioD2Dat2 %>%
   inner_join(evBioD2Dat %>%
                filter(ID %in% c("1", "2", "3") & plot %in% c(1, 5:7)) %>%
                group_by(site, plot, treatment) %>%

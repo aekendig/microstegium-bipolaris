@@ -152,7 +152,7 @@ load("output/mv_germination_fungicide_model_2018_density_exp.rda")
 mvGermD1Dat <- read_csv("output/mv_germination_fungicide_model_data_2018_density_exp.csv")
 
 # draws and summarize
-mv_germ <- as_draws_df(mvGermD1Mod3)  %>%
+mv_germ <- as_draws_df(mvGermD1Mod2)  %>%
   transmute(g_W = inv_logit_scaled(b_Intercept),
             g_F = inv_logit_scaled(b_Intercept + b_fungicide)) 
 
@@ -178,7 +178,7 @@ load("output/ev_germination_fungicide_model_2018_2019_density_exp.rda")
 evGermDat2 <- read_csv("output/ev_germination_fungicide_model_data_2018_2019_density_exp.rda")
 
 # draws and summarize
-ev_germ <- as_draws_df(evGermMod2)  %>%
+ev_germ <- as_draws_df(evGermMod)  %>%
   transmute(g_W = inv_logit_scaled(b_Intercept),
             g_F = inv_logit_scaled(b_Intercept + b_fungicide)) 
 
@@ -245,8 +245,8 @@ ev_germ %>%
   mean_hdci(eff)
 
 # tables
-write_csv(tidy(mvGermD1Mod3), "output/mv_germination_fungicide_model_2018_density_exp.csv")
-write_csv(tidy(evGermMod2), "output/ev_germination_fungicide_model_2018_2019_density_exp.csv")
+write_csv(tidy(mvGermD1Mod2), "output/mv_germination_fungicide_model_2018_density_exp.csv")
+write_csv(tidy(evGermMod), "output/ev_germination_fungicide_model_2018_2019_density_exp.csv")
 
 
 #### establishment ####

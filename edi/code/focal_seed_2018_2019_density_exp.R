@@ -1,17 +1,10 @@
-##### info ####
+##### outputs ####
 
-# file: focal_seed_density_2018_2019_density_exp
-# author: Amy Kendig
-# date last edited: 9/29/21
-# goal: analyses of seeds as a function of density and severity
-
-# Ricker model for density analysis:
-# log(Nt+1/Nt) = r - alphaNN x Nt - alphaNM x Mt
-# haven't updated this to full model, with all background and focal in same
-# do the update if using seed ~ density results
-# use focal_growth_2018_2019_density_exp.R for guide
-# use hurdle model (as in severity) for fit
-
+# focal_seed_density_model_2018_density_exp.rda
+# focal_seed_density_model_2019_density_exp.rda
+# focal_seed_density_data_2018_density_exp.csv
+# focal_seed_density_data_2019_density_exp.csv
+# focal_seed_competition_coefficients_2018_2019_density_exp.csv (Table S5)
 
 #### set up ####
 
@@ -21,63 +14,40 @@ rm(list=ls())
 # load packages
 library(tidyverse)
 library(brms)
-library(tidybayes) # for mean_hdi
+library(tidybayes)
 library(cowplot)
 library(GGally)
 
 # import plot information
-plotsD <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
+plots <- read_csv("data/plot_treatments_2018_2019_density_exp.csv")
 
 # import seed data
 mvSeedD1Dat <- read_csv("intermediate-data/mv_processed_seeds_2018_density_exp.csv")
-# mv_seeds_data_processing_2018_density_exp.R and mv_biomass_data_processing_2018_density_exp.R
 mvSeedD2Dat <- read_csv("intermediate-data/mv_plant_level_seeds_2019_density_exp.csv") 
-# mv_seeds_data_processing_2019_density_exp.R
-# adj values substitute averages of other two plants in the plot when a plant is missing data
 evSeedD1Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2018_density_exp.csv") 
-evSeedD2Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv") 
-# ev_seeds_data_processing_2019.R and ev_seeds_data_processing_2018.R
-
-#import severity data
-sevD1Dat <- read_csv("intermediate-data/plot_severity_2018_density_exp.csv")
-# plot_data_processing_2018_density_exp.R
-sevD2Dat <- read_csv("intermediate-data/plot_severity_2019_density_exp.csv")
-# plot_data_processing_2019_density_exp.R
+evSeedD2Dat <- read_csv("intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv")
 
 # import survival data
 survD1Dat <- read_csv("intermediate-data/all_processed_survival_2018_density_exp.csv")
-# all_survival_data_processing_2018
-survD2Dat <- read_csv("data/all_replacement_2019_density_exp.csv")
 
-# import growth data
+# import tiller data
 tillerD1Dat <- read_csv("intermediate-data/focal_processed_growth_2018_density_exp.csv")
-# focal_growth_data_processing_2018_density_exp
-mvBioD1Dat <- read_csv("intermediate-data/mv_processed_biomass_oct_2018_density_exp.csv")
-# mv_biomass_data_processing_2018_density_exp.R
-mvBioD2Dat <- read_csv("data/mv_biomass_seeds_2019_density_exp.csv")
-evBioD2Dat <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
 
 # model functions
-source("code/brms_model_fitting_functions.R")
+mod_check_fun <- function(mod){
+  
+  print(prior_summary(mod))
+  print(summary(mod))
+  print(pp_check(mod, nsamples = 100))
+  print(plot(mod))
+  
+}
 
 
 #### edit data ####
 
-# severity data
-sevD1Dat2 <- sevD1Dat %>%
-  select(month, site, plot, treatment, sp, age, severity) %>%
-  pivot_wider(names_from = month,
-              values_from = severity,
-              names_glue = "{month}_severity")
-
-sevD2Dat2 <- sevD2Dat %>%
-  select(month, site, plot, treatment, sp, age, severity) %>%
-  pivot_wider(names_from = month,
-              values_from = severity,
-              names_glue = "{month}_severity")
-
 # plant group densities
-plotDens <- plotsD %>%
+plotDens <- plots %>%
   mutate(density = case_when(plot %in% 2:4 ~ background_density + 3,
                              plot %in% 5:7 ~ background_density + 3,
                              plot%in% 8:10 ~ background_density + 1,
@@ -96,13 +66,13 @@ survD1Dat2 <- survD1Dat %>%
 
 # 2019 list of all plants
 # all dead plants were replaced
-focD2Dat <- plotsD %>%
+focD2Dat <- plots %>%
   select(plot, treatment) %>%
   expand_grid(site = c("D1", "D2", "D3", "D4")) %>%
   expand_grid(ID = as.character(c(1, 2, 3))) %>%
   mutate(sp = "Mv",
          age = "seedling") %>%
-  full_join(plotsD %>%
+  full_join(plots %>%
               select(plot, treatment) %>%
               expand_grid(site = c("D1", "D2", "D3", "D4")) %>%
               expand_grid(tibble(ID = c("1", "2", "3", "A"),
@@ -157,15 +127,6 @@ mvSeedD2Dat2 <- mvSeedD2Dat %>%
 seedD1Dat <- evSeedD1Dat2 %>%
   full_join(mvSeedD1Dat2 %>%
               rename(seeds = seeds_per_plant)) %>%
-  left_join(sevD1Dat2) %>%
-  left_join(tillerD1Dat %>%
-              filter(sp == "Ev") %>%
-              mutate(plant_growth = log(tillers_jul/tillers_jun)) %>%
-              select(site, plot, treatment, sp, ID, plant_growth) %>%
-              full_join(mvBioD1Dat %>%
-                          mutate(sp = "Mv",
-                                 plant_growth = log(bio.g * 0.25 * 0.49)) %>%
-                          select(site, plot, treatment, sp, plant_growth))) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          seeds1 = seeds + 1,
          log_seeds = log(seeds1),
@@ -181,17 +142,9 @@ seedD1Dat <- evSeedD1Dat2 %>%
 
 seedD2Dat <- evSeedD2Dat2 %>%
   full_join(mvSeedD2Dat2) %>%
-  left_join(sevD2Dat2) %>%
-  left_join(mvBioD2Dat %>%
-              mutate(ID = as.character(plant)) %>%
-              select(site, plot, treatment, sp, ID, biomass_weight.g) %>%
-              full_join(evBioD2Dat %>%
-                          rename(biomass_weight.g = weight) %>%
-                          select(site, plot, treatment, sp, ID, biomass_weight.g))) %>%
   mutate(fungicide = ifelse(treatment == "fungicide", 1, 0),
          seeds1 = seeds + 1,
          log_seeds = log(seeds1),
-         plant_growth = log(biomass_weight.g),
          focal = paste(sp, age, sep = " ") %>%
            fct_recode(Mv = "Mv seedling"),
          foc = fct_recode(focal, m = "Mv", a = "Ev adult", s = "Ev seedling") %>%
@@ -203,134 +156,7 @@ seedD2Dat <- evSeedD2Dat2 %>%
          plotf = paste0(site, plot, str_sub(treatment, 1, 1)))
 
 
-#### initial severity visualizations ####
-
-seedD1Dat %>%
-  filter(foc == "s") %>%
-  select(jul_severity, late_aug_severity, sep_severity, log_seeds) %>%
-  ggpairs()
-
-seedD1Dat %>%
-  filter(foc == "a") %>%
-  select(jul_severity, late_aug_severity, sep_severity, log_seeds) %>%
-  ggpairs()
-
-seedD1Dat %>%
-  filter(foc == "m") %>%
-  select(jul_severity, late_aug_severity, sep_severity, log_seeds) %>%
-  ggpairs()
-
-seedD2Dat %>%
-  filter(foc == "s") %>%
-  select(jul_severity, early_aug_severity, late_aug_severity, log_seeds) %>%
-  ggpairs()
-
-seedD2Dat %>%
-  filter(foc == "a") %>%
-  select(jul_severity, early_aug_severity, late_aug_severity, log_seeds) %>%
-  ggpairs()
-
-seedD2Dat %>%
-  filter(foc == "m") %>%
-  select(jul_severity, early_aug_severity, late_aug_severity, log_seeds) %>%
-  ggpairs()
-
-
-#### fit severity models ####
-
-# remove missing data
-seedD1Dat2 <- seedD1Dat %>%
-  filter(!is.na(sep_severity) & !is.na(plant_growth))
-
-seedD2Dat2 <- seedD2Dat %>%
-  filter(!is.na(late_aug_severity) & !is.na(plant_growth))
-
-# fit models
-seedSevD1Mod <- brm(data = seedD1Dat2, family = hurdle_lognormal,
-                    bf(seeds ~ foc * (sep_severity + plant_growth) + (1|plotf),
-                       hu ~ foc * (sep_severity + plant_growth) + (1|plotf)),
-                    prior <- c(prior(normal(1, 1), class = "Intercept"),
-                               prior(normal(0, 10), class = "Intercept", dpar = "hu"),
-                               prior(normal(0, 10), class = "b")), # use default for sigma
-                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(seedSevD1Mod)
-
-seedSevD2Mod <- brm(data = seedD2Dat2, family = hurdle_lognormal,
-                    bf(seeds ~ foc * (late_aug_severity + plant_growth) + (1|plotf),
-                       hu ~ foc * (late_aug_severity + plant_growth) + (1|plotf)),
-                    prior <- c(prior(normal(1, 1), class = "Intercept"),
-                               prior(normal(0, 10), class = "Intercept", dpar = "hu"),
-                               prior(normal(0, 10), class = "b")), # use default for sigma
-                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(seedSevD2Mod)
-
-# save models
-save(seedSevD1Mod, file = "output/seed_severity_model_2018_density_exp.rda")
-save(seedSevD2Mod, file = "output/seed_severity_model_2019_density_exp.rda")
-
-
-#### severity coefficients ####
-
-# 2018
-evS_2018_sev = "sep_severity = 0"
-mv_2018_sev = "sep_severity + focm:sep_severity = 0"
-evA_2018_sev = "sep_severity + foca:sep_severity = 0"
-evS_bin_2018_sev = "hu_sep_severity = 0"
-mv_bin_2018_sev = "hu_sep_severity + hu_focm:sep_severity = 0"
-evA_bin_2018_sev = "hu_sep_severity + hu_foca:sep_severity = 0"
-evS_growth = "plant_growth = 0"
-mv_growth = "plant_growth + focm:plant_growth = 0"
-evA_growth = "plant_growth + foca:plant_growth = 0"
-evS_bin_growth = "hu_plant_growth = 0"
-mv_bin_growth = "hu_plant_growth + hu_focm:plant_growth = 0"
-evA_bin_growth = "hu_plant_growth + hu_foca:plant_growth = 0"
-
-seedSevD1Coef <- hypothesis(seedSevD1Mod, c(mv_2018_sev, evS_2018_sev, evA_2018_sev,
-                                            mv_bin_2018_sev, evS_bin_2018_sev, evA_bin_2018_sev,
-                                            mv_growth, evS_growth, evA_growth,
-                                            mv_bin_growth, evS_bin_growth, evA_bin_growth))
-# no significant effects
-
-# 2019
-evS_2019_sev = "late_aug_severity = 0"
-mv_2019_sev = "late_aug_severity + focm:late_aug_severity = 0"
-evA_2019_sev = "late_aug_severity + foca:late_aug_severity = 0"
-evS_bin_2019_sev = "hu_late_aug_severity = 0"
-mv_bin_2019_sev = "hu_late_aug_severity + hu_focm:late_aug_severity = 0"
-evA_bin_2019_sev = "hu_late_aug_severity + hu_foca:late_aug_severity = 0"
-
-seedSevD2Coef <- hypothesis(seedSevD2Mod, c(mv_2019_sev, evS_2019_sev, evA_2019_sev,
-                                            mv_bin_2019_sev, evS_bin_2019_sev, evA_bin_2019_sev,
-                                            mv_growth, evS_growth, evA_growth,
-                                            mv_bin_growth, evS_bin_growth, evA_bin_growth))
-# no significant severity effects
-# strong growth effects
-
-# add columns
-seedSevD1Coef2 <- seedSevD1Coef[[1]] %>%
-  mutate(year = 2018,
-         focal = rep(c("Mv", "Ev seedling", "Ev adult"), 4),
-         response = rep(rep(c("continuous", "binary"), each = 3), 2),
-         variable = rep(c("severity", "growth"), each = 6)) %>%
-  select(year, focal, variable, response, Estimate:CI.Upper)
-
-seedSevD2Coef2 <- seedSevD2Coef[[1]] %>%
-  mutate(year = 2019,
-         focal = rep(c("Mv", "Ev seedling", "Ev adult"), 4),
-         response = rep(rep(c("continuous", "binary"), each = 3), 2),
-         variable = rep(c("severity", "growth"), each = 6)) %>%
-  select(year, focal, variable, response, Estimate:CI.Upper)
-
-# combine
-seedSevCoef <- seedSevD1Coef2 %>%
-  full_join(seedSevD2Coef2) %>%
-  arrange(year, focal, variable, response)
-
-# save
-write_csv(seedSevCoef, "output/seed_severity_growth_coefficients_2018_2019_density_exp.csv")
-
-
-#### density models ####
+#### fit models ####
 
 # initial visualizations
 ggplot(seedD1Dat %>% filter(seeds > 0), aes(x = density, y = log_seeds, color = treatment)) +
@@ -356,16 +182,6 @@ seedD2Dat3 <- seedD2Dat %>%
          bg = fct_relevel(bg, "m"))
 
 # fit models
-# seedD1Mod <- brm(data = seedD1Dat3, family = hurdle_lognormal,
-#                  bf(seeds ~ density * foc * bg * fungicide + (1|site),
-#                     hu ~ density * foc * bg * fungicide + (1|site)),
-#                  prior <- c(prior(normal(3.5, 1), class = "Intercept"),
-#                             prior(normal(0, 10), class = "Intercept", dpar = "hu"),
-#                             prior(normal(0, 10), class = "b")), # use default for sigma
-#                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-# cannot fit this model - a lot of divergent transitions and transitions that exceed max treedepth
-# I think because there's too much missing data when it's split
-
 seedD1Mod <- brm(data = seedD1Dat3, family = gaussian,
                  log_seeds ~ foc * fungicide * (density + density:bg) + (1|plotf),
                  prior <- c(prior(normal(7, 1), class = "Intercept"),
@@ -386,44 +202,36 @@ save(seedD2Mod, file = "output/focal_seed_density_model_2019_density_exp.rda")
 write_csv(seedD1Dat3, "intermediate-data/focal_seed_density_data_2018_density_exp.csv")
 write_csv(seedD2Dat3, "intermediate-data/focal_seed_density_data_2019_density_exp.csv")
 
+# load models
+load("output/focal_seed_density_model_2018_density_exp.rda")
+load("output/focal_seed_density_model_2019_density_exp.rda")
+
 
 #### interaction coefficients (alphas) ####
-
-# are alphas different than 0? (_alpha)
-# does fungicide treatment affect alphas? (_trt_eff, fung_alpha - ctrl_alpha)
 
 # Mv background
 mv_mv_ctrl_alpha = "density = 0"
 mv_mv_fung_alpha = "density + fungicide:density = 0"
-mv_mv_trt_eff = "fungicide:density = 0"
 evS_mv_ctrl_alpha = "density + focs:density = 0"
 evS_mv_fung_alpha = "density + fungicide:density + focs:density + focs:fungicide:density = 0"
-evS_mv_trt_eff = "fungicide:density + focs:fungicide:density = 0"
 evA_mv_ctrl_alpha = "density + foca:density = 0"
 evA_mv_fung_alpha = "density + fungicide:density + foca:density + foca:fungicide:density = 0"
-evA_mv_trt_eff = "fungicide:density + foca:fungicide:density = 0"
 
 # EvS background
 evS_evS_ctrl_alpha = "density + focs:density + density:bgs + focs:density:bgs = 0"
 evS_evS_fung_alpha = "density + focs:density + density:bgs + focs:density:bgs + fungicide:density + focs:fungicide:density + fungicide:density:bgs + focs:fungicide:density:bgs = 0"
-evS_evS_trt_eff = "fungicide:density + focs:fungicide:density + fungicide:density:bgs + focs:fungicide:density:bgs = 0"
 mv_evS_ctrl_alpha = "density +  density:bgs = 0"
 mv_evS_fung_alpha = "density +  density:bgs + fungicide:density + fungicide:density:bgs = 0"
-mv_evS_trt_eff = "fungicide:density + fungicide:density:bgs = 0"
 evA_evS_ctrl_alpha = "density +  density:bgs + foca:density + foca:density:bgs = 0"
 evA_evS_fung_alpha = "density +  density:bgs + foca:density + foca:density:bgs + fungicide:density +  fungicide:density:bgs + foca:fungicide:density + foca:fungicide:density:bgs = 0"
-evA_evS_trt_eff = "fungicide:density +  fungicide:density:bgs + foca:fungicide:density + foca:fungicide:density:bgs = 0"
 
 # EvA background
 evA_evA_ctrl_alpha = "density + foca:density + density:bga + foca:density:bga = 0"
 evA_evA_fung_alpha = "density + foca:density + density:bga + foca:density:bga + fungicide:density + foca:fungicide:density + fungicide:density:bga + foca:fungicide:density:bga = 0"
-evA_evA_trt_eff = "fungicide:density + foca:fungicide:density + fungicide:density:bga + foca:fungicide:density:bga = 0"
 mv_evA_ctrl_alpha = "density +  density:bga = 0"
 mv_evA_fung_alpha = "density +  density:bga + fungicide:density + fungicide:density:bga = 0"
-mv_evA_trt_eff = "fungicide:density + fungicide:density:bga = 0"
 evS_evA_ctrl_alpha = "density + density:bga + focs:density + focs:density:bga = 0"
 evS_evA_fung_alpha = "density + density:bga + focs:density + focs:density:bga + fungicide:density + fungicide:density:bga + focs:fungicide:density + focs:fungicide:density:bga = 0"
-evS_evA_trt_eff = "fungicide:density + fungicide:density:bga + focs:fungicide:density + focs:fungicide:density:bga = 0"
 
 seedD1alphas <- hypothesis(seedD1Mod, 
                            c(mv_mv_ctrl_alpha, mv_mv_fung_alpha, 
@@ -446,28 +254,6 @@ seedD2alphas <- hypothesis(seedD2Mod,
                              evA_evA_ctrl_alpha, evA_evA_fung_alpha,
                              mv_evA_ctrl_alpha, mv_evA_fung_alpha, 
                              evS_evA_ctrl_alpha, evS_evA_fung_alpha))
-
-seedD1TrtEff <- hypothesis(seedD1Mod,
-                           c(mv_mv_trt_eff, 
-                             evS_mv_trt_eff, 
-                             evA_mv_trt_eff,
-                             evS_evS_trt_eff,
-                             mv_evS_trt_eff, 
-                             evA_evS_trt_eff, 
-                             evA_evA_trt_eff,
-                             mv_evA_trt_eff,
-                             evS_evA_trt_eff))
-
-seedD2TrtEff <- hypothesis(seedD2Mod,
-                           c(mv_mv_trt_eff, 
-                             evS_mv_trt_eff, 
-                             evA_mv_trt_eff,
-                             evS_evS_trt_eff,
-                             mv_evS_trt_eff, 
-                             evA_evS_trt_eff, 
-                             evA_evA_trt_eff,
-                             mv_evA_trt_eff,
-                             evS_evA_trt_eff))
 
 # combine alphas
 alphaDat <- seedD1alphas[[1]] %>%
@@ -501,104 +287,5 @@ alphaDatSave <- alphaDat %>%
   select(year, focal, background, treatment, Estimate, Est.Error, CI.Lower, CI.Upper, sig) %>%
   arrange(year, background, focal, treatment)
 
-# combine treatment effects
-trtEffDatSave <- seedD1TrtEff[[1]] %>%
-  mutate(Year = 2018,
-         Response = "seeds",
-         Gradient = "density") %>%
-  full_join(seedD2TrtEff[[1]] %>%
-              mutate(Year = 2019,
-                     Response = "seeds",
-                     Gradient = "density")) %>%
-  mutate(foc_bg = rep(c("m_m", "s_m", "a_m", "s_s", "m_s", "a_s", "a_a", "m_a", "s_a"), 2)) %>%
-  rowwise() %>%
-  mutate(foc = str_split(foc_bg, "_")[[1]][1],
-         bg = str_split(foc_bg, "_")[[1]][2]) %>%
-  ungroup() %>%
-  left_join(seedD1Dat %>%
-              select(foc, focal, bg, background) %>%
-              unique()) %>% 
-  mutate(focal = fct_recode(focal, "Ev first-year" = "Ev seedling"),
-         background = fct_recode(background, "Ev first-year" = "Ev seedling")) %>%
-  select(-c(Hypothesis, Evid.Ratio, Post.Prob, Star, foc_bg, foc, bg)) %>%
-  relocate(Year, Response, Gradient, focal, background) %>%
-  arrange(Year, background, focal)
-
 # save
 write_csv(alphaDatSave, "output/focal_seed_competition_coefficients_2018_2019_density_exp.csv")
-write_csv(trtEffDatSave, "output/focal_seed_competition_treatment_effect_2018_2019_density_exp.csv")
-
-
-#### fungicide-only models ####
-
-# average fungicide effect across background plot types
-# keep plot 1
-
-# initial visualizations
-ggplot(seedD1Dat, aes(x = foc, y = log_seeds, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
-  stat_summary(geom = "point", fun = "mean")
-
-ggplot(seedD2Dat, aes(x = foc, y = log_seeds, color = treatment)) +
-  stat_summary(geom = "errorbar", width = 0, fun.data = "mean_se") +
-  stat_summary(geom = "point", fun = "mean")
-
-# fit models
-seedFungD1Mod <- brm(data = seedD1Dat, family = hurdle_lognormal,
-                    bf(seeds ~ foc * fungicide + (1|plotf),
-                       hu ~ foc * fungicide + (1|plotf)),
-                    prior <- c(prior(normal(1, 1), class = "Intercept"),
-                               prior(normal(0, 10), class = "Intercept", dpar = "hu"),
-                               prior(normal(0, 10), class = "b")), # use default for sigma
-                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(seedFungD1Mod)
-
-seedFungD2Mod <- brm(data = seedD2Dat, family = hurdle_lognormal,
-                    bf(seeds ~ foc * fungicide + (1|plotf),
-                       hu ~ foc * fungicide + (1|plotf)),
-                    prior <- c(prior(normal(1, 1), class = "Intercept"),
-                               prior(normal(0, 10), class = "Intercept", dpar = "hu"),
-                               prior(normal(0, 10), class = "b")), # use default for sigma
-                    iter = 6000, warmup = 1000, chains = 3, cores = 3) 
-mod_check_fun(seedFungD2Mod)
-
-# save models
-save(seedFungD1Mod, file = "output/seed_fungicide_model_2018_density_exp.rda")
-save(seedFungD2Mod, file = "output/seed_fungicide_model_2019_density_exp.rda")
-
-
-#### fungicide effects ####
-
-# fungicide - control when density = 0
-mv_cont_fung_eff = "fungicide + focm:fungicide = 0"
-evS_cont_fung_eff = "fungicide = 0"
-evA_cont_fung_eff = "fungicide + foca:fungicide = 0"
-
-mv_bin_fung_eff = "hu_fungicide + hu_focm:fungicide = 0"
-evS_bin_fung_eff = "hu_fungicide = 0"
-evA_bin_fung_eff = "hu_fungicide + hu_foca:fungicide = 0"
-
-seedFungEff <- hypothesis(seedFungD1Mod,
-                            c(mv_cont_fung_eff,
-                              evS_cont_fung_eff,
-                              evA_cont_fung_eff,
-                              mv_bin_fung_eff,
-                              evS_bin_fung_eff,
-                              evA_bin_fung_eff))[[1]] %>%
-  mutate(Year = 2018) %>%
-  full_join(hypothesis(seedFungD2Mod,
-                       c(mv_cont_fung_eff,
-                         evS_cont_fung_eff,
-                         evA_cont_fung_eff,
-                         mv_bin_fung_eff,
-                         evS_bin_fung_eff,
-                         evA_bin_fung_eff))[[1]] %>%
-              mutate(Year = 2019)) %>%
-  mutate(Focal = rep(c("Mv", "Ev first-year", "Ev adult"), 4), 
-         Distribution = rep(rep(c("continuous", "binary"), each = 3), 2)) %>%
-  select(Year, Focal, Distribution, Estimate:CI.Upper) %>%
-  arrange(Year, Focal, Distribution)
-
-write_csv(seedFungEff, "output/focal_seed_fungicide_effect_2018_2019_density_exp.csv")
-
-

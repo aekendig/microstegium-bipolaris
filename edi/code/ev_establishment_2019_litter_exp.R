@@ -1,7 +1,7 @@
 ##### outputs ####
 
-# elymus_litter_establishment_bh_model_2019_litter_exp.rda
-# elymus_litter_establishment_data_2018_litter_exp.csv
+# ev_litter_establishment_bh_model_2019_litter_exp.rda
+# ev_litter_establishment_data_2018_litter_exp.csv
 
 
 #### set up ####
@@ -86,5 +86,5 @@ pp_check(evEstL2BhMod1, ndraws = 50)
 
 #### output ####
 
-save(evEstL2BhMod2, file = "output/elymus_litter_establishment_bh_model_2019_litter_exp.rda")
-write_csv(germ, "intermediate-data/elymus_litter_establishment_data_2018_litter_exp.csv")
+save(evEstL2BhMod2, file = "output/ev_litter_establishment_bh_model_2019_litter_exp.rda")
+write_csv(germ, "intermediate-data/ev_litter_establishment_data_2018_litter_exp.csv")

@@ -1,9 +1,9 @@
-#### info ####
+#### outputs ####
 
-# file: plot_data_processing_2019_density_exp
-# author: Amy Kendig
-# date last edited: 6/30/21
-# goal: combine plot-scale data
+# mv_plot_biomass_seeds_2019_density_exp.csv
+# plot_severity_2019_density_exp.csv
+
+# stopped working on this in case other outputs are used in later scripts
 
 
 #### set up ####
