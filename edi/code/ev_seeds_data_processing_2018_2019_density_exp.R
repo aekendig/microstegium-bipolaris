@@ -19,6 +19,7 @@ de <- read_csv("data/ev_seed_subset_2018_density_exp.csv")
 dea <- read_csv("data/ev_seeds_early_aug_2018_density_exp.csv")
 dla <- read_csv("data/all_disease_seeds_late_aug_2018_density_exp.csv")
 ds <- read_csv("data/ev_disease_seeds_sep_2018_density_exp.csv")
+dl <- read_csv("data/ev_seeds_2018_litter_exp.csv")
 
 spikelets <- read_csv("data/ev_spikelets_2019_density_exp.csv")
 biomass <- read_csv("data/ev_biomass_seeds_oct_2019_density_exp.csv")
@@ -28,9 +29,6 @@ plants_jul <- read_csv("data/focal_disease_jul_2019_density_exp.csv")
 plants_eau <- read_csv("data/focal_disease_early_aug_2019_density_exp.csv")
 plants_lau <- read_csv("data/focal_disease_late_aug_2019_density_exp.csv")
 plants_sep <- read_csv("data/focal_disease_sep_2019_density_exp.csv")
-
-# Replacing this:
-#dat18 <- read_csv("intermediate-data/ev_spikelets_seeds_2018.csv")
 
 
 #### edit 2018 data ####
@@ -96,9 +94,8 @@ de <- de %>%
   mutate(collect_date = ifelse(site == "D3" & plot == 7 & treatment == "water" & month == "late August" & ID == "R2" & age == "seedling", 20180828, collect_date)) # correct to match spikelet data
 
 # merge
-d <- di %>%
-  filter(experiment == "density")
-  full_join(de)
+d <- full_join(di, de)
+d
 filter(d, is.na(spikelets)) %>% data.frame()
 
 # notes
@@ -134,19 +131,28 @@ dea$month <- "early August"
 dla$month <- "late August"
 ds$month <- "September"
 
+# make litter data long
+dl <- dl %>%
+  gather(key = month, value = seeds_collected, -c(site, plot, field_notes)) %>%
+  mutate(
+    month = case_when(month == "seeds_early_aug" ~ "early August",
+                      month == "seeds_late_aug" ~ "late August",
+                      month == "seeds_sep" ~ "September"),
+    ID = "A",
+    sp = "Ev"
+  ) # note that late August data may be unreliable (in metadata)
+
 # combine field data
-df <- dea %>%
+df <- full_join(dl, dea) %>%
   full_join(dla) %>%
   full_join(ds)
 
 # edit field data columns
-unique(df$site)
-unique(df$plot)
-unique(df$treatment)
 unique(df$ID)
 
 df <- df %>%
   mutate(
+    experiment = str_extract(site, "[aA-zZ]+") %>% recode("D" = "density", "L" = "litter"),
     treatment = recode(treatment, "Water" = "water", "Fungicide" = "fungicide"),
     ID = case_when(ID == "A" ~ "A",
                    TRUE ~ str_remove(ID, "A")),
@@ -155,10 +161,6 @@ df <- df %>%
                     focal == 0 & plot > 7 ~ "adult",
                     TRUE ~ "seedling"),
   )
-
-#### start here ####
-
-#### check data ####
 
 # collection record
 dc <- full_join(d2, df)
@@ -222,7 +224,7 @@ d3 <- d2 %>%
 # remove plants that were probably mislabelled
 dcc %>% filter(probably_mislabelled == 1) %>% data.frame()
 
-d3 <- d3 %>%
+dat18 <- d3 %>%
   ungroup() %>%
   mutate(
     ID_unclear = case_when(reps > 1 |
@@ -234,8 +236,7 @@ d3 <- d3 %>%
                            TRUE ~ ID_unclear)
   )
 
-
-#### combine spikelet and plant data ####
+#### edit 2019 data ####
 
 # notes
 unique(spikelets$spikelet_notes)
@@ -263,7 +264,9 @@ spikelets2 <- spikelets %>%
   group_by(site, plot, treatment, sp, ID, collect_date) %>%
   summarise(spikelet_weight.g = sum(spikelet_weight.g),
             spikelet_notes = paste(spikelet_notes, collapse = "; "),
-            spikelet_bags_green = sum(seeds_green))
+            spikelet_notes = if_else(spikelet_notes == "NA", NA_character_, spikelet_notes),
+            spikelet_bags_green = sum(seeds_green)) %>%
+  ungroup()
 
 # collection dates
 collect <- select(plants_jul, date:ID, seeds_collected) %>%
@@ -277,9 +280,6 @@ collect <- select(plants_jul, date:ID, seeds_collected) %>%
 
 # combine data
 spike_collect <- full_join(spikelets2, collect)  
-
-
-#### check data for mislabel ####
 
 # check for plants where seeds were recorded as collected, but no bag was weighed
 filter(spike_collect, is.na(spikelet_weight.g))
@@ -303,9 +303,6 @@ spikelets3 <- spikelets2 %>%
          lower = -7,
          upper = -3,
          Year = "2019")
-
-
-#### combine seed and spikelet data ####
 
 # notes
 unique(seeds$processing_notes)
@@ -339,115 +336,6 @@ spike_seed = seeds2 %>%
 filter(spike_seed, is.na(spikelet_weight.g))
 
 
-#### visualize seed relationships ####
-
-# seeds and spikelet_weight
-spike_seed %>%
-  ggplot(aes(x = spikelet_weight.g, y = seeds)) +
-  geom_point(size = 2, aes(colour = age, shape = collect_month)) +
-  stat_smooth(method = "lm")
-
-# seed_weight and spikelet_weight
-spike_seed %>%
-  ggplot(aes(x = spikelet_weight.g, y = seed_weight)) +
-  geom_point(size = 2, aes(colour = age, shape = collect_month)) +
-  stat_smooth(method = "lm")
-
-# spikelet weight distribution
-spikelets3 %>%
-  ggplot(aes(x = spikelet_weight.g)) +
-  geom_histogram()
-# a handful are that large
-
-
-#### regressions ####
-
-# examine data
-mean(spike_seed$seeds)
-var(spike_seed$seeds)
-ggplot(spike_seed, aes(x = seeds)) +
-  geom_histogram(binwidth = 1)
-
-# poisson
-mod_19a <- glm(seeds ~ spikelet_weight.g, data = spike_seed, family = poisson)
-summary(mod_19a)
-plot(mod_19a)
-
-# neg binomial
-mod_19b <- glm.nb(seeds ~ spikelet_weight.g, data = spike_seed)
-summary(mod_19b)
-# dispersion parameter is close to 1
-plot(mod_19b)
-# much smaller std deviance residuals
-
-# compare
-AIC(mod_19a, mod_19b)
-# neg binomial better
-
-# simulation
-sim_dat = tibble(spikelet_weight.g = seq(0, max(spike_seed$spikelet_weight.g), length.out = 100))
-sim_dat$yp = predict(mod_19a, newdata = sim_dat, type = "response")
-sim_dat$yn = predict(mod_19b, newdata = sim_dat, type = "response")
-
-ggplot(spike_seed, aes(x = spikelet_weight.g)) +
-  geom_point(aes(y = seeds)) +
-  geom_line(data = sim_dat, aes(y = yp), color = "blue") +
-  geom_line(data = sim_dat, aes(y = yn), color = "green")
-# Poisson looks way better
-
-# Poisson, origin
-mod_19c <- glm(seeds ~ 0 + spikelet_weight.g, data = spike_seed, family = poisson)
-summary(mod_19c)
-plot(mod_19c)
-
-AIC(mod_19a, mod_19c)
-# a is a better fit
-
-# simulation
-sim_dat$yp0 = predict(mod_19c, newdata = sim_dat, type = "response")
-
-ggplot(spike_seed, aes(x = spikelet_weight.g)) +
-  geom_point(aes(y = seeds)) +
-  geom_line(data = sim_dat, aes(y = yp), color = "blue") +
-  geom_line(data = sim_dat, aes(y = yp0), color = "purple")
-# the 0 intercept forces it too low
-
-# linear models
-mod_19d <- lm(seeds ~ spikelet_weight.g, data = spike_seed)
-mod_19e <- lm(seeds ~ 0 + spikelet_weight.g, data = spike_seed)
-
-# compare
-AIC(mod_19a, mod_19b, mod_19d, mod_19e)
-# linear are better, no difference with intercept
-
-# simulation
-sim_dat$yl = predict(mod_19d, newdata = sim_dat)
-sim_dat$yl0 = predict(mod_19e, newdata = sim_dat)
-
-ggplot(spike_seed, aes(x = spikelet_weight.g)) +
-  geom_point(aes(y = seeds)) +
-  geom_line(data = sim_dat, aes(y = yp), color = "blue") +
-  geom_line(data = sim_dat, aes(y = yp0), color = "purple") +
-  geom_line(data = sim_dat, aes(y = yl), color = "red") +
-  geom_line(data = sim_dat, aes(y = yl0), color = "orange")
-
-# predicted values
-pred_dat <- sim_dat %>%
-  select(spikelet_weight.g, yl0) %>%
-  rename(seeds = yl0) %>%
-  mutate(seeds.se = predict(mod_19e, newdata = ., se.fit = T)$se.fit)
-
-# figure
-pred_plot <- spike_seed %>%
-  ggplot(aes(x = spikelet_weight.g, y = seeds)) +
-  geom_ribbon(data = pred_dat, alpha = 0.5, aes(ymin = seeds - seeds.se, ymax = seeds + seeds.se)) +
-  geom_line(data = pred_dat, linetype = "dashed") +
-  geom_point(size = 2, aes(colour = age, shape = treatment)) +
-  theme_bw() +
-  xlab("spikelet weight (g)")
-
-
-
 #### combine data from both years ####
 
 # edit 2018 spikelet data
@@ -463,10 +351,6 @@ dat18b <- spikelets18 %>%
   filter(!is.na(seeds)) %>%
   select(site, plot, treatment, sp, ID, age, collect_date, spikelet_weight.g, seeds)
 
-# linear model for 2018
-mod_18 <- lm(seeds ~ 0 + spikelet_weight.g, data = dat18b)
-summary(mod_18)
-
 # combined data
 dat <- spike_seed %>%
   select(site, plot, treatment, sp, ID, age, collect_date, spikelet_weight.g, seeds, spikelet_bags_green) %>%
@@ -475,27 +359,6 @@ dat <- spike_seed %>%
            as.Date(., format = "%Y%m%d") %>% 
            year(),
          Year = as.factor(year))
-
-# prediction data
-pred_dat_comb <- pred_dat %>%
-  mutate(Year = "2019") %>%
-  full_join(tibble(spikelet_weight.g = seq(min(dat18b$spikelet_weight.g), max(dat18b$spikelet_weight.g), length.out = 100),
-                        Year = rep("2018", each = 100)) %>%
-  mutate(seeds = predict(mod_18, newdata = .),
-         seeds.se = predict(mod_18, newdata = ., se.fit = T)$se.fit))
-
-# visualize
-pred_plot_comb <- dat %>%
-  ggplot(aes(x = spikelet_weight.g, y = seeds, color = Year)) +
-  geom_ribbon(data = pred_dat_comb, alpha = 0.5, aes(ymin = seeds - seeds.se, ymax = seeds + seeds.se)) +
-  geom_line(data = pred_dat_comb, linetype = "dashed") +
-  geom_point(alpha = 0.75) +
-  theme_bw() +
-  xlab("spikelet weight (g)")
-
-# coefficients from linear models
-summary(mod_18)
-summary(mod_19b)
 
 # fit model to both years
 mod_both <- lm(seeds ~ 0 + spikelet_weight.g, data = dat)
@@ -507,7 +370,7 @@ pred_dat_both <- tibble(spikelet_weight.g = seq(0, max(spikelets18$spikelet_weig
          seeds.se = predict(mod_both, newdata = ., se.fit = T)$se.fit)
 
 # visualize
-pred_plot_both <- pred_dat_both %>%
+(pred_plot_both <- pred_dat_both %>%
   ggplot(aes(x = spikelet_weight.g)) +
   geom_ribbon(aes(y = seeds, ymin = seeds - seeds.se, ymax = seeds + seeds.se), alpha = 0.5) +
   geom_line(aes(y = seeds)) +
@@ -516,7 +379,7 @@ pred_plot_both <- pred_dat_both %>%
   geom_linerange(data = spikelets18, aes(ymin = lower, ymax = upper, color = Year), alpha = 0.5) +
   theme_bw() +
   theme(legend.position = c(0.2, 0.8)) +
-  xlab("spikelet weight (g)")
+  xlab("spikelet weight (g)"))
 
 
 #### predict seeds ####
@@ -544,23 +407,6 @@ pred_plot_both +
 
 
 #### save output ####
-
-# seeds prediction relationship
-pdf("./output/ev_seeds_data_processing_2019_seeds_spikelet_weight.pdf", width = 5, height = 4)
-pred_plot
-dev.off()
-
-pdf("./output/ev_seeds_data_processing_2018_2019_seeds_spikelet_weight.pdf", width = 5, height = 4)
-pred_plot_comb
-dev.off()
-
-pdf("./output/ev_seeds_data_processing_2019_seeds_spikelet_weight_combined.pdf", width = 4, height = 4)
-pred_plot_both
-dev.off()
-
-# model
-save(mod_both, file = "./output/ev_seeds_data_processing_2018_2019_seed_spikelet_weight_mod.rda")
-
-# data
-write_csv(spikelets3_out, "./intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv")
-write_csv(spikelets18_out, "./intermediate-data/ev_processed_seeds_both_year_conversion_2018_density_exp.csv")
+write_csv(spikelets3_out, "intermediate-data/ev_processed_seeds_both_year_conversion_2019_density_exp.csv")
+write_csv(spikelets18_out, "intermediate-data/ev_processed_seeds_both_year_conversion_2018_density_exp.csv")
+# note: rounding errors with saving and re-importing make slight, but not relevant changes to seeds and spikelet_weight.g
