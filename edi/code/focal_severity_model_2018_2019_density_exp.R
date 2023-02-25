@@ -2,7 +2,7 @@
 
 # Figure 3
 # Figure S2
-# Tables S10-S13 & S24
+# Tables S10-S14 & S24
 
 
 #### set up ####
